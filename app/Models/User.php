@@ -43,4 +43,20 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    // Relationships
+    public function dispatchedIncidents()
+    {
+        return $this->hasMany(Incident::class, 'dispatch_by');
+    }
+
+    public function recordedTransactions()
+    {
+        return $this->hasMany(Transaction::class, 'recorded_by');
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(Note::class);
+    }
 }
