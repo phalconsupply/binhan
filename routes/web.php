@@ -3,6 +3,8 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\IncidentController;
+use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\API\QuickEntryController;
 use Illuminate\Support\Facades\Route;
 
@@ -37,6 +39,16 @@ Route::middleware('auth')->group(function () {
 // Vehicle routes
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('vehicles', VehicleController::class);
+});
+
+// Incident routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('incidents', IncidentController::class);
+});
+
+// Transaction routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('transactions', TransactionController::class);
 });
 
 // API routes for AJAX

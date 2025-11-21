@@ -1,0 +1,186 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Transaction;
+use App\Models\Vehicle;
+use App\Models\Incident;
+use Illuminate\Http\Request;
+
+class TransactionController extends Controller
+{
+    public function __construct()
+    {
+        $this->middleware(['auth', 'permission:view transactions'])->only(['index', 'show']);
+        $this->middleware(['auth', 'permission:create transactions'])->only(['create', 'store']);
+        $this->middleware(['auth', 'permission:edit transactions'])->only(['edit', 'update']);
+        $this->middleware(['auth', 'permission:delete transactions'])->only(['destroy']);
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request)
+    {
+        $query = Transaction::with(['vehicle', 'incident.patient', 'recorder']);
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->whereHas('vehicle', function($vq) use ($search) {
+                    $vq->where('license_plate', 'like', "%{$search}%");
+                })
+                ->orWhere('note', 'like', "%{$search}%")
+                ->orWhere('amount', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by type
+        if ($request->has('type') && $request->type != '') {
+            $query->where('type', $request->type);
+        }
+
+        // Filter by vehicle
+        if ($request->has('vehicle_id') && $request->vehicle_id != '') {
+            $query->where('vehicle_id', $request->vehicle_id);
+        }
+
+        // Filter by method
+        if ($request->has('method') && $request->method != '') {
+            $query->where('method', $request->method);
+        }
+
+        // Filter by date range
+        if ($request->has('date_from') && $request->date_from != '') {
+            $query->whereDate('date', '>=', $request->date_from);
+        }
+        if ($request->has('date_to') && $request->date_to != '') {
+            $query->whereDate('date', '<=', $request->date_to);
+        }
+
+        // Default: Most recent first
+        $query->orderBy('date', 'desc');
+
+        $transactions = $query->paginate(20);
+
+        // Get vehicles for filter dropdown
+        $vehicles = Vehicle::orderBy('license_plate')->get();
+
+        // Statistics
+        $stats = [
+            'total_revenue' => Transaction::revenue()->sum('amount'),
+            'total_expense' => Transaction::expense()->sum('amount'),
+            'today_revenue' => Transaction::revenue()->today()->sum('amount'),
+            'today_expense' => Transaction::expense()->today()->sum('amount'),
+            'month_revenue' => Transaction::revenue()->thisMonth()->sum('amount'),
+            'month_expense' => Transaction::expense()->thisMonth()->sum('amount'),
+        ];
+        $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'];
+        $stats['today_net'] = $stats['today_revenue'] - $stats['today_expense'];
+        $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'];
+
+        return view('transactions.index', compact('transactions', 'vehicles', 'stats'));
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create(Request $request)
+    {
+        $vehicles = Vehicle::active()->orderBy('license_plate')->get();
+        $incidents = Incident::with(['vehicle', 'patient'])
+            ->orderBy('date', 'desc')
+            ->limit(50)
+            ->get();
+
+        // Pre-select incident if provided
+        $selectedIncident = null;
+        if ($request->has('incident_id')) {
+            $selectedIncident = Incident::find($request->incident_id);
+        }
+
+        return view('transactions.create', compact('vehicles', 'incidents', 'selectedIncident'));
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'incident_id' => 'nullable|exists:incidents,id',
+            'vehicle_id' => 'required|exists:vehicles,id',
+            'type' => 'required|in:thu,chi',
+            'amount' => 'required|numeric|min:0',
+            'method' => 'required|in:cash,bank,other',
+            'date' => 'required|date',
+            'note' => 'nullable|string',
+        ]);
+
+        $validated['recorded_by'] = auth()->id();
+
+        $transaction = Transaction::create($validated);
+
+        return redirect()->route('transactions.index')
+            ->with('success', "Đã ghi nhận {$transaction->type_label} " . number_format($transaction->amount, 0, ',', '.') . 'đ thành công!');
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(Transaction $transaction)
+    {
+        $transaction->load(['vehicle', 'incident.patient', 'recorder']);
+
+        return view('transactions.show', compact('transaction'));
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Transaction $transaction)
+    {
+        $transaction->load(['vehicle', 'incident']);
+        
+        $vehicles = Vehicle::orderBy('license_plate')->get();
+        $incidents = Incident::with(['vehicle', 'patient'])
+            ->orderBy('date', 'desc')
+            ->limit(50)
+            ->get();
+
+        return view('transactions.edit', compact('transaction', 'vehicles', 'incidents'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Transaction $transaction)
+    {
+        $validated = $request->validate([
+            'incident_id' => 'nullable|exists:incidents,id',
+            'vehicle_id' => 'required|exists:vehicles,id',
+            'type' => 'required|in:thu,chi',
+            'amount' => 'required|numeric|min:0',
+            'method' => 'required|in:cash,bank,other',
+            'date' => 'required|date',
+            'note' => 'nullable|string',
+        ]);
+
+        $transaction->update($validated);
+
+        return redirect()->route('transactions.show', $transaction)
+            ->with('success', 'Đã cập nhật giao dịch thành công!');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Transaction $transaction)
+    {
+        $transaction->delete();
+
+        return redirect()->route('transactions.index')
+            ->with('success', 'Đã xóa giao dịch thành công!');
+    }
+}

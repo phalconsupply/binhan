@@ -20,6 +20,19 @@
                         Xe cấp cứu
                     </x-nav-link>
                     @endcan
+                    @can('view incidents')
+                    <x-nav-link :href="route('incidents.index')" :active="request()->routeIs('incidents.*')">
+                        Chuyến đi
+                    </x-nav-link>
+                    @endcan
+                    @can('view transactions')
+                    <x-nav-link :href="route('transactions.index')" :active="request()->routeIs('transactions.*')">
+                        Giao dịch
+                    </x-nav-link>
+                    @endcan
+                </div>
+                    </x-nav-link>
+                    @endcan
                 </div>
             </div>
 
@@ -73,8 +86,23 @@
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                {{ __('Dashboard') }}
+                Bảng điều khiển
             </x-responsive-nav-link>
+            @can('view vehicles')
+            <x-responsive-nav-link :href="route('vehicles.index')" :active="request()->routeIs('vehicles.*')">
+                Xe cấp cứu
+            </x-responsive-nav-link>
+            @endcan
+            @can('view incidents')
+            <x-responsive-nav-link :href="route('incidents.index')" :active="request()->routeIs('incidents.*')">
+                Chuyến đi
+            </x-responsive-nav-link>
+            @endcan
+            @can('view transactions')
+            <x-responsive-nav-link :href="route('transactions.index')" :active="request()->routeIs('transactions.*')">
+                Giao dịch
+            </x-responsive-nav-link>
+            @endcan
         </div>
 
         <!-- Responsive Settings Options -->
