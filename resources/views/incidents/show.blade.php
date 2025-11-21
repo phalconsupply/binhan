@@ -171,17 +171,72 @@
                     {{-- Notes --}}
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="p-6">
-                            <h3 class="text-lg font-semibold mb-4">Ghi chú</h3>
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold">Ghi chú</h3>
+                                @can('create incidents')
+                                <button onclick="document.getElementById('noteForm').classList.toggle('hidden')" class="text-sm text-indigo-600 hover:text-indigo-900">
+                                    + Thêm ghi chú
+                                </button>
+                                @endcan
+                            </div>
+
+                            {{-- Add Note Form --}}
+                            @can('create incidents')
+                            <div id="noteForm" class="hidden mb-4">
+                                <form action="{{ route('notes.store') }}" method="POST" class="space-y-3">
+                                    @csrf
+                                    <input type="hidden" name="incident_id" value="{{ $incident->id }}">
+                                    
+                                    <div>
+                                        <select name="severity" required class="block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            <option value="info">Thông tin</option>
+                                            <option value="warning">Cảnh báo</option>
+                                            <option value="critical">Quan trọng</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <textarea name="note" rows="3" required placeholder="Nhập ghi chú..."
+                                                  class="block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                                    </div>
+                                    
+                                    <div class="flex justify-end space-x-2">
+                                        <button type="button" onclick="document.getElementById('noteForm').classList.add('hidden')" 
+                                                class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                                            Hủy
+                                        </button>
+                                        <button type="submit" class="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                            Lưu
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                            @endcan
+
                             @if($incident->notes->isEmpty())
                                 <p class="text-gray-500 text-sm">Chưa có ghi chú nào.</p>
                             @else
                                 <div class="space-y-2">
                                     @foreach($incident->notes as $note)
-                                    <div class="p-3 bg-gray-50 rounded border-l-4 border-{{ $note->severity_color }}-500">
-                                        <p class="text-sm">{{ $note->note }}</p>
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            {{ $note->user->name }} • {{ $note->created_at->format('d/m/Y H:i') }}
-                                        </p>
+                                    <div class="p-3 rounded border-l-4 {{ $note->severity == 'critical' ? 'bg-red-50 border-red-500' : ($note->severity == 'warning' ? 'bg-yellow-50 border-yellow-500' : 'bg-gray-50 border-blue-500') }}">
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex-1">
+                                                <p class="text-sm">{{ $note->note }}</p>
+                                                <p class="text-xs text-gray-500 mt-1">
+                                                    {{ $note->user->name }} • {{ $note->created_at->format('d/m/Y H:i') }}
+                                                </p>
+                                            </div>
+                                            @can('delete incidents')
+                                            <form action="{{ route('notes.destroy', $note) }}" method="POST" class="inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-xs text-red-600 hover:text-red-900 ml-2" 
+                                                        onclick="return confirm('Xóa ghi chú này?')">
+                                                    Xóa
+                                                </button>
+                                            </form>
+                                            @endcan
+                                        </div>
                                     </div>
                                     @endforeach
                                 </div>

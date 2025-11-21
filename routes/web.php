@@ -7,6 +7,9 @@ use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\NoteController;
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\API\QuickEntryController;
 use Illuminate\Support\Facades\Route;
 
@@ -69,6 +72,25 @@ Route::middleware(['auth', 'verified', 'permission:view reports'])->group(functi
         Route::get('/reports/export/transactions/pdf', [ReportController::class, 'exportTransactionsPdf'])->name('reports.export.transactions.pdf');
         Route::get('/reports/export/vehicles/excel', [ReportController::class, 'exportVehicleReportExcel'])->name('reports.export.vehicles.excel');
     });
+});
+
+// Note routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/notes', [NoteController::class, 'index'])->name('notes.index');
+    Route::post('/notes', [NoteController::class, 'store'])->name('notes.store');
+    Route::put('/notes/{note}', [NoteController::class, 'update'])->name('notes.update');
+    Route::delete('/notes/{note}', [NoteController::class, 'destroy'])->name('notes.destroy');
+});
+
+// Activity Log routes
+Route::middleware(['auth', 'verified', 'permission:view audits'])->group(function () {
+    Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+});
+
+// Global Search routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/search', [GlobalSearchController::class, 'index'])->name('search.index');
+    Route::get('/api/search', [GlobalSearchController::class, 'api'])->name('search.api');
 });
 
 // API routes for AJAX

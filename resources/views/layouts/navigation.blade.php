@@ -40,6 +40,9 @@
                         Báo cáo
                     </x-nav-link>
                     @endcan
+                    <x-nav-link :href="route('search.index')" :active="request()->routeIs('search.*')">
+                        Tìm kiếm
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -62,6 +65,18 @@
                         <x-dropdown-link :href="route('profile.edit')">
                             {{ __('Profile') }}
                         </x-dropdown-link>
+
+                        @can('view audits')
+                        <x-dropdown-link :href="route('activity-logs.index')">
+                            Nhật ký hoạt động
+                        </x-dropdown-link>
+                        @endcan
+
+                        @can('view incidents')
+                        <x-dropdown-link :href="route('notes.index')">
+                            Ghi chú
+                        </x-dropdown-link>
+                        @endcan
 
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
@@ -120,6 +135,9 @@
                 Báo cáo
             </x-responsive-nav-link>
             @endcan
+            <x-responsive-nav-link :href="route('search.index')" :active="request()->routeIs('search.*')">
+                Tìm kiếm
+            </x-responsive-nav-link>
         </div>
 
         <!-- Responsive Settings Options -->
