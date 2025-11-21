@@ -5,6 +5,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\PatientController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\API\QuickEntryController;
 use Illuminate\Support\Facades\Route;
 
@@ -49,6 +51,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Transaction routes
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('transactions', TransactionController::class);
+});
+
+// Patient routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('patients', PatientController::class);
+});
+
+// Report routes
+Route::middleware(['auth', 'verified', 'permission:view reports'])->group(function () {
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    
+    Route::middleware('permission:export reports')->group(function () {
+        Route::get('/reports/export/incidents/excel', [ReportController::class, 'exportIncidentsExcel'])->name('reports.export.incidents.excel');
+        Route::get('/reports/export/incidents/pdf', [ReportController::class, 'exportIncidentsPdf'])->name('reports.export.incidents.pdf');
+        Route::get('/reports/export/transactions/excel', [ReportController::class, 'exportTransactionsExcel'])->name('reports.export.transactions.excel');
+        Route::get('/reports/export/transactions/pdf', [ReportController::class, 'exportTransactionsPdf'])->name('reports.export.transactions.pdf');
+        Route::get('/reports/export/vehicles/excel', [ReportController::class, 'exportVehicleReportExcel'])->name('reports.export.vehicles.excel');
+    });
 });
 
 // API routes for AJAX

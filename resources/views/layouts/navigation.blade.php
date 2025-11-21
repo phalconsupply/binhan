@@ -30,7 +30,14 @@
                         Giao dịch
                     </x-nav-link>
                     @endcan
-                </div>
+                    @can('view patients')
+                    <x-nav-link :href="route('patients.index')" :active="request()->routeIs('patients.*')">
+                        Bệnh nhân
+                    </x-nav-link>
+                    @endcan
+                    @can('view reports')
+                    <x-nav-link :href="route('reports.index')" :active="request()->routeIs('reports.*')">
+                        Báo cáo
                     </x-nav-link>
                     @endcan
                 </div>
@@ -101,6 +108,16 @@
             @can('view transactions')
             <x-responsive-nav-link :href="route('transactions.index')" :active="request()->routeIs('transactions.*')">
                 Giao dịch
+            </x-responsive-nav-link>
+            @endcan
+            @can('view patients')
+            <x-responsive-nav-link :href="route('patients.index')" :active="request()->routeIs('patients.*')">
+                Bệnh nhân
+            </x-responsive-nav-link>
+            @endcan
+            @can('view reports')
+            <x-responsive-nav-link :href="route('reports.index')" :active="request()->routeIs('reports.*')">
+                Báo cáo
             </x-responsive-nav-link>
             @endcan
         </div>
