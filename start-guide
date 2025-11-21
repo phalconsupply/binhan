@@ -1,0 +1,220 @@
+Mô tả giải pháp (Laravel) — Hệ thống quản lý xe cấp cứu, thu/chi & ghi chú bệnh nhân
+
+Tập trung đơn giản, nhập liệu nhanh, “biển số xe” là đầu mối quản lý các sự cố/phát sinh.
+
+Hình tham khảo (mẫu Excel hiện tại): /mnt/data/5d0c91ee-76ca-455e-a42e-0001fa3c8620.png
+
+1 — Tư duy chính & luồng hoạt động
+
+Đầu mối: mỗi chuyến/ghi chép đều liên quan tới xe (khóa chính: license_plate). Khi người dùng nhập nhanh, họ chọn/nhập biển số -> tất cả thông tin liên quan (lịch sử chuyến, bệnh nhân, thu/chi, ghi chú) hiện ra/đính kèm.
+
+Nhập liệu nhanh: 1 form “chuyến mới / ghi sổ nhanh” (one-shot) có các trường tối thiểu: ngày giờ, biển số (typeahead), họ tên bệnh nhân, tuổi, SDT, điều dưỡng, mô tả, khoản thu, khoản chi, hình thức (tiền mặt/chuyển khoản), tag (ví dụ: HS Lâm sàng, HSTC).
+
+Lịch sử & truy vấn: xem theo biển số, theo khoảng ngày, theo nhân viên, theo loại giao dịch (thu/chi), theo bệnh nhân.
+
+Trách nhiệm triển khai: ưu tiên UI đơn giản (mobile-first), khả năng offline nhẹ (cơ chế lưu nháp), export Excel/PDF, audit log.
+
+2 — Kiến trúc & công nghệ chính
+
+Backend: Laravel (v10+).
+
+Realtime & interactivity: Livewire + Alpine.js (nhập liệu nhanh, typeahead, form không reload).
+
+DB: MySQL / MariaDB.
+
+File/Export: maatwebsite/excel (export), dompdf hoặc snappy (PDF).
+
+Auth & RBAC: Laravel Breeze hoặc Jetstream (tùy cần), spatie/laravel-permission cho role (admin, dispatcher, driver, accountant).
+
+Storage: local (ban đầu), S3 khi mở rộng.
+
+Queue: Redis + Horizon cho thông báo/CSV export lớn (tùy quy mô).
+
+Deploy: Docker / Forge / VPS. Backup: dump DB hàng ngày.
+
+3 — Sơ đồ dữ liệu (tương đối đơn giản)
+Bảng chính (tên & trường chính)
+
+vehicles (xe)
+
+id, license_plate (unique), model, driver_name, phone, status, note, created_at, updated_at
+
+patients
+
+id, name, birth_year or dob, phone, gender, address, notes
+
+incidents (mỗi chuyến / sự cố / bản ghi)
+
+id, vehicle_id (FK), patient_id (nullable), date (datetime), dispatch_by (user_id), destination, summary (text short), tags (json or pivot), created_at, updated_at
+
+transactions (thu/chi)
+
+id, incident_id (nullable), vehicle_id (FK), type ENUM('thu','chi'), amount (decimal), method ENUM('cash','bank','other'), note, recorded_by (user_id), date
+
+users (sử dụng auth)
+
+standard laravel + role
+
+notes (vấn đề phát sinh, logs)
+
+id, incident_id, vehicle_id, user_id, note, severity, created_at
+
+audits (optional)
+
+tracking thay đổi (có thể dùng spatie/laravel-activitylog)
+
+Indexes: index license_plate, vehicle_id, date, type cho transactions.
+Quan hệ: vehicle 1—n incidents; incident 1—n transactions; patient 1—n incidents.
+
+4 — Migrations mẫu (tóm tắt)
+// migration vehicles
+Schema::create('vehicles', function (Blueprint $table) {
+  $table->id();
+  $table->string('license_plate')->unique();
+  $table->string('model')->nullable();
+  $table->string('driver_name')->nullable();
+  $table->string('phone')->nullable();
+  $table->string('status')->default('active');
+  $table->text('note')->nullable();
+  $table->timestamps();
+});
+
+// migration incidents
+Schema::create('incidents', function (Blueprint $table) {
+  $table->id();
+  $table->foreignId('vehicle_id')->constrained()->cascadeOnDelete();
+  $table->foreignId('patient_id')->nullable()->constrained()->nullOnDelete();
+  $table->dateTime('date');
+  $table->foreignId('dispatch_by')->constrained('users');
+  $table->string('destination')->nullable();
+  $table->text('summary')->nullable();
+  $table->json('tags')->nullable();
+  $table->timestamps();
+});
+
+// migration transactions
+Schema::create('transactions', function (Blueprint $table) {
+  $table->id();
+  $table->foreignId('incident_id')->nullable()->constrained()->nullOnDelete();
+  $table->foreignId('vehicle_id')->constrained()->cascadeOnDelete();
+  $table->enum('type',['thu','chi']);
+  $table->decimal('amount', 15, 2);
+  $table->enum('method',['cash','bank','other'])->default('cash');
+  $table->text('note')->nullable();
+  $table->foreignId('recorded_by')->constrained('users');
+  $table->dateTime('date');
+  $table->timestamps();
+});
+
+5 — Models & quan hệ (Eloquent)
+
+Vehicle hasMany Incident, hasMany Transaction
+
+Incident belongsTo Vehicle, belongsTo Patient, hasMany Transaction, hasMany Note
+
+Transaction belongsTo Vehicle, belongsTo Incident (nullable)
+
+Patient hasMany Incident
+
+6 — UI & UX: nhập liệu nhanh (chi tiết thực tế)
+
+Trang chính (dashboard): ô nhập nhanh (Quick Log) hiển thị trên mọi trang:
+
+Biển số (typeahead — tìm existing, nếu không có => tạo mới nhanh bằng modal)
+
+Ngày giờ (auto now)
+
+Bệnh nhân (tên) (typeahead)
+
+Thu & Chi (các ô riêng, cho phép nhập cả hai — nếu chỉ có 1 thì để 0)
+
+Ghi chú ngắn
+
+Lưu & Thêm chuyến mới (button để reset form)
+
+Tối ưu:
+
+Sử dụng Livewire để gửi form bất đồng bộ (AJAX) -> người dùng không load lại trang.
+
+Keyboard shortcuts: Enter để lưu, Ctrl+N để mở form mới.
+
+Typeahead sử dụng Elastic/Algolia hoặc đơn giản: AJAX search trên DB (limit 5) cho biển số/ tên bệnh nhân.
+
+Templates: một vài preset “mẫu chuyến” (ví dụ: Vận chuyển nội trú, Khám ngoại trú) để auto-fill một số trường.
+
+Mobile-first: bố cục button to, input dễ chạm; dùng responsive.
+
+7 — APIs & Integrations
+
+REST API cho mobile app/dispatch: endpoints: GET /api/vehicles/{plate}, POST /api/incidents, POST /api/transactions, GET /api/vehicle/{id}/history.
+
+Import/Export: upload Excel để import lịch sử (map cột). Export theo biển số/ tháng (Excel & PDF).
+
+SMS/Call integration: lưu number bệnh nhân / driver, có thể add button click-to-call (tel:) và SMS gateway để gửi thông báo.
+
+8 — Quy trình nghiệp vụ & báo cáo
+
+Báo cáo hàng ngày/tuần/tháng: tổng thu/chi, tồn quỹ (theo vehicle hoặc toàn công ty), chuyến theo xe, các sự cố (notes severity).
+
+Kiểm tra tồn quỹ xe: tổng thu theo xe minus tổng chi theo xe.
+
+Audit: lưu ai chỉnh sửa bản ghi (user_id, timestamp).
+
+9 — Bảo mật & quyền truy cập
+
+Roles: admin, dispatcher, accountant, driver.
+
+Dispatcher: nhập chuyến, sửa báo cáo thời gian ngắn. Accountant: chỉ chỉnh transactions, xuất báo cáo. Driver: xem lịch sử xe mình.
+
+Xác thực: 2FA optional cho admin.
+
+10 — Các bước triển khai (MVP — 4 sprint ngắn)
+
+Sprint 0 — Chuẩn bị (1-2 ngày)
+
+Thiết lập project Laravel, DB, auth (Breeze), Livewire.
+
+Tạo migrations cơ bản (vehicles, patients, incidents, transactions).
+
+Sprint 1 — Quick-Entry + Vehicle中心 (3-5 ngày)
+
+Livewire quick form (biển số typeahead + lưu incident + transaction).
+
+Vehicle CRUD & list, incident list per vehicle.
+
+Basic validation & unit tests.
+
+Sprint 2 — Lịch sử & báo cáo (3-5 ngày)
+
+Trang history theo biển số, filter date, export Excel.
+
+Tính tồn quỹ đơn giản.
+
+Sprint 3 — Hoàn thiện UX & RBAC (2-4 ngày)
+
+Roles & permissions, audit log, mobile tweaks, import Excel.
+
+Deployment, backups, docs user.
+
+Tổng MVP: ~2–3 tuần (team 1 backend + 1 frontend) — tùy thay đổi.
+
+11 — Gợi ý nhanh cho nhập liệu giống file Excel hiện tại
+
+Trường “Số tiền” nên cho phép định dạng tiền (auto-thousand separators).
+
+Cột “TT bệnh nhân” nên map vào bảng patients để không phải lặp nhập.
+
+Những ghi chú như “Chia hết tháng 10” => lưu thành notes/tags để sau này filter.
+
+Cho phép sửa nhanh trên dòng (inline edit) giống Excel (điều này Livewire thực hiện tốt).
+
+12 — Các lưu ý triển khai
+
+Giữ UI tối giản — mỗi thao tác lưu chỉ cần 1 click.
+
+Ưu tiên reliability: backup DB tự động, log lỗi, validation chặt.
+
+Dễ mở rộng: design schema để sau này thêm multi-branch, nhiều xe/nhân viên.
+
+Cho phép export mẫu Excel giống file hiện tại để người dùng chuyển đổi dễ.
+
