@@ -13,7 +13,7 @@
     <div class="py-6">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6">
+                <div class="p-6" x-data="{ staffType: '{{ old('staff_type', $staff->staff_type) }}' }">
                     <form method="POST" action="{{ route('staff.update', $staff) }}" class="space-y-6">
                         @csrf
                         @method('PUT')
@@ -48,6 +48,7 @@
                                         Loại nhân sự <span class="text-red-500">*</span>
                                     </label>
                                     <select id="staff_type" name="staff_type" required 
+                                        x-model="staffType"
                                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                         <option value="">-- Chọn loại --</option>
                                         <option value="medical_staff" {{ old('staff_type', $staff->staff_type) == 'medical_staff' ? 'selected' : '' }}>Nhân viên y tế</option>
@@ -57,6 +58,21 @@
                                         <option value="admin" {{ old('staff_type', $staff->staff_type) == 'admin' ? 'selected' : '' }}>Admin</option>
                                     </select>
                                     @error('staff_type')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div x-show="staffType === 'investor'" x-cloak>
+                                    <label for="equity_percentage" class="block text-sm font-medium text-gray-700">
+                                        Tỷ lệ vốn góp (%) <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="number" id="equity_percentage" name="equity_percentage" value="{{ old('equity_percentage', $staff->equity_percentage) }}" 
+                                        step="0.01" min="0" max="100"
+                                        :required="staffType === 'investor'"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                        placeholder="VD: 25.5">
+                                    <p class="mt-1 text-xs text-gray-500">💡 Tỷ lệ vốn góp sẽ là căn cứ để chia lợi nhuận</p>
+                                    @error('equity_percentage')
                                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                     @enderror
                                 </div>

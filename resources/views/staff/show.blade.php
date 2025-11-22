@@ -58,6 +58,12 @@
                                         {{ $staff->staff_type_label }}
                                     </span>
                                 </div>
+                                @if($staff->staff_type == 'investor' && $staff->equity_percentage)
+                                <div>
+                                    <p class="text-sm text-gray-500">Tỷ lệ vốn góp</p>
+                                    <p class="text-base font-semibold text-pink-600">{{ number_format($staff->equity_percentage, 2) }}%</p>
+                                </div>
+                                @endif
                                 <div>
                                     <p class="text-sm text-gray-500">Chức vụ</p>
                                     <p class="text-base">{{ $staff->position ?? '-' }}</p>

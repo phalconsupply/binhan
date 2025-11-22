@@ -70,6 +70,7 @@ class StaffController extends Controller
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'staff_type' => 'required|in:medical_staff,driver,manager,investor,admin',
+            'equity_percentage' => 'required_if:staff_type,investor|nullable|numeric|min:0|max:100',
             'phone' => 'nullable|string|max:20',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
@@ -119,6 +120,7 @@ class StaffController extends Controller
                 'user_id' => $user->id,
                 'full_name' => $validated['full_name'],
                 'staff_type' => $validated['staff_type'],
+                'equity_percentage' => $validated['equity_percentage'] ?? null,
                 'phone' => $validated['phone'],
                 'email' => $validated['email'],
                 'id_card' => $validated['id_card'],
@@ -180,6 +182,7 @@ class StaffController extends Controller
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'staff_type' => 'required|in:medical_staff,driver,manager,investor,admin',
+            'equity_percentage' => 'required_if:staff_type,investor|nullable|numeric|min:0|max:100',
             'phone' => 'nullable|string|max:20',
             'email' => 'required|email|unique:users,email,' . $staff->user_id,
             'password' => 'nullable|string|min:8|confirmed',
@@ -235,6 +238,7 @@ class StaffController extends Controller
             $staff->update([
                 'full_name' => $validated['full_name'],
                 'staff_type' => $validated['staff_type'],
+                'equity_percentage' => $validated['equity_percentage'] ?? null,
                 'phone' => $validated['phone'],
                 'email' => $validated['email'],
                 'id_card' => $validated['id_card'],

@@ -16,6 +16,7 @@ class Staff extends Model
         'full_name',
         'employee_code',
         'staff_type',
+        'equity_percentage',
         'phone',
         'email',
         'id_card',
@@ -34,6 +35,7 @@ class Staff extends Model
         'birth_date' => 'date',
         'hire_date' => 'date',
         'is_active' => 'boolean',
+        'equity_percentage' => 'decimal:2',
     ];
 
     // Relationships
