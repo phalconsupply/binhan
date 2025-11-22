@@ -116,13 +116,11 @@ class StaffController extends Controller
             // Assign role based on staff type
             $user->assignRole($validated['staff_type']);
 
-            // Create staff profile (employee_code will be auto-generated)
-            $staff = Staff::create([
+            // Prepare staff data
+            $staffData = [
                 'user_id' => $user->id,
                 'full_name' => $validated['full_name'],
                 'staff_type' => $validated['staff_type'],
-                'equity_percentage' => $validated['equity_percentage'] ?? null,
-                'vehicle_id' => $validated['vehicle_id'] ?? null,
                 'phone' => $validated['phone'],
                 'email' => $validated['email'],
                 'id_card' => $validated['id_card'],
@@ -135,7 +133,20 @@ class StaffController extends Controller
                 'base_salary' => $validated['base_salary'],
                 'notes' => $validated['notes'],
                 'is_active' => $validated['is_active'] ?? true,
-            ]);
+            ];
+
+            // Add equity_percentage only for investors
+            if ($validated['staff_type'] === 'investor') {
+                $staffData['equity_percentage'] = $validated['equity_percentage'] ?? null;
+            }
+
+            // Add vehicle_id only for vehicle owners
+            if ($validated['staff_type'] === 'vehicle_owner') {
+                $staffData['vehicle_id'] = $validated['vehicle_id'] ?? null;
+            }
+
+            // Create staff profile (employee_code will be auto-generated)
+            $staff = Staff::create($staffData);
 
             DB::commit();
 
@@ -237,12 +248,10 @@ class StaffController extends Controller
                 $staff->user->syncRoles([$validated['staff_type']]);
             }
 
-            // Update staff profile (employee_code is not editable)
-            $staff->update([
+            // Prepare staff update data
+            $staffData = [
                 'full_name' => $validated['full_name'],
                 'staff_type' => $validated['staff_type'],
-                'equity_percentage' => $validated['equity_percentage'] ?? null,
-                'vehicle_id' => $validated['vehicle_id'] ?? null,
                 'phone' => $validated['phone'],
                 'email' => $validated['email'],
                 'id_card' => $validated['id_card'],
@@ -255,7 +264,24 @@ class StaffController extends Controller
                 'base_salary' => $validated['base_salary'],
                 'notes' => $validated['notes'],
                 'is_active' => $validated['is_active'] ?? $staff->is_active,
-            ]);
+            ];
+
+            // Handle equity_percentage for investors
+            if ($validated['staff_type'] === 'investor') {
+                $staffData['equity_percentage'] = $validated['equity_percentage'] ?? null;
+            } else {
+                $staffData['equity_percentage'] = null;
+            }
+
+            // Handle vehicle_id for vehicle owners
+            if ($validated['staff_type'] === 'vehicle_owner') {
+                $staffData['vehicle_id'] = $validated['vehicle_id'] ?? null;
+            } else {
+                $staffData['vehicle_id'] = null;
+            }
+
+            // Update staff profile (employee_code is not editable)
+            $staff->update($staffData);
 
             DB::commit();
 
