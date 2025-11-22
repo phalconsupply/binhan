@@ -26,7 +26,9 @@
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 <option value="thu" {{ old('type') == 'thu' ? 'selected' : '' }}>Thu</option>
                                 <option value="chi" {{ old('type') == 'chi' ? 'selected' : '' }}>Chi</option>
+                                <option value="du_kien_chi" {{ old('type') == 'du_kien_chi' ? 'selected' : '' }}>Dự kiến chi</option>
                             </select>
+                            <p class="mt-1 text-xs text-gray-500">💡 "Dự kiến chi" sẽ được trừ khỏi lợi nhuận và thống kê riêng là "khoản chưa chi"</p>
                         </div>
 
                         {{-- Vehicle --}}

@@ -71,6 +71,9 @@
                                 <p class="text-sm text-gray-500">Thu/Chi hôm nay</p>
                                 <p class="text-lg font-bold text-green-600">+{{ number_format($stats['today_revenue'], 0, ',', '.') }}đ</p>
                                 <p class="text-lg font-bold text-red-600">-{{ number_format($stats['today_expense'], 0, ',', '.') }}đ</p>
+                                @if($stats['today_planned_expense'] > 0)
+                                <p class="text-lg font-bold text-orange-600">-{{ number_format($stats['today_planned_expense'], 0, ',', '.') }}đ <span class="text-xs">(dự kiến)</span></p>
+                                @endif
                                 <p class="text-sm font-semibold {{ $stats['today_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                     = {{ number_format($stats['today_net'], 0, ',', '.') }}đ
                                 </p>
@@ -87,6 +90,9 @@
                                 <p class="text-sm text-gray-500">Thu/Chi tháng này</p>
                                 <p class="text-lg font-bold text-green-600">+{{ number_format($stats['month_revenue'], 0, ',', '.') }}đ</p>
                                 <p class="text-lg font-bold text-red-600">-{{ number_format($stats['month_expense'], 0, ',', '.') }}đ</p>
+                                @if($stats['month_planned_expense'] > 0)
+                                <p class="text-lg font-bold text-orange-600">-{{ number_format($stats['month_planned_expense'], 0, ',', '.') }}đ <span class="text-xs">(dự kiến)</span></p>
+                                @endif
                                 <p class="text-sm font-semibold {{ $stats['month_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                     = {{ number_format($stats['month_net'], 0, ',', '.') }}đ
                                 </p>

@@ -73,6 +73,11 @@ class Transaction extends Model
         return $query->where('type', 'chi');
     }
 
+    public function scopePlannedExpense($query)
+    {
+        return $query->where('type', 'du_kien_chi');
+    }
+
     public function scopeToday($query)
     {
         return $query->whereDate('date', today());
@@ -115,6 +120,7 @@ class Transaction extends Model
         return [
             'thu' => 'Thu',
             'chi' => 'Chi',
+            'du_kien_chi' => 'Dự kiến chi',
         ][$this->type] ?? $this->type;
     }
 

@@ -20,12 +20,14 @@ class DashboardController extends Controller
             'today_incidents' => Incident::today()->count(),
             'today_revenue' => Transaction::revenue()->today()->sum('amount'),
             'today_expense' => Transaction::expense()->today()->sum('amount'),
+            'today_planned_expense' => Transaction::plannedExpense()->today()->sum('amount'),
             'month_revenue' => Transaction::revenue()->thisMonth()->sum('amount'),
             'month_expense' => Transaction::expense()->thisMonth()->sum('amount'),
+            'month_planned_expense' => Transaction::plannedExpense()->thisMonth()->sum('amount'),
         ];
 
-        $stats['today_net'] = $stats['today_revenue'] - $stats['today_expense'];
-        $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'];
+        $stats['today_net'] = $stats['today_revenue'] - $stats['today_expense'] - $stats['today_planned_expense'];
+        $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
 
         // Recent incidents (last 10)
         $recentIncidents = Incident::with(['vehicle', 'patient', 'dispatcher'])
