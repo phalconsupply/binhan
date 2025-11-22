@@ -51,6 +51,7 @@
                                         <option value="driver" {{ old('staff_type') == 'driver' ? 'selected' : '' }}>Lái xe</option>
                                         <option value="manager" {{ old('staff_type') == 'manager' ? 'selected' : '' }}>Quản lý</option>
                                         <option value="investor" {{ old('staff_type') == 'investor' ? 'selected' : '' }}>Cổ đông</option>
+                                        <option value="vehicle_owner" {{ old('staff_type') == 'vehicle_owner' ? 'selected' : '' }}>Chủ xe</option>
                                         <option value="admin" {{ old('staff_type') == 'admin' ? 'selected' : '' }}>Admin</option>
                                     </select>
                                     @error('staff_type')
@@ -69,6 +70,26 @@
                                         placeholder="VD: 25.5">
                                     <p class="mt-1 text-xs text-gray-500">💡 Tỷ lệ vốn góp sẽ là căn cứ để chia lợi nhuận</p>
                                     @error('equity_percentage')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div x-show="staffType === 'vehicle_owner'" x-cloak>
+                                    <label for="vehicle_id" class="block text-sm font-medium text-gray-700">
+                                        Biển số xe <span class="text-red-500">*</span>
+                                    </label>
+                                    <select id="vehicle_id" name="vehicle_id" 
+                                        :required="staffType === 'vehicle_owner'"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                        <option value="">-- Chọn xe --</option>
+                                        @foreach(\App\Models\Vehicle::orderBy('license_plate')->get() as $vehicle)
+                                            <option value="{{ $vehicle->id }}" {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
+                                                {{ $vehicle->license_plate }} - {{ $vehicle->vehicle_type }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <p class="mt-1 text-xs text-gray-500">💡 Xe thuộc quyền sở hữu của chủ xe này</p>
+                                    @error('vehicle_id')
                                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                     @enderror
                                 </div>

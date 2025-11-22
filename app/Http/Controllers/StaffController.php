@@ -69,8 +69,9 @@ class StaffController extends Controller
     {
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
-            'staff_type' => 'required|in:medical_staff,driver,manager,investor,admin',
+            'staff_type' => 'required|in:medical_staff,driver,manager,investor,admin,vehicle_owner',
             'equity_percentage' => 'required_if:staff_type,investor|nullable|numeric|min:0|max:100',
+            'vehicle_id' => 'required_if:staff_type,vehicle_owner|nullable|exists:vehicles,id',
             'phone' => 'nullable|string|max:20',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
@@ -181,8 +182,9 @@ class StaffController extends Controller
     {
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
-            'staff_type' => 'required|in:medical_staff,driver,manager,investor,admin',
+            'staff_type' => 'required|in:medical_staff,driver,manager,investor,admin,vehicle_owner',
             'equity_percentage' => 'required_if:staff_type,investor|nullable|numeric|min:0|max:100',
+            'vehicle_id' => 'required_if:staff_type,vehicle_owner|nullable|exists:vehicles,id',
             'phone' => 'nullable|string|max:20',
             'email' => 'required|email|unique:users,email,' . $staff->user_id,
             'password' => 'nullable|string|min:8|confirmed',

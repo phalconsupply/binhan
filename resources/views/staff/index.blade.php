@@ -37,11 +37,12 @@
                             </div>
                             <div>
                                 <select name="staff_type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                    <option value="">Tất cả loại nhân sự</option>
+                                    <option value="">Tất cả loại</option>
                                     <option value="medical_staff" {{ request('staff_type') == 'medical_staff' ? 'selected' : '' }}>Nhân viên y tế</option>
                                     <option value="driver" {{ request('staff_type') == 'driver' ? 'selected' : '' }}>Lái xe</option>
                                     <option value="manager" {{ request('staff_type') == 'manager' ? 'selected' : '' }}>Quản lý</option>
                                     <option value="investor" {{ request('staff_type') == 'investor' ? 'selected' : '' }}>Cổ đông</option>
+                                    <option value="vehicle_owner" {{ request('staff_type') == 'vehicle_owner' ? 'selected' : '' }}>Chủ xe</option>
                                     <option value="admin" {{ request('staff_type') == 'admin' ? 'selected' : '' }}>Admin</option>
                                 </select>
                             </div>
@@ -104,7 +105,8 @@
                                                 {{ $member->staff_type == 'manager' ? 'bg-blue-100 text-blue-800' : '' }}
                                                 {{ $member->staff_type == 'medical_staff' ? 'bg-green-100 text-green-800' : '' }}
                                                 {{ $member->staff_type == 'driver' ? 'bg-yellow-100 text-yellow-800' : '' }}
-                                                {{ $member->staff_type == 'investor' ? 'bg-pink-100 text-pink-800' : '' }}">
+                                                {{ $member->staff_type == 'investor' ? 'bg-pink-100 text-pink-800' : '' }}
+                                                {{ $member->staff_type == 'vehicle_owner' ? 'bg-orange-100 text-orange-800' : '' }}">
                                                 {{ $member->staff_type_label }}
                                             </span>
                                         </td>

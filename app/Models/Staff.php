@@ -17,6 +17,7 @@ class Staff extends Model
         'employee_code',
         'staff_type',
         'equity_percentage',
+        'vehicle_id',
         'phone',
         'email',
         'id_card',
@@ -42,6 +43,11 @@ class Staff extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function vehicle()
+    {
+        return $this->belongsTo(Vehicle::class);
     }
 
     public function incidents()
@@ -80,6 +86,7 @@ class Staff extends Model
             'manager' => 'Quản lý',
             'investor' => 'Cổ đông',
             'admin' => 'Admin',
+            'vehicle_owner' => 'Chủ xe',
             default => $this->staff_type,
         };
     }

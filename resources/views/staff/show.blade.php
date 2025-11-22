@@ -54,7 +54,8 @@
                                         {{ $staff->staff_type == 'manager' ? 'bg-blue-100 text-blue-800' : '' }}
                                         {{ $staff->staff_type == 'medical_staff' ? 'bg-green-100 text-green-800' : '' }}
                                         {{ $staff->staff_type == 'driver' ? 'bg-yellow-100 text-yellow-800' : '' }}
-                                        {{ $staff->staff_type == 'investor' ? 'bg-pink-100 text-pink-800' : '' }}">
+                                        {{ $staff->staff_type == 'investor' ? 'bg-pink-100 text-pink-800' : '' }}
+                                        {{ $staff->staff_type == 'vehicle_owner' ? 'bg-orange-100 text-orange-800' : '' }}">
                                         {{ $staff->staff_type_label }}
                                     </span>
                                 </div>
@@ -62,6 +63,16 @@
                                 <div>
                                     <p class="text-sm text-gray-500">Tỷ lệ vốn góp</p>
                                     <p class="text-base font-semibold text-pink-600">{{ number_format($staff->equity_percentage, 2) }}%</p>
+                                </div>
+                                @endif
+                                @if($staff->staff_type == 'vehicle_owner' && $staff->vehicle_id)
+                                <div>
+                                    <p class="text-sm text-gray-500">Biển số xe</p>
+                                    <p class="text-base font-semibold text-orange-600">
+                                        <a href="{{ route('vehicles.show', $staff->vehicle_id) }}" class="hover:underline">
+                                            {{ $staff->vehicle->license_plate ?? '-' }}
+                                        </a>
+                                    </p>
                                 </div>
                                 @endif
                                 <div>
