@@ -17,6 +17,10 @@ class Incident extends Model
         'date',
         'dispatch_by',
         'destination',
+        'from_location_id',
+        'to_location_id',
+        'partner_id',
+        'commission_amount',
         'summary',
         'tags',
     ];
@@ -24,6 +28,7 @@ class Incident extends Model
     protected $casts = [
         'date' => 'datetime',
         'tags' => 'array',
+        'commission_amount' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -32,7 +37,7 @@ class Incident extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['vehicle_id', 'patient_id', 'date', 'dispatch_by', 'destination', 'summary', 'tags'])
+            ->logOnly(['vehicle_id', 'patient_id', 'date', 'dispatch_by', 'destination', 'from_location_id', 'to_location_id', 'partner_id', 'commission_amount', 'summary', 'tags'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }
@@ -58,9 +63,57 @@ class Incident extends Model
         return $this->hasMany(Transaction::class);
     }
 
+    public function fromLocation()
+    {
+        return $this->belongsTo(Location::class, 'from_location_id');
+    }
+
+    public function toLocation()
+    {
+        return $this->belongsTo(Location::class, 'to_location_id');
+    }
+
+    public function partner()
+    {
+        return $this->belongsTo(Partner::class);
+    }
+
+    public function vehicleMaintenances()
+    {
+        return $this->hasMany(VehicleMaintenance::class);
+    }
+
     public function notes()
     {
         return $this->hasMany(Note::class);
+    }
+
+    public function staff()
+    {
+        return $this->belongsToMany(Staff::class, 'incident_staff')
+                    ->withPivot('role', 'notes', 'wage_amount', 'wage_details')
+                    ->withTimestamps();
+    }
+
+    public function drivers()
+    {
+        return $this->belongsToMany(Staff::class, 'incident_staff')
+                    ->wherePivot('role', 'driver')
+                    ->withPivot('notes', 'wage_amount', 'wage_details')
+                    ->withTimestamps();
+    }
+
+    public function medicalStaff()
+    {
+        return $this->belongsToMany(Staff::class, 'incident_staff')
+                    ->wherePivot('role', 'medical_staff')
+                    ->withPivot('notes', 'wage_amount', 'wage_details')
+                    ->withTimestamps();
+    }
+
+    public function additionalServices()
+    {
+        return $this->hasMany(IncidentAdditionalService::class);
     }
 
     // Scopes

@@ -45,6 +45,11 @@ class User extends Authenticatable
     ];
 
     // Relationships
+    public function staff()
+    {
+        return $this->hasOne(Staff::class);
+    }
+
     public function dispatchedIncidents()
     {
         return $this->hasMany(Incident::class, 'dispatch_by');

@@ -47,7 +47,54 @@
             </div>
 
             <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
+            <div class="hidden sm:flex sm:items-center sm:ms-6 space-x-4">
+                <!-- Settings Menu Dropdown -->
+                @canany(['manage settings', 'manage vehicles'])
+                <x-dropdown align="right" width="48">
+                    <x-slot name="trigger">
+                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
+                            <div>⚙️ Cài đặt</div>
+                            <div class="ms-1">
+                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                        </button>
+                    </x-slot>
+
+                    <x-slot name="content">
+                        @can('manage settings')
+                        <x-dropdown-link :href="route('locations.index')">
+                            📍 Địa điểm
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('partners.index')">
+                            🤝 Đối tác
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('additional-services.index')">
+                            ➕ Dịch vụ khác
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('maintenance-services.index')">
+                            🔧 Loại dịch vụ bảo trì
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('wage-types.index')">
+                            💰 Loại tiền công
+                        </x-dropdown-link>
+                        @endcan
+                        @can('view staff')
+                        <x-dropdown-link :href="route('staff.index')">
+                            👥 Nhân sự
+                        </x-dropdown-link>
+                        @endcan
+                        @can('manage vehicles')
+                        <x-dropdown-link :href="route('vehicle-maintenances.index')">
+                            🛠️ Bảo trì xe
+                        </x-dropdown-link>
+                        @endcan
+                    </x-slot>
+                </x-dropdown>
+                @endcanany
+
+                <!-- User Dropdown -->
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
@@ -138,6 +185,37 @@
             <x-responsive-nav-link :href="route('search.index')" :active="request()->routeIs('search.*')">
                 Tìm kiếm
             </x-responsive-nav-link>
+            
+            @can('manage settings')
+            <div class="pt-2 pb-2 border-t border-gray-200">
+                <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">Cài đặt</div>
+                <x-responsive-nav-link :href="route('locations.index')" :active="request()->routeIs('locations.*')">
+                    📍 Địa điểm
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('partners.index')" :active="request()->routeIs('partners.*')">
+                    🤝 Đối tác
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('additional-services.index')" :active="request()->routeIs('additional-services.*')">
+                    ➕ Dịch vụ khác
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('maintenance-services.index')" :active="request()->routeIs('maintenance-services.*')">
+                    🔧 Loại dịch vụ bảo trì
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('wage-types.index')" :active="request()->routeIs('wage-types.*')">
+                    💰 Loại tiền công
+                </x-responsive-nav-link>
+            </div>
+            @endcan
+            @can('view staff')
+            <x-responsive-nav-link :href="route('staff.index')" :active="request()->routeIs('staff.*')">
+                👥 Nhân sự
+            </x-responsive-nav-link>
+            @endcan
+            @can('manage vehicles')
+            <x-responsive-nav-link :href="route('vehicle-maintenances.index')" :active="request()->routeIs('vehicle-maintenances.*')">
+                🛠️ Bảo trì xe
+            </x-responsive-nav-link>
+            @endcan
         </div>
 
         <!-- Responsive Settings Options -->

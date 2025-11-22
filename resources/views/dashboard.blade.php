@@ -96,20 +96,21 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {{-- Quick Entry Form --}}
-                <div class="lg:col-span-1">
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div class="p-6">
-                            <h3 class="text-lg font-semibold mb-4">Ghi nhận nhanh</h3>
-                            
-                            <form method="POST" action="{{ route('dashboard.quick-entry') }}" class="space-y-4">
+            {{-- Quick Entry Form - Full Width --}}
+            <div class="mb-6">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <h3 class="text-lg font-semibold mb-2">Ghi nhận nhanh</h3>
+                        <p class="text-xs text-gray-500 mb-4">📌 ID chuyến đi sẽ được tạo tự động sau khi lưu</p>
+                        
+                        <form method="POST" action="{{ route('dashboard.quick-entry') }}" class="space-y-4">
                                 @csrf
 
-                                {{-- Vehicle Select --}}
+                                {{-- 1. Thông tin xe --}}
                                 <div>
-                                    <label for="vehicle_id" class="block text-sm font-medium text-gray-700">Biển số xe <span class="text-red-500">*</span></label>
-                                    <select id="vehicle_id" name="vehicle_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <h4 class="text-sm font-semibold text-gray-800 mb-2">🚗 Thông tin xe</h4>
+                                    <label for="vehicle_id" class="block text-xs font-medium text-gray-700">Biển số xe <span class="text-red-500">*</span></label>
+                                    <select id="vehicle_id" name="vehicle_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                         <option value="">-- Chọn xe --</option>
                                         @foreach($vehicles as $vehicle)
                                             <option value="{{ $vehicle->id }}" {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
@@ -120,29 +121,50 @@
                                     @error('vehicle_id')
                                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                     @enderror
-                                </div>
 
-                                {{-- Date & Time --}}
-                                <div>
-                                    <label for="date" class="block text-sm font-medium text-gray-700">Ngày giờ <span class="text-red-500">*</span></label>
-                                    <input type="datetime-local" id="date" name="date" value="{{ old('date', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <label for="date" class="block text-xs font-medium text-gray-700 mt-2">Ngày giờ <span class="text-red-500">*</span></label>
+                                    <input type="datetime-local" id="date" name="date" value="{{ old('date', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                     @error('date')
                                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                     @enderror
+
+                                    <div class="grid grid-cols-2 gap-2 mt-2">
+                                        <input type="text" 
+                                            id="from_location" 
+                                            name="from_location" 
+                                            list="from_locations_list"
+                                            value="{{ old('from_location') }}" 
+                                            placeholder="Nơi đi..."
+                                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                        <datalist id="from_locations_list">
+                                            @foreach(\App\Models\Location::active()->whereIn('type', ['from', 'both'])->orderBy('name')->get() as $location)
+                                                <option value="{{ $location->name }}">
+                                            @endforeach
+                                        </datalist>
+
+                                        <input type="text" 
+                                            id="to_location" 
+                                            name="to_location" 
+                                            list="to_locations_list"
+                                            value="{{ old('to_location') }}" 
+                                            placeholder="Nơi đến..."
+                                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                        <datalist id="to_locations_list">
+                                            @foreach(\App\Models\Location::active()->whereIn('type', ['to', 'both'])->orderBy('name')->get() as $location)
+                                                <option value="{{ $location->name }}">
+                                            @endforeach
+                                        </datalist>
+                                    </div>
                                 </div>
 
-                                {{-- Patient Info --}}
-                                <div class="border-t pt-3">
-                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Thông tin bệnh nhân (tùy chọn)</h4>
-                                    
-                                    <div class="space-y-2">
+                                {{-- 2. Thông tin bệnh nhân --}}
+                                <details class="border-t pt-3" open>
+                                    <summary class="text-sm font-semibold text-gray-800 cursor-pointer hover:text-gray-900">🏥 Thông tin bệnh nhân</summary>
+                                    <div class="mt-2 space-y-2">
                                         <input type="text" name="patient_name" placeholder="Tên bệnh nhân" value="{{ old('patient_name') }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                                        
                                         <input type="text" name="patient_phone" placeholder="Số điện thoại" value="{{ old('patient_phone') }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                                        
                                         <div class="grid grid-cols-2 gap-2">
                                             <input type="number" name="patient_birth_year" placeholder="Năm sinh" min="1900" max="{{ date('Y') }}" value="{{ old('patient_birth_year') }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                                            
                                             <select name="patient_gender" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                                 <option value="">Giới tính</option>
                                                 <option value="male" {{ old('patient_gender') == 'male' ? 'selected' : '' }}>Nam</option>
@@ -150,47 +172,161 @@
                                                 <option value="other" {{ old('patient_gender') == 'other' ? 'selected' : '' }}>Khác</option>
                                             </select>
                                         </div>
+                                        <textarea name="patient_address" rows="2" placeholder="Địa chỉ" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">{{ old('patient_address') }}</textarea>
+                                    </div>
+                                </details>
+
+                                {{-- 3. Thông tin nhân sự --}}
+                                <div class="border-t pt-3">
+                                    <h4 class="text-sm font-semibold text-gray-800 mb-2">👥 Thông tin nhân sự & Tiền công</h4>
+                                    
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-600 mb-1">Lái xe</label>
+                                            <div id="drivers-container" class="space-y-2">
+                                                <div class="driver-item grid grid-cols-[1fr_auto_auto] gap-2">
+                                                    <select name="drivers[0][staff_id]" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                        <option value="">-- Chọn lái xe --</option>
+                                                        @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
+                                                            <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                    <input type="number" name="drivers[0][wage]" placeholder="Tiền công" min="0" step="1000" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                    <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
+                                                </div>
+                                            </div>
+                                            <button type="button" onclick="addDriverRow()" class="mt-1 text-xs text-blue-600 hover:text-blue-800">+ Thêm</button>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs text-gray-600 mb-1">Nhân viên y tế</label>
+                                            <div id="medical-staff-container" class="space-y-2">
+                                                <div class="medical-staff-item grid grid-cols-[1fr_auto_auto] gap-2">
+                                                    <select name="medical_staff[0][staff_id]" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                        <option value="">-- Chọn NVYT --</option>
+                                                        @foreach(\App\Models\Staff::active()->where('staff_type', 'medical_staff')->orderBy('full_name')->get() as $staff)
+                                                            <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                    <input type="number" name="medical_staff[0][wage]" placeholder="Tiền công" min="0" step="1000" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                    <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
+                                                </div>
+                                            </div>
+                                            <button type="button" onclick="addMedicalStaffRow()" class="mt-1 text-xs text-blue-600 hover:text-blue-800">+ Thêm</button>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {{-- Destination --}}
-                                <div>
-                                    <label for="destination" class="block text-sm font-medium text-gray-700">Điểm đến</label>
-                                    <input type="text" id="destination" name="destination" value="{{ old('destination') }}" placeholder="Bệnh viện, phòng khám..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                </div>
-
-                                {{-- Amount --}}
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label for="amount_thu" class="block text-sm font-medium text-green-600">Thu (đ)</label>
-                                        <input type="number" id="amount_thu" name="amount_thu" value="{{ old('amount_thu') }}" min="0" step="1000" placeholder="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                                {{-- 4. Thông tin cộng tác viên --}}
+                                <details class="border-t pt-3">
+                                    <summary class="text-sm font-semibold text-gray-800 cursor-pointer hover:text-gray-900">🤝 Thông tin cộng tác viên (tùy chọn)</summary>
+                                    <div class="mt-2 space-y-2">
+                                        <select id="partner_id" name="partner_id" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                            <option value="">-- Không có --</option>
+                                            @foreach(\App\Models\Partner::collaborators()->active()->orderBy('name')->get() as $partner)
+                                                <option value="{{ $partner->id }}" data-commission="{{ $partner->commission_rate }}" {{ old('partner_id') == $partner->id ? 'selected' : '' }}>
+                                                    {{ $partner->name }} @if($partner->commission_rate) ({{ $partner->commission_rate }}%) @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <input type="number" id="commission_amount" name="commission_amount" value="{{ old('commission_amount') }}" min="0" step="1000" placeholder="Số tiền hoa hồng" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                     </div>
-                                    <div>
-                                        <label for="amount_chi" class="block text-sm font-medium text-red-600">Chi (đ)</label>
-                                        <input type="number" id="amount_chi" name="amount_chi" value="{{ old('amount_chi') }}" min="0" step="1000" placeholder="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500">
+                                </details>
+
+                                {{-- 5. Thông tin thu chi --}}
+                                <div class="border-t pt-3">
+                                    <h4 class="text-sm font-semibold text-gray-800 mb-2">💰 Thông tin thu - chi</h4>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        {{-- Revenue --}}
+                                        <div>
+                                            <div class="flex items-center justify-between mb-2">
+                                                <label class="block text-xs font-medium text-green-600">Thu</label>
+                                                <button type="button" id="add-service-btn" class="text-xs text-green-600 hover:text-green-700">+</button>
+                                            </div>
+                                            <input type="number" 
+                                                id="amount_thu" 
+                                                name="amount_thu" 
+                                                value="{{ old('amount_thu') }}" 
+                                                min="0" 
+                                                step="1000" 
+                                                placeholder="Số tiền thu" 
+                                                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm">
+                                            <input type="text" 
+                                                name="revenue_main_name" 
+                                                value="{{ old('revenue_main_name', 'Thu chuyến đi') }}" 
+                                                placeholder="Ghi chú" 
+                                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-xs">
+                                            <div id="additional-services-container" class="mt-2 space-y-1"></div>
+                                        </div>
+
+                                        {{-- Expense --}}
+                                        <div>
+                                            <div class="flex items-center justify-between mb-2">
+                                                <label class="block text-xs font-medium text-red-600">Chi</label>
+                                                <button type="button" id="add-expense-btn" class="text-xs text-red-600 hover:text-red-700">+</button>
+                                            </div>
+                                            <input type="number" 
+                                                id="amount_chi" 
+                                                name="amount_chi" 
+                                                value="{{ old('amount_chi') }}" 
+                                                min="0" 
+                                                step="1000" 
+                                                placeholder="Số tiền chi" 
+                                                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-sm">
+                                            <input type="text" 
+                                                name="expense_main_name" 
+                                                value="{{ old('expense_main_name', 'Chi phí chuyến đi') }}" 
+                                                placeholder="Ghi chú" 
+                                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-xs">
+                                            <div id="additional-expenses-container" class="mt-2 space-y-1"></div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {{-- Payment Method --}}
-                                <div>
-                                    <label for="payment_method" class="block text-sm font-medium text-gray-700">Hình thức</label>
-                                    <select id="payment_method" name="payment_method" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                        <option value="cash" {{ old('payment_method', 'cash') == 'cash' ? 'selected' : '' }}>Tiền mặt</option>
-                                        <option value="bank" {{ old('payment_method') == 'bank' ? 'selected' : '' }}>Chuyển khoản</option>
-                                        <option value="other" {{ old('payment_method') == 'other' ? 'selected' : '' }}>Khác</option>
-                                    </select>
-                                </div>
+                                {{-- 6. Thông tin bảo trì --}}
+                                <details class="border-t pt-3">
+                                    <summary class="text-sm font-semibold text-gray-800 cursor-pointer hover:text-gray-900">🔧 Thông tin bảo trì (tùy chọn)</summary>
+                                    <div class="mt-2 space-y-2">
+                                        <select name="maintenance_partner_id" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm">
+                                            <option value="">-- Chọn đối tác --</option>
+                                            @foreach(\App\Models\Partner::active()->where('type', 'maintenance')->orderBy('name')->get() as $partner)
+                                                <option value="{{ $partner->id }}" {{ old('maintenance_partner_id') == $partner->id ? 'selected' : '' }}>{{ $partner->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <input type="text" name="maintenance_service" list="maintenance_services_list" placeholder="Loại dịch vụ" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm">
+                                        <datalist id="maintenance_services_list">
+                                            @foreach(\App\Models\MaintenanceService::active()->orderBy('name')->get() as $service)
+                                                <option value="{{ $service->name }}">
+                                            @endforeach
+                                        </datalist>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <input type="number" name="maintenance_cost" min="0" step="1000" placeholder="Chi phí" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm">
+                                            <input type="number" name="maintenance_mileage" min="0" placeholder="Số km" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm">
+                                        </div>
+                                        <textarea name="maintenance_note" rows="2" placeholder="Ghi chú" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm"></textarea>
+                                    </div>
+                                </details>
 
-                                {{-- Note --}}
-                                <div>
-                                    <label for="note" class="block text-sm font-medium text-gray-700">Ghi chú</label>
-                                    <textarea id="note" name="note" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('note') }}</textarea>
+                                {{-- 7. Ghi chú --}}
+                                <div class="border-t pt-3">
+                                    <h4 class="text-sm font-semibold text-gray-800 mb-2">📝 Ghi chú</h4>
+                                    <div class="space-y-2">
+                                        <label for="payment_method" class="block text-xs font-medium text-gray-700">Hình thức thanh toán</label>
+                                        <select id="payment_method" name="payment_method" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                            <option value="cash" {{ old('payment_method', 'cash') == 'cash' ? 'selected' : '' }}>Tiền mặt</option>
+                                            <option value="bank" {{ old('payment_method') == 'bank' ? 'selected' : '' }}>Chuyển khoản</option>
+                                            <option value="other" {{ old('payment_method') == 'other' ? 'selected' : '' }}>Khác</option>
+                                        </select>
+
+                                        <label for="note" class="block text-xs font-medium text-gray-700 mt-2">Ghi chú chung</label>
+                                        <textarea id="note" name="note" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">{{ old('note') }}</textarea>
+                                    </div>
                                 </div>
 
                                 {{-- Submit --}}
-                                <div>
-                                    <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                        Ghi nhận
+                                <div class="border-t pt-3 flex justify-end">
+                                    <button type="submit" class="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                                        💾 Ghi nhận chuyến đi
                                     </button>
                                 </div>
                             </form>
@@ -198,95 +334,227 @@
                     </div>
                 </div>
 
-                {{-- Recent Activities --}}
-                <div class="lg:col-span-2">
-                    {{-- Today's Incidents --}}
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                        <div class="p-6">
-                            <h3 class="text-lg font-semibold mb-4">Chuyến đi hôm nay ({{ $todayIncidents->count() }})</h3>
+            {{-- Recent Activities - Two Columns --}}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {{-- Today's Incidents --}}
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <h3 class="text-lg font-semibold mb-4">Chuyến đi hôm nay ({{ $todayIncidents->count() }})</h3>
                             
-                            @if($todayIncidents->isEmpty())
-                                <p class="text-gray-500 text-sm">Chưa có chuyến đi nào hôm nay.</p>
-                            @else
-                                <div class="space-y-2">
-                                    @foreach($todayIncidents as $incident)
-                                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
-                                            <div class="flex-1">
-                                                <div class="flex items-center space-x-2">
-                                                    <span class="font-semibold text-blue-600">{{ $incident->vehicle->license_plate }}</span>
-                                                    @if($incident->patient)
-                                                        <span class="text-gray-600">→ {{ $incident->patient->name }}</span>
-                                                    @endif
-                                                </div>
-                                                <div class="text-xs text-gray-500 mt-1">
-                                                    {{ $incident->date->format('H:i') }}
-                                                    @if($incident->destination)
-                                                        • {{ $incident->destination }}
-                                                    @endif
-                                                </div>
+                        @if($todayIncidents->isEmpty())
+                            <p class="text-gray-500 text-sm">Chưa có chuyến đi nào hôm nay.</p>
+                        @else
+                            <div class="space-y-2">
+                                @foreach($todayIncidents as $incident)
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-2">
+                                                <span class="font-semibold text-blue-600">{{ $incident->vehicle->license_plate }}</span>
+                                                @if($incident->patient)
+                                                    <span class="text-gray-600">→ {{ $incident->patient->name }}</span>
+                                                @endif
                                             </div>
-                                            <div class="text-right">
-                                                @if($incident->transactions->count() > 0)
-                                                    <div class="text-sm font-semibold text-green-600">
-                                                        +{{ number_format($incident->total_revenue, 0, ',', '.') }}đ
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                {{ $incident->date->format('H:i') }}
+                                                @if($incident->destination)
+                                                    • {{ $incident->destination }}
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            @if($incident->transactions->count() > 0)
+                                                <div class="text-sm font-semibold text-green-600">
+                                                    +{{ number_format($incident->total_revenue, 0, ',', '.') }}đ
+                                                </div>
+                                                @if($incident->total_expense > 0)
+                                                    <div class="text-xs text-red-600">
+                                                        -{{ number_format($incident->total_expense, 0, ',', '.') }}đ
                                                     </div>
-                                                    @if($incident->total_expense > 0)
-                                                        <div class="text-xs text-red-600">
-                                                            -{{ number_format($incident->total_expense, 0, ',', '.') }}đ
-                                                        </div>
-                                                    @endif
                                                 @endif
-                                            </div>
+                                            @endif
                                         </div>
-                                    @endforeach
-                                </div>
-                            @endif
-                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
+                </div>
 
-                    {{-- Recent Incidents --}}
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div class="p-6">
-                            <h3 class="text-lg font-semibold mb-4">Chuyến đi gần đây</h3>
+                {{-- Recent Incidents --}}
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <h3 class="text-lg font-semibold mb-4">Chuyến đi gần đây</h3>
                             
-                            @if($recentIncidents->isEmpty())
-                                <p class="text-gray-500 text-sm">Chưa có chuyến đi nào.</p>
-                            @else
-                                <div class="space-y-2">
-                                    @foreach($recentIncidents as $incident)
-                                        <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded">
-                                            <div class="flex-1">
-                                                <div class="flex items-center space-x-2">
-                                                    <span class="font-semibold text-blue-600">{{ $incident->vehicle->license_plate }}</span>
-                                                    @if($incident->patient)
-                                                        <span class="text-gray-600">→ {{ $incident->patient->name }}</span>
-                                                    @endif
-                                                </div>
-                                                <div class="text-xs text-gray-500 mt-1">
-                                                    {{ $incident->date->format('d/m/Y H:i') }}
-                                                    @if($incident->destination)
-                                                        • {{ $incident->destination }}
-                                                    @endif
-                                                    • Bởi {{ $incident->dispatcher->name }}
-                                                </div>
-                                            </div>
-                                            <div class="text-right text-sm">
-                                                @if($incident->transactions->count() > 0)
-                                                    <span class="font-semibold {{ $incident->net_amount >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                                        {{ number_format($incident->net_amount, 0, ',', '.') }}đ
-                                                    </span>
-                                                @else
-                                                    <span class="text-gray-400">-</span>
+                        @if($recentIncidents->isEmpty())
+                            <p class="text-gray-500 text-sm">Chưa có chuyến đi nào.</p>
+                        @else
+                            <div class="space-y-2">
+                                @foreach($recentIncidents as $incident)
+                                    <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded">
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-2">
+                                                <span class="font-semibold text-blue-600">{{ $incident->vehicle->license_plate }}</span>
+                                                @if($incident->patient)
+                                                    <span class="text-gray-600">→ {{ $incident->patient->name }}</span>
                                                 @endif
                                             </div>
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                {{ $incident->date->format('d/m/Y H:i') }}
+                                                @if($incident->destination)
+                                                    • {{ $incident->destination }}
+                                                @endif
+                                                • Bởi {{ $incident->dispatcher->name }}
+                                            </div>
                                         </div>
-                                    @endforeach
-                                </div>
-                            @endif
-                        </div>
+                                        <div class="text-right text-sm">
+                                            @if($incident->transactions->count() > 0)
+                                                <span class="font-semibold {{ $incident->net_amount >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                                    {{ number_format($incident->net_amount, 0, ',', '.') }}đ
+                                                </span>
+                                            @else
+                                                <span class="text-gray-400">-</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    {{-- JavaScript for dynamic fields --}}
+    @push('scripts')
+    <script>
+        // Additional Services
+        let serviceCount = 0;
+        const servicesContainer = document.getElementById('additional-services-container');
+        const addServiceBtn = document.getElementById('add-service-btn');
+        
+        // Get additional services for datalist
+        const additionalServices = @json(\App\Models\AdditionalService::active()->orderBy('name')->pluck('name'));
+        
+        addServiceBtn.addEventListener('click', function() {
+            serviceCount++;
+            const serviceRow = document.createElement('div');
+            serviceRow.className = 'flex gap-2 items-start';
+            serviceRow.innerHTML = `
+                <div class="flex-1">
+                    <input type="text" 
+                        name="additional_services[${serviceCount}][name]" 
+                        list="services_datalist"
+                        placeholder="Tên dịch vụ..." 
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm">
+                </div>
+                <div class="w-28">
+                    <input type="number" 
+                        name="additional_services[${serviceCount}][amount]" 
+                        min="0" 
+                        step="1000" 
+                        placeholder="Số tiền" 
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm">
+                </div>
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 mt-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+            servicesContainer.appendChild(serviceRow);
+        });
+
+        // Additional Expenses
+        let expenseCount = 0;
+        const expensesContainer = document.getElementById('additional-expenses-container');
+        const addExpenseBtn = document.getElementById('add-expense-btn');
+        
+        addExpenseBtn.addEventListener('click', function() {
+            expenseCount++;
+            const expenseRow = document.createElement('div');
+            expenseRow.className = 'flex gap-2 items-start';
+            expenseRow.innerHTML = `
+                <div class="flex-1">
+                    <input type="text" 
+                        name="additional_expenses[${expenseCount}][name]" 
+                        placeholder="Tên khoản chi..." 
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-sm">
+                </div>
+                <div class="w-28">
+                    <input type="number" 
+                        name="additional_expenses[${expenseCount}][amount]" 
+                        min="0" 
+                        step="1000" 
+                        placeholder="Số tiền" 
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-sm">
+                </div>
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 mt-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+            expensesContainer.appendChild(expenseRow);
+        });
+
+        // Create datalist for additional services
+        if (additionalServices.length > 0) {
+            const datalist = document.createElement('datalist');
+            datalist.id = 'services_datalist';
+            additionalServices.forEach(service => {
+                const option = document.createElement('option');
+                option.value = service;
+                datalist.appendChild(option);
+            });
+            document.body.appendChild(datalist);
+        }
+
+        // Staff management functions
+        let driverIndex = 1;
+        let medicalStaffIndex = 1;
+
+        function addDriverRow() {
+            const container = document.getElementById('drivers-container');
+            const newRow = document.createElement('div');
+            newRow.className = 'driver-item grid grid-cols-[1fr_auto_auto] gap-2';
+            newRow.innerHTML = `
+                <select name="drivers[${driverIndex}][staff_id]" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <option value="">-- Chọn lái xe --</option>
+                    @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
+                        <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
+                    @endforeach
+                </select>
+                <input type="number" name="drivers[${driverIndex}][wage]" placeholder="Tiền công" min="0" step="1000" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
+            `;
+            container.appendChild(newRow);
+            driverIndex++;
+        }
+
+        function addMedicalStaffRow() {
+            const container = document.getElementById('medical-staff-container');
+            const newRow = document.createElement('div');
+            newRow.className = 'medical-staff-item grid grid-cols-[1fr_auto_auto] gap-2';
+            newRow.innerHTML = `
+                <select name="medical_staff[${medicalStaffIndex}][staff_id]" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <option value="">-- Chọn NVYT --</option>
+                    @foreach(\App\Models\Staff::active()->where('staff_type', 'medical_staff')->orderBy('full_name')->get() as $staff)
+                        <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
+                    @endforeach
+                </select>
+                <input type="number" name="medical_staff[${medicalStaffIndex}][wage]" placeholder="Tiền công" min="0" step="1000" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
+            `;
+            container.appendChild(newRow);
+            medicalStaffIndex++;
+        }
+
+        function removeStaffRow(button) {
+            button.closest('.driver-item, .medical-staff-item').remove();
+        }
+    </script>
+    @endpush
 </x-app-layout>
+
+

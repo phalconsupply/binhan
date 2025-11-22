@@ -32,7 +32,12 @@
                     {{-- Incident Details --}}
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="p-6">
-                            <h3 class="text-lg font-semibold mb-4">Thông tin chuyến đi</h3>
+                            <div class="mb-4 pb-4 border-b flex items-center justify-between">
+                                <h3 class="text-lg font-semibold">Thông tin chuyến đi</h3>
+                                <span class="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 text-sm font-semibold rounded-full">
+                                    Mã chuyến đi: #{{ $incident->id }}
+                                </span>
+                            </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <p class="text-sm text-gray-500">Ngày giờ</p>
@@ -49,8 +54,42 @@
                                     <p class="text-base">{{ $incident->dispatcher->name }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-gray-500">Điểm đến</p>
-                                    <p class="text-base">{{ $incident->destination ?? '-' }}</p>
+                                    <p class="text-sm text-gray-500">Lái xe</p>
+                                    <p class="text-base">
+                                        @if($incident->drivers->count() > 0)
+                                            @foreach($incident->drivers as $driver)
+                                                <a href="{{ route('staff.show', $driver) }}" class="text-blue-600 hover:text-blue-900">
+                                                    {{ $driver->employee_code }} - {{ $driver->full_name }}
+                                                </a>
+                                                @if(!$loop->last), @endif
+                                            @endforeach
+                                        @else
+                                            -
+                                        @endif
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Nhân viên y tế</p>
+                                    <p class="text-base">
+                                        @if($incident->medicalStaff->count() > 0)
+                                            @foreach($incident->medicalStaff as $staff)
+                                                <a href="{{ route('staff.show', $staff) }}" class="text-blue-600 hover:text-blue-900">
+                                                    {{ $staff->employee_code }} - {{ $staff->full_name }}
+                                                </a>
+                                                @if(!$loop->last), @endif
+                                            @endforeach
+                                        @else
+                                            -
+                                        @endif
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Nơi đi</p>
+                                    <p class="text-base">{{ $incident->fromLocation->name ?? '-' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Nơi đến</p>
+                                    <p class="text-base">{{ $incident->toLocation->name ?? '-' }}</p>
                                 </div>
                                 @if($incident->summary)
                                 <div class="md:col-span-2">

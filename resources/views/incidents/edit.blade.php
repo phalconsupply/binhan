@@ -58,23 +58,189 @@
                             </select>
                         </div>
 
-                        {{-- Destination --}}
-                        <div>
-                            <label for="destination" class="block text-sm font-medium text-gray-700">
-                                Điểm đến
-                            </label>
-                            <input type="text" id="destination" name="destination" value="{{ old('destination', $incident->destination) }}" 
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        {{-- Locations with autocomplete --}}
+                        <div class="border-t pt-4">
+                            <h3 class="text-sm font-medium text-gray-700 mb-3">📍 Địa điểm đón/trả</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="from_location" class="block text-sm font-medium text-gray-700">Nơi đi</label>
+                                    <input type="text" 
+                                        id="from_location" 
+                                        name="from_location" 
+                                        list="from_locations_list"
+                                        value="{{ old('from_location', $incident->fromLocation->name ?? '') }}" 
+                                        placeholder="Nhập hoặc chọn nơi đi..."
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <datalist id="from_locations_list">
+                                        @foreach(\App\Models\Location::active()->whereIn('type', ['from', 'both'])->orderBy('name')->get() as $location)
+                                            <option value="{{ $location->name }}">
+                                        @endforeach
+                                    </datalist>
+                                </div>
+
+                                <div>
+                                    <label for="to_location" class="block text-sm font-medium text-gray-700">Nơi đến</label>
+                                    <input type="text" 
+                                        id="to_location" 
+                                        name="to_location" 
+                                        list="to_locations_list"
+                                        value="{{ old('to_location', $incident->toLocation->name ?? '') }}" 
+                                        placeholder="Nhập hoặc chọn nơi đến..."
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <datalist id="to_locations_list">
+                                        @foreach(\App\Models\Location::active()->whereIn('type', ['to', 'both'])->orderBy('name')->get() as $location)
+                                            <option value="{{ $location->name }}">
+                                        @endforeach
+                                    </datalist>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Staff Assignment with Wages --}}
+                        <div class="border-t pt-4">
+                            <h3 class="text-sm font-medium text-gray-700 mb-3">👥 Nhân sự & Tiền công</h3>
+                            <p class="text-xs text-gray-500 mb-3">💡 Chỉ hiển thị nhân viên hiện có. Để thay đổi tiền công, xóa và thêm lại nhân viên với số tiền mới.</p>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Lái xe</label>
+                                    <div id="drivers-container-edit" class="space-y-2">
+                                        @php $driverIndex = 0; @endphp
+                                        @foreach($incident->drivers as $driver)
+                                            <div class="driver-item flex gap-2 items-center bg-gray-50 p-2 rounded">
+                                                <input type="hidden" name="drivers[{{ $driverIndex }}][staff_id]" value="{{ $driver->id }}">
+                                                <div class="flex-1">
+                                                    <span class="text-sm font-medium">{{ $driver->employee_code }} - {{ $driver->full_name }}</span>
+                                                    @if($driver->pivot->wage_amount)
+                                                        <span class="text-xs text-green-600 ml-2">({{ number_format($driver->pivot->wage_amount, 0, ',', '.') }}đ)</span>
+                                                    @endif
+                                                </div>
+                                                <input type="number" name="drivers[{{ $driverIndex }}][wage]" value="{{ $driver->pivot->wage_amount }}" placeholder="Tiền công (đ)" min="0" step="1000" class="w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                            </div>
+                                            @php $driverIndex++; @endphp
+                                        @endforeach
+                                        <div class="driver-item flex gap-2">
+                                            <select name="drivers[{{ $driverIndex }}][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                <option value="">-- Thêm lái xe mới --</option>
+                                                @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
+                                                    <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
+                                                @endforeach
+                                            </select>
+                                            <input type="number" name="drivers[{{ $driverIndex }}][wage]" placeholder="Tiền công (đ)" min="0" step="1000" class="w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nhân viên y tế</label>
+                                    <div id="medical-staff-container-edit" class="space-y-2">
+                                        @php $medicalIndex = 0; @endphp
+                                        @foreach($incident->medicalStaff as $staff)
+                                            <div class="medical-staff-item flex gap-2 items-center bg-gray-50 p-2 rounded">
+                                                <input type="hidden" name="medical_staff[{{ $medicalIndex }}][staff_id]" value="{{ $staff->id }}">
+                                                <div class="flex-1">
+                                                    <span class="text-sm font-medium">{{ $staff->employee_code }} - {{ $staff->full_name }}</span>
+                                                    @if($staff->pivot->wage_amount)
+                                                        <span class="text-xs text-green-600 ml-2">({{ number_format($staff->pivot->wage_amount, 0, ',', '.') }}đ)</span>
+                                                    @endif
+                                                </div>
+                                                <input type="number" name="medical_staff[{{ $medicalIndex }}][wage]" value="{{ $staff->pivot->wage_amount }}" placeholder="Tiền công (đ)" min="0" step="1000" class="w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                            </div>
+                                            @php $medicalIndex++; @endphp
+                                        @endforeach
+                                        <div class="medical-staff-item flex gap-2">
+                                            <select name="medical_staff[{{ $medicalIndex }}][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                <option value="">-- Thêm nhân viên y tế mới --</option>
+                                                @foreach(\App\Models\Staff::active()->where('staff_type', 'medical_staff')->orderBy('full_name')->get() as $staff)
+                                                    <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
+                                                @endforeach
+                                            </select>
+                                            <input type="number" name="medical_staff[{{ $medicalIndex }}][wage]" placeholder="Tiền công (đ)" min="0" step="1000" class="w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Partner & Commission --}}
+                        <div class="border-t pt-4">
+                            <h3 class="text-sm font-medium text-gray-700 mb-3">🤝 Thông tin đối tác & Hoa hồng</h3>
+                            
+                            <div class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                <p class="text-sm text-blue-800">
+                                    💡 <strong>Ghi chú:</strong> Khi bạn nhập thông tin hoa hồng và lưu, hệ thống sẽ tự động tạo/cập nhật giao dịch chi "Hoa hồng" trong menu Giao dịch.
+                                </p>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="partner_id" class="block text-sm font-medium text-gray-700">
+                                        Đối tác
+                                    </label>
+                                    <select id="partner_id" name="partner_id" 
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                        <option value="">-- Không có --</option>
+                                        @foreach(\App\Models\Partner::active()->where('type', 'collaborator')->orderBy('name')->get() as $partner)
+                                            <option value="{{ $partner->id }}" data-commission="{{ $partner->commission_rate }}" {{ old('partner_id', $incident->partner_id) == $partner->id ? 'selected' : '' }}>
+                                                {{ $partner->name }} @if($partner->commission_rate)(Hoa hồng: {{ $partner->commission_rate }}%)@endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label for="commission_amount" class="block text-sm font-medium text-gray-700">
+                                        Tiền hoa hồng (đ)
+                                    </label>
+                                    <input type="number" id="commission_amount" name="commission_amount" value="{{ old('commission_amount', $incident->commission_amount) }}" min="0" step="1000"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                        placeholder="Nhập tiền hoa hồng">
+                                </div>
+                            </div>
                         </div>
 
                         {{-- Summary --}}
-                        <div>
+                        <div class="border-t pt-4">
                             <label for="summary" class="block text-sm font-medium text-gray-700">
                                 Ghi chú / Tóm tắt
                             </label>
                             <textarea id="summary" name="summary" rows="3" 
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('summary', $incident->summary) }}</textarea>
                         </div>
+
+                        {{-- Transactions Summary (Read-only) --}}
+                        @if($incident->transactions->count() > 0)
+                        <div class="border-t pt-4">
+                            <h3 class="text-sm font-medium text-gray-700 mb-3">💰 Tổng quan giao dịch</h3>
+                            <div class="bg-gray-50 p-4 rounded-md">
+                                <div class="grid grid-cols-3 gap-4 mb-3">
+                                    <div>
+                                        <p class="text-xs text-gray-500">Tổng thu</p>
+                                        <p class="text-lg font-bold text-green-600">
+                                            +{{ number_format($incident->transactions()->where('type', 'thu')->sum('amount'), 0, ',', '.') }}đ
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500">Tổng chi</p>
+                                        <p class="text-lg font-bold text-red-600">
+                                            -{{ number_format($incident->transactions()->where('type', 'chi')->sum('amount'), 0, ',', '.') }}đ
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500">Lợi nhuận</p>
+                                        <p class="text-lg font-bold {{ $incident->net_amount >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ number_format($incident->net_amount, 0, ',', '.') }}đ
+                                        </p>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-500">
+                                    <a href="{{ route('transactions.index', ['search' => $incident->id]) }}" class="text-indigo-600 hover:text-indigo-900">
+                                        → Xem chi tiết giao dịch
+                                    </a>
+                                </p>
+                            </div>
+                        </div>
+                        @endif
 
                         {{-- Buttons --}}
                         <div class="flex items-center justify-end space-x-3">

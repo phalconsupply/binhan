@@ -31,6 +31,9 @@ class TransactionController extends Controller
                 $q->whereHas('vehicle', function($vq) use ($search) {
                     $vq->where('license_plate', 'like', "%{$search}%");
                 })
+                ->orWhereHas('incident', function($iq) use ($search) {
+                    $iq->where('id', 'like', "%{$search}%");
+                })
                 ->orWhere('note', 'like', "%{$search}%")
                 ->orWhere('amount', 'like', "%{$search}%");
             });
@@ -59,10 +62,39 @@ class TransactionController extends Controller
             $query->whereDate('date', '<=', $request->date_to);
         }
 
-        // Default: Most recent first
-        $query->orderBy('date', 'desc');
+        // Get all transactions
+        $allTransactions = $query->orderBy('date', 'desc')->get();
 
-        $transactions = $query->paginate(20);
+        // Group by incident_id
+        $groupedTransactions = $allTransactions->groupBy('incident_id')->map(function($group) {
+            $totalRevenue = $group->where('type', 'thu')->sum('amount');
+            $totalExpense = $group->where('type', 'chi')->sum('amount');
+            $netAmount = $totalRevenue - $totalExpense;
+            
+            return [
+                'incident' => $group->first()->incident,
+                'vehicle' => $group->first()->vehicle,
+                'date' => $group->first()->date,
+                'transactions' => $group,
+                'total_revenue' => $totalRevenue,
+                'total_expense' => $totalExpense,
+                'net_amount' => $netAmount,
+            ];
+        })->sortByDesc('date')->values();
+
+        // Manual pagination
+        $perPage = 20;
+        $currentPage = $request->get('page', 1);
+        $total = $groupedTransactions->count();
+        $groupedTransactions = $groupedTransactions->forPage($currentPage, $perPage);
+
+        $transactions = new \Illuminate\Pagination\LengthAwarePaginator(
+            $groupedTransactions,
+            $total,
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         // Get vehicles for filter dropdown
         $vehicles = Vehicle::orderBy('license_plate')->get();
@@ -75,6 +107,8 @@ class TransactionController extends Controller
             'today_expense' => Transaction::expense()->today()->sum('amount'),
             'month_revenue' => Transaction::revenue()->thisMonth()->sum('amount'),
             'month_expense' => Transaction::expense()->thisMonth()->sum('amount'),
+            'company_expense' => Transaction::expense()->whereNull('incident_id')->sum('amount'),
+            'company_month_expense' => Transaction::expense()->whereNull('incident_id')->thisMonth()->sum('amount'),
         ];
         $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'];
         $stats['today_net'] = $stats['today_revenue'] - $stats['today_expense'];
@@ -182,5 +216,22 @@ class TransactionController extends Controller
 
         return redirect()->route('transactions.index')
             ->with('success', 'Đã xóa giao dịch thành công!');
+    }
+
+    /**
+     * Remove all transactions for a specific incident.
+     */
+    public function destroyByIncident($incidentId)
+    {
+        // Check permission
+        if (!auth()->user()->can('delete transactions')) {
+            abort(403);
+        }
+
+        $count = Transaction::where('incident_id', $incidentId)->count();
+        Transaction::where('incident_id', $incidentId)->delete();
+
+        return redirect()->route('transactions.index')
+            ->with('success', "Đã xóa {$count} giao dịch của chuyến đi #{$incidentId} thành công!");
     }
 }

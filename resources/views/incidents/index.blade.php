@@ -99,10 +99,11 @@
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày giờ</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Xe</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bệnh nhân</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Điểm đến</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tuyến đường</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Điều phối</th>
                                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Doanh thu</th>
                                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Thao tác</th>
@@ -111,6 +112,9 @@
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     @foreach($incidents as $incident)
                                     <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-indigo-600">
+                                            #{{ $incident->id }}
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                                             {{ $incident->date->format('d/m/Y H:i') }}
                                         </td>
@@ -130,7 +134,15 @@
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 text-sm text-gray-900">
-                                            {{ $incident->destination ?? '-' }}
+                                            @if($incident->fromLocation || $incident->toLocation)
+                                                <div class="text-xs">
+                                                    <span class="text-blue-600">{{ $incident->fromLocation->name ?? '?' }}</span>
+                                                    →
+                                                    <span class="text-purple-600">{{ $incident->toLocation->name ?? '?' }}</span>
+                                                </div>
+                                            @else
+                                                <span class="text-gray-400">-</span>
+                                            @endif
                                         </td>
                                         <td class="px-6 py-4 text-sm text-gray-900">
                                             {{ $incident->dispatcher->name }}

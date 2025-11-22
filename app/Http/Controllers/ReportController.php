@@ -31,43 +31,46 @@ class ReportController extends Controller
         $dateTo = request('date_to', now()->endOfMonth()->format('Y-m-d'));
 
         // Overall statistics
-        $stats = [
-            'total_vehicles' => Vehicle::count(),
-            'active_vehicles' => Vehicle::active()->count(),
-            'total_patients' => Patient::count(),
+        $statistics = [
             'total_incidents' => Incident::whereBetween('date', [$dateFrom, $dateTo])->count(),
             'total_revenue' => Transaction::revenue()->whereBetween('date', [$dateFrom, $dateTo])->sum('amount'),
             'total_expense' => Transaction::expense()->whereBetween('date', [$dateFrom, $dateTo])->sum('amount'),
         ];
-        $stats['net_profit'] = $stats['total_revenue'] - $stats['total_expense'];
+        $statistics['net_profit'] = $statistics['total_revenue'] - $statistics['total_expense'];
 
         // Vehicle performance
-        $vehicleStats = Vehicle::withCount([
+        $vehiclePerformance = Vehicle::withCount([
             'incidents' => function($q) use ($dateFrom, $dateTo) {
                 $q->whereBetween('date', [$dateFrom, $dateTo]);
             }
         ])->withSum([
-            'transactions as revenue' => function($q) use ($dateFrom, $dateTo) {
+            'transactions as total_revenue' => function($q) use ($dateFrom, $dateTo) {
                 $q->where('type', 'thu')->whereBetween('date', [$dateFrom, $dateTo]);
             }
         ], 'amount')
         ->withSum([
-            'transactions as expense' => function($q) use ($dateFrom, $dateTo) {
+            'transactions as total_expense' => function($q) use ($dateFrom, $dateTo) {
                 $q->where('type', 'chi')->whereBetween('date', [$dateFrom, $dateTo]);
             }
         ], 'amount')
-        ->orderBy('incidents_count', 'desc')
-        ->get();
+        ->get()
+        ->map(function($vehicle) {
+            $vehicle->net_profit = ($vehicle->total_revenue ?? 0) - ($vehicle->total_expense ?? 0);
+            return $vehicle;
+        })
+        ->sortByDesc('incidents_count');
 
         // Daily revenue/expense chart data
-        $dailyStats = Transaction::whereBetween('date', [$dateFrom, $dateTo])
+        $dailyRevenue = Transaction::whereBetween('date', [$dateFrom, $dateTo])
             ->select(
-                DB::raw('DATE(date) as day'),
+                DB::raw('DATE(date) as date'),
+                DB::raw('COUNT(*) as count'),
                 DB::raw('SUM(CASE WHEN type = "thu" THEN amount ELSE 0 END) as revenue'),
-                DB::raw('SUM(CASE WHEN type = "chi" THEN amount ELSE 0 END) as expense')
+                DB::raw('SUM(CASE WHEN type = "chi" THEN amount ELSE 0 END) as expense'),
+                DB::raw('SUM(CASE WHEN type = "thu" THEN amount ELSE -amount END) as net')
             )
-            ->groupBy('day')
-            ->orderBy('day')
+            ->groupBy('date')
+            ->orderBy('date')
             ->get();
 
         // Top patients by incidents
@@ -76,19 +79,23 @@ class ReportController extends Controller
                 $q->whereBetween('date', [$dateFrom, $dateTo]);
             }
         ])
+        ->with(['incidents' => function($q) use ($dateFrom, $dateTo) {
+            $q->whereBetween('date', [$dateFrom, $dateTo]);
+        }])
         ->having('incidents_count', '>', 0)
         ->orderBy('incidents_count', 'desc')
         ->limit(10)
-        ->get();
-
-        $vehicles = Vehicle::orderBy('license_plate')->get();
+        ->get()
+        ->map(function($patient) {
+            $patient->total_spent = $patient->incidents->sum('total_revenue');
+            return $patient;
+        });
 
         return view('reports.index', compact(
-            'stats',
-            'vehicleStats',
-            'dailyStats',
+            'statistics',
+            'vehiclePerformance',
+            'dailyRevenue',
             'topPatients',
-            'vehicles',
             'dateFrom',
             'dateTo'
         ));

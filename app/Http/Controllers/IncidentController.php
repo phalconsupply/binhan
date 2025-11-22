@@ -92,6 +92,16 @@ class IncidentController extends Controller
     {
         $validated = $request->validate([
             'vehicle_id' => 'required|exists:vehicles,id',
+            'drivers' => 'nullable|array',
+            'drivers.*.staff_id' => 'nullable|exists:staff,id',
+            'drivers.*.wages' => 'nullable|array',
+            'drivers.*.wages.*.type' => 'nullable|string',
+            'drivers.*.wages.*.amount' => 'nullable|numeric|min:0',
+            'medical_staff' => 'nullable|array',
+            'medical_staff.*.staff_id' => 'nullable|exists:staff,id',
+            'medical_staff.*.wages' => 'nullable|array',
+            'medical_staff.*.wages.*.type' => 'nullable|string',
+            'medical_staff.*.wages.*.amount' => 'nullable|numeric|min:0',
             'patient_id' => 'nullable|exists:patients,id',
             'patient_name' => 'nullable|string|max:100',
             'patient_phone' => 'nullable|string|max:20',
@@ -99,13 +109,52 @@ class IncidentController extends Controller
             'patient_gender' => 'nullable|in:male,female,other',
             'patient_address' => 'nullable|string',
             'date' => 'required|date',
-            'destination' => 'nullable|string|max:255',
+            'from_location' => 'nullable|string|max:255',
+            'to_location' => 'nullable|string|max:255',
+            'partner_id' => 'nullable|exists:partners,id',
+            'commission_amount' => 'nullable|numeric|min:0',
+            'revenue_main_name' => 'nullable|string|max:255',
+            'amount_thu' => 'nullable|numeric|min:0',
+            'expense_main_name' => 'nullable|string|max:255',
+            'amount_chi' => 'nullable|numeric|min:0',
+            'additional_services' => 'nullable|array',
+            'additional_services.*.name' => 'required|string|max:255',
+            'additional_services.*.amount' => 'required|numeric|min:0',
+            'additional_expenses' => 'nullable|array',
+            'additional_expenses.*.name' => 'required|string|max:255',
+            'additional_expenses.*.amount' => 'required|numeric|min:0',
+            'maintenance_partner_id' => 'nullable|exists:partners,id',
+            'maintenance_service' => 'nullable|string|max:255',
+            'maintenance_cost' => 'nullable|numeric|min:0',
+            'maintenance_mileage' => 'nullable|integer|min:0',
+            'maintenance_note' => 'nullable|string',
+            'payment_method' => 'required|in:cash,bank,other',
             'summary' => 'nullable|string',
             'tags' => 'nullable|array',
         ]);
 
         try {
             DB::beginTransaction();
+
+            // Find or create locations based on names
+            $fromLocationId = null;
+            $toLocationId = null;
+            
+            if (!empty($validated['from_location'])) {
+                $location = \App\Models\Location::firstOrCreate(
+                    ['name' => $validated['from_location']],
+                    ['type' => 'from', 'is_active' => true]
+                );
+                $fromLocationId = $location->id;
+            }
+            
+            if (!empty($validated['to_location'])) {
+                $location = \App\Models\Location::firstOrCreate(
+                    ['name' => $validated['to_location']],
+                    ['type' => 'to', 'is_active' => true]
+                );
+                $toLocationId = $location->id;
+            }
 
             // Create or select patient
             $patientId = $validated['patient_id'] ?? null;
@@ -131,10 +180,223 @@ class IncidentController extends Controller
                 'patient_id' => $patientId,
                 'date' => $validated['date'],
                 'dispatch_by' => auth()->id(),
-                'destination' => $validated['destination'],
+                'from_location_id' => $fromLocationId,
+                'to_location_id' => $toLocationId,
+                'partner_id' => $validated['partner_id'] ?? null,
+                'commission_amount' => $validated['commission_amount'] ?? null,
                 'summary' => $validated['summary'],
                 'tags' => $validated['tags'] ?? null,
             ]);
+
+            // Attach staff to incident (drivers and medical staff) with wages
+            if (!empty($validated['drivers'])) {
+                foreach ($validated['drivers'] as $driver) {
+                    if (!empty($driver['staff_id'])) {
+                        $wages = $driver['wages'] ?? [];
+                        $totalWage = 0;
+                        $wageDetails = [];
+                        
+                        // Calculate total and build details array
+                        foreach ($wages as $wage) {
+                            if (!empty($wage['amount']) && $wage['amount'] > 0) {
+                                $totalWage += $wage['amount'];
+                                $wageDetails[] = [
+                                    'type' => $wage['type'] ?? 'Công',
+                                    'amount' => $wage['amount']
+                                ];
+                            }
+                        }
+                        
+                        $incident->staff()->attach($driver['staff_id'], [
+                            'role' => 'driver',
+                            'wage_amount' => $totalWage,
+                            'wage_details' => !empty($wageDetails) ? json_encode($wageDetails) : null
+                        ]);
+
+                        // Create wage transactions for each type
+                        if (!empty($wageDetails)) {
+                            $staffMember = \App\Models\Staff::find($driver['staff_id']);
+                            foreach ($wageDetails as $detail) {
+                                Transaction::create([
+                                    'incident_id' => $incident->id,
+                                    'vehicle_id' => $validated['vehicle_id'],
+                                    'staff_id' => $driver['staff_id'],
+                                    'type' => 'chi',
+                                    'amount' => $detail['amount'],
+                                    'method' => $validated['payment_method'],
+                                    'recorded_by' => auth()->id(),
+                                    'date' => $validated['date'],
+                                    'note' => $detail['type'] . ' lái xe: ' . ($staffMember ? $staffMember->full_name : ''),
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (!empty($validated['medical_staff'])) {
+                foreach ($validated['medical_staff'] as $staff) {
+                    if (!empty($staff['staff_id'])) {
+                        $wages = $staff['wages'] ?? [];
+                        $totalWage = 0;
+                        $wageDetails = [];
+                        
+                        // Calculate total and build details array
+                        foreach ($wages as $wage) {
+                            if (!empty($wage['amount']) && $wage['amount'] > 0) {
+                                $totalWage += $wage['amount'];
+                                $wageDetails[] = [
+                                    'type' => $wage['type'] ?? 'Công',
+                                    'amount' => $wage['amount']
+                                ];
+                            }
+                        }
+                        
+                        $incident->staff()->attach($staff['staff_id'], [
+                            'role' => 'medical_staff',
+                            'wage_amount' => $totalWage,
+                            'wage_details' => !empty($wageDetails) ? json_encode($wageDetails) : null
+                        ]);
+
+                        // Create wage transactions for each type
+                        if (!empty($wageDetails)) {
+                            $staffMember = \App\Models\Staff::find($staff['staff_id']);
+                            foreach ($wageDetails as $detail) {
+                                Transaction::create([
+                                    'incident_id' => $incident->id,
+                                    'vehicle_id' => $validated['vehicle_id'],
+                                    'staff_id' => $staff['staff_id'],
+                                    'type' => 'chi',
+                                    'amount' => $detail['amount'],
+                                    'method' => $validated['payment_method'],
+                                    'recorded_by' => auth()->id(),
+                                    'date' => $validated['date'],
+                                    'note' => $detail['type'] . ' NVYT: ' . ($staffMember ? $staffMember->full_name : ''),
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Create main revenue transaction
+            if (!empty($validated['amount_thu']) && $validated['amount_thu'] > 0) {
+                Transaction::create([
+                    'incident_id' => $incident->id,
+                    'vehicle_id' => $validated['vehicle_id'],
+                    'type' => 'thu',
+                    'amount' => $validated['amount_thu'],
+                    'method' => $validated['payment_method'],
+                    'recorded_by' => auth()->id(),
+                    'date' => $validated['date'],
+                    'note' => $validated['revenue_main_name'] ?? 'Thu chuyến đi',
+                ]);
+            }
+
+            // Create additional services revenue
+            if (!empty($validated['additional_services'])) {
+                foreach ($validated['additional_services'] as $service) {
+                    if (!empty($service['name']) && !empty($service['amount'])) {
+                        $additionalService = \App\Models\AdditionalService::where('name', $service['name'])->first();
+                        
+                        \App\Models\IncidentAdditionalService::create([
+                            'incident_id' => $incident->id,
+                            'additional_service_id' => $additionalService->id ?? null,
+                            'service_name' => $service['name'],
+                            'amount' => $service['amount'],
+                        ]);
+
+                        Transaction::create([
+                            'incident_id' => $incident->id,
+                            'vehicle_id' => $validated['vehicle_id'],
+                            'type' => 'thu',
+                            'amount' => $service['amount'],
+                            'method' => $validated['payment_method'],
+                            'recorded_by' => auth()->id(),
+                            'date' => $validated['date'],
+                            'note' => 'Thu dịch vụ: ' . $service['name'],
+                        ]);
+                    }
+                }
+            }
+
+            // Create main expense transaction
+            if (!empty($validated['amount_chi']) && $validated['amount_chi'] > 0) {
+                Transaction::create([
+                    'incident_id' => $incident->id,
+                    'vehicle_id' => $validated['vehicle_id'],
+                    'type' => 'chi',
+                    'amount' => $validated['amount_chi'],
+                    'method' => $validated['payment_method'],
+                    'recorded_by' => auth()->id(),
+                    'date' => $validated['date'],
+                    'note' => $validated['expense_main_name'] ?? 'Chi phí chuyến đi',
+                ]);
+            }
+
+            // Create additional expenses
+            if (!empty($validated['additional_expenses'])) {
+                foreach ($validated['additional_expenses'] as $expense) {
+                    if (!empty($expense['name']) && !empty($expense['amount'])) {
+                        Transaction::create([
+                            'incident_id' => $incident->id,
+                            'vehicle_id' => $validated['vehicle_id'],
+                            'type' => 'chi',
+                            'amount' => $expense['amount'],
+                            'method' => $validated['payment_method'],
+                            'recorded_by' => auth()->id(),
+                            'date' => $validated['date'],
+                            'note' => 'Chi phí: ' . $expense['name'],
+                        ]);
+                    }
+                }
+            }
+
+            // Create maintenance record if provided
+            if (!empty($validated['maintenance_service']) && !empty($validated['maintenance_cost'])) {
+                $maintenanceService = \App\Models\MaintenanceService::firstOrCreate(
+                    ['name' => $validated['maintenance_service']],
+                    ['is_active' => true]
+                );
+
+                \App\Models\VehicleMaintenance::create([
+                    'vehicle_id' => $validated['vehicle_id'],
+                    'incident_id' => $incident->id,
+                    'partner_id' => $validated['maintenance_partner_id'] ?? null,
+                    'maintenance_service_id' => $maintenanceService->id,
+                    'date' => $validated['date'],
+                    'mileage' => $validated['maintenance_mileage'] ?? null,
+                    'cost' => $validated['maintenance_cost'],
+                    'note' => $validated['maintenance_note'] ?? 'Bảo trì phát sinh trong chuyến đi',
+                    'user_id' => auth()->id(),
+                ]);
+
+                Transaction::create([
+                    'incident_id' => $incident->id,
+                    'vehicle_id' => $validated['vehicle_id'],
+                    'type' => 'chi',
+                    'amount' => $validated['maintenance_cost'],
+                    'method' => $validated['payment_method'],
+                    'recorded_by' => auth()->id(),
+                    'date' => $validated['date'],
+                    'note' => 'Bảo trì: ' . $validated['maintenance_service'],
+                ]);
+            }
+
+            // Create commission expense transaction if partner exists
+            if (!empty($validated['partner_id']) && !empty($validated['commission_amount']) && $validated['commission_amount'] > 0) {
+                $partner = \App\Models\Partner::find($validated['partner_id']);
+                Transaction::create([
+                    'incident_id' => $incident->id,
+                    'vehicle_id' => $validated['vehicle_id'],
+                    'type' => 'chi',
+                    'amount' => $validated['commission_amount'],
+                    'method' => $validated['payment_method'],
+                    'recorded_by' => auth()->id(),
+                    'date' => $validated['date'],
+                    'note' => 'Hoa hồng: ' . ($partner ? $partner->name : 'Đối tác'),
+                ]);
+            }
 
             DB::commit();
 
@@ -159,6 +421,9 @@ class IncidentController extends Controller
             'vehicle',
             'patient',
             'dispatcher',
+            'staff',
+            'drivers',
+            'medicalStaff',
             'transactions' => function($q) {
                 $q->with('recorder')->orderBy('date', 'desc');
             },
@@ -182,7 +447,7 @@ class IncidentController extends Controller
      */
     public function edit(Incident $incident)
     {
-        $incident->load(['vehicle', 'patient']);
+        $incident->load(['vehicle', 'patient', 'drivers', 'medicalStaff']);
         
         $vehicles = Vehicle::orderBy('license_plate')->get();
         $patients = Patient::orderBy('name')->get();
@@ -197,17 +462,156 @@ class IncidentController extends Controller
     {
         $validated = $request->validate([
             'vehicle_id' => 'required|exists:vehicles,id',
+            'drivers' => 'nullable|array',
+            'drivers.*.staff_id' => 'nullable|exists:staff,id',
+            'drivers.*.wage' => 'nullable|numeric|min:0',
+            'medical_staff' => 'nullable|array',
+            'medical_staff.*.staff_id' => 'nullable|exists:staff,id',
+            'medical_staff.*.wage' => 'nullable|numeric|min:0',
             'patient_id' => 'nullable|exists:patients,id',
             'date' => 'required|date',
-            'destination' => 'nullable|string|max:255',
+            'from_location' => 'nullable|string|max:255',
+            'to_location' => 'nullable|string|max:255',
+            'partner_id' => 'nullable|exists:partners,id',
+            'commission_amount' => 'nullable|numeric|min:0',
             'summary' => 'nullable|string',
             'tags' => 'nullable|array',
         ]);
 
-        $incident->update($validated);
+        try {
+            DB::beginTransaction();
 
-        return redirect()->route('incidents.show', $incident)
-            ->with('success', 'Đã cập nhật chuyến đi thành công!');
+            // Find or create locations based on names
+            $fromLocationId = null;
+            $toLocationId = null;
+            
+            if (!empty($validated['from_location'])) {
+                $location = \App\Models\Location::firstOrCreate(
+                    ['name' => $validated['from_location']],
+                    ['type' => 'from', 'is_active' => true]
+                );
+                $fromLocationId = $location->id;
+            }
+            
+            if (!empty($validated['to_location'])) {
+                $location = \App\Models\Location::firstOrCreate(
+                    ['name' => $validated['to_location']],
+                    ['type' => 'to', 'is_active' => true]
+                );
+                $toLocationId = $location->id;
+            }
+
+            $incident->update([
+                'vehicle_id' => $validated['vehicle_id'],
+                'patient_id' => $validated['patient_id'],
+                'date' => $validated['date'],
+                'from_location_id' => $fromLocationId,
+                'to_location_id' => $toLocationId,
+                'partner_id' => $validated['partner_id'] ?? null,
+                'commission_amount' => $validated['commission_amount'] ?? null,
+                'summary' => $validated['summary'],
+                'tags' => $validated['tags'] ?? null,
+            ]);
+
+            // Sync staff assignments
+            // Remove all existing staff
+            $incident->staff()->detach();
+            
+            // Delete old wage transactions for this incident
+            Transaction::where('incident_id', $incident->id)
+                ->whereNotNull('staff_id')
+                ->where('note', 'LIKE', 'Tiền công:%')
+                ->delete();
+            
+            // Attach drivers with wages
+            if (!empty($validated['drivers'])) {
+                foreach ($validated['drivers'] as $driver) {
+                    $wageAmount = !empty($driver['wage']) ? (float)$driver['wage'] : null;
+                    
+                    $incident->staff()->attach($driver['staff_id'], [
+                        'role' => 'driver',
+                        'wage_amount' => $wageAmount
+                    ]);
+                    
+                    // Create wage transaction if wage is provided
+                    if ($wageAmount && $wageAmount > 0) {
+                        $staff = \App\Models\Staff::find($driver['staff_id']);
+                        Transaction::create([
+                            'incident_id' => $incident->id,
+                            'vehicle_id' => $validated['vehicle_id'],
+                            'staff_id' => $driver['staff_id'],
+                            'type' => 'chi',
+                            'amount' => $wageAmount,
+                            'method' => 'cash',
+                            'recorded_by' => auth()->id(),
+                            'date' => $validated['date'],
+                            'note' => 'Tiền công: ' . ($staff ? $staff->name : 'Lái xe'),
+                        ]);
+                    }
+                }
+            }
+            
+            // Attach medical staff with wages
+            if (!empty($validated['medical_staff'])) {
+                foreach ($validated['medical_staff'] as $medicalStaff) {
+                    $wageAmount = !empty($medicalStaff['wage']) ? (float)$medicalStaff['wage'] : null;
+                    
+                    $incident->staff()->attach($medicalStaff['staff_id'], [
+                        'role' => 'medical_staff',
+                        'wage_amount' => $wageAmount
+                    ]);
+                    
+                    // Create wage transaction if wage is provided
+                    if ($wageAmount && $wageAmount > 0) {
+                        $staff = \App\Models\Staff::find($medicalStaff['staff_id']);
+                        Transaction::create([
+                            'incident_id' => $incident->id,
+                            'vehicle_id' => $validated['vehicle_id'],
+                            'staff_id' => $medicalStaff['staff_id'],
+                            'type' => 'chi',
+                            'amount' => $wageAmount,
+                            'method' => 'cash',
+                            'recorded_by' => auth()->id(),
+                            'date' => $validated['date'],
+                            'note' => 'Tiền công: ' . ($staff ? $staff->name : 'Nhân viên y tế'),
+                        ]);
+                    }
+                }
+            }
+
+            // Update commission transaction
+            // First, delete old commission transaction if exists
+            Transaction::where('incident_id', $incident->id)
+                ->where('note', 'LIKE', 'Hoa hồng:%')
+                ->delete();
+
+            // Create new commission transaction if partner exists
+            if (!empty($validated['partner_id']) && !empty($validated['commission_amount']) && $validated['commission_amount'] > 0) {
+                $partner = \App\Models\Partner::find($validated['partner_id']);
+                Transaction::create([
+                    'incident_id' => $incident->id,
+                    'vehicle_id' => $validated['vehicle_id'],
+                    'type' => 'chi',
+                    'amount' => $validated['commission_amount'],
+                    'method' => 'cash', // Default method for commission
+                    'recorded_by' => auth()->id(),
+                    'date' => $validated['date'],
+                    'note' => 'Hoa hồng: ' . ($partner ? $partner->name : 'Đối tác'),
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('incidents.show', $incident)
+                ->with('success', 'Đã cập nhật chuyến đi thành công!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
     }
 
     /**

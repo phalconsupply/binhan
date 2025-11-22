@@ -53,6 +53,26 @@
                             @enderror
                         </div>
 
+                        {{-- Primary Driver from Staff --}}
+                        <div>
+                            <label for="driver_id" class="block text-sm font-medium text-gray-700">
+                                Lái xe chính (từ Nhân sự)
+                            </label>
+                            <select id="driver_id" name="driver_id" 
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">-- Chọn lái xe --</option>
+                                @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
+                                    <option value="{{ $driver->id }}" {{ old('driver_id') == $driver->id ? 'selected' : '' }}>
+                                        {{ $driver->employee_code }} - {{ $driver->full_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">Chọn lái xe từ danh sách nhân sự (nếu có)</p>
+                            @error('driver_id')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         {{-- Phone --}}
                         <div>
                             <label for="phone" class="block text-sm font-medium text-gray-700">

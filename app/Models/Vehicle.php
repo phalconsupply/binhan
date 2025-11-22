@@ -15,6 +15,7 @@ class Vehicle extends Model
         'license_plate',
         'model',
         'driver_name',
+        'driver_id',
         'phone',
         'status',
         'note',
@@ -35,6 +36,11 @@ class Vehicle extends Model
     }
 
     // Relationships
+    public function driver()
+    {
+        return $this->belongsTo(Staff::class, 'driver_id');
+    }
+
     public function incidents()
     {
         return $this->hasMany(Incident::class);

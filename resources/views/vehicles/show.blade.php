@@ -54,6 +54,18 @@
                             <p class="text-base">{{ $vehicle->driver_name ?? '-' }}</p>
                         </div>
                         <div>
+                            <p class="text-sm text-gray-500">Lái xe chính</p>
+                            <p class="text-base">
+                                @if($vehicle->driver)
+                                    <a href="{{ route('staff.show', $vehicle->driver) }}" class="text-indigo-600 hover:text-indigo-900">
+                                        {{ $vehicle->driver->employee_code }} - {{ $vehicle->driver->full_name }}
+                                    </a>
+                                @else
+                                    -
+                                @endif
+                            </p>
+                        </div>
+                        <div>
                             <p class="text-sm text-gray-500">Số điện thoại</p>
                             <p class="text-base">{{ $vehicle->phone ?? '-' }}</p>
                         </div>

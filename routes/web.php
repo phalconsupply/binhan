@@ -10,6 +10,13 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\GlobalSearchController;
+use App\Http\Controllers\LocationController;
+use App\Http\Controllers\PartnerController;
+use App\Http\Controllers\AdditionalServiceController;
+use App\Http\Controllers\MaintenanceServiceController;
+use App\Http\Controllers\VehicleMaintenanceController;
+use App\Http\Controllers\StaffController;
+use App\Http\Controllers\WageTypeController;
 use App\Http\Controllers\API\QuickEntryController;
 use Illuminate\Support\Facades\Route;
 
@@ -53,6 +60,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Transaction routes
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::delete('transactions/incident/{incident}', [TransactionController::class, 'destroyByIncident'])->name('transactions.destroyByIncident');
     Route::resource('transactions', TransactionController::class);
 });
 
@@ -93,6 +101,43 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/api/search', [GlobalSearchController::class, 'api'])->name('search.api');
 });
 
+// Location routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('locations', LocationController::class);
+});
+
+// Partner routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('partners', PartnerController::class);
+});
+
+// Additional Service routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('additional-services', AdditionalServiceController::class);
+});
+
+// Maintenance Service routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('maintenance-services', MaintenanceServiceController::class);
+});
+
+// Vehicle Maintenance routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('vehicle-maintenances', VehicleMaintenanceController::class);
+});
+
+// Staff routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('staff/{staff}/earnings', [StaffController::class, 'earnings'])->name('staff.earnings');
+    Route::post('staff/{staff}/adjustments', [StaffController::class, 'storeAdjustment'])->name('staff.adjustments.store')->middleware('permission:manage settings');
+    Route::resource('staff', StaffController::class);
+});
+
+// Wage Type routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('wage-types', WageTypeController::class);
+});
+
 // API routes for AJAX
 Route::middleware(['auth'])->prefix('api')->group(function () {
     Route::get('/vehicles/search', [QuickEntryController::class, 'searchVehicles'])->name('api.vehicles.search');
@@ -100,6 +145,12 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
     Route::get('/patients/search', [QuickEntryController::class, 'searchPatients'])->name('api.patients.search');
     Route::get('/patients/{id}', [QuickEntryController::class, 'getPatient'])->name('api.patients.get');
     Route::get('/stats', [QuickEntryController::class, 'getStats'])->name('api.stats');
+    
+    // Autocomplete endpoints
+    Route::get('/locations/autocomplete', [LocationController::class, 'autocomplete'])->name('api.locations.autocomplete');
+    Route::get('/partners/autocomplete', [PartnerController::class, 'autocomplete'])->name('api.partners.autocomplete');
+    Route::get('/additional-services/autocomplete', [AdditionalServiceController::class, 'autocomplete'])->name('api.additional-services.autocomplete');
+    Route::get('/maintenance-services/autocomplete', [MaintenanceServiceController::class, 'autocomplete'])->name('api.maintenance-services.autocomplete');
 });
 
 require __DIR__.'/auth.php';

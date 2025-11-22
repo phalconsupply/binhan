@@ -14,6 +14,7 @@ class Transaction extends Model
     protected $fillable = [
         'incident_id',
         'vehicle_id',
+        'staff_id',
         'type',
         'amount',
         'method',
@@ -54,6 +55,11 @@ class Transaction extends Model
         return $this->belongsTo(User::class, 'recorded_by');
     }
 
+    public function staff()
+    {
+        return $this->belongsTo(Staff::class);
+    }
+
     // Scopes
     public function scopeRevenue($query)
     {
@@ -89,6 +95,16 @@ class Transaction extends Model
     public function scopeBank($query)
     {
         return $query->where('method', 'bank');
+    }
+
+    public function scopeStaffWage($query)
+    {
+        return $query->where('type', 'chi')->whereNotNull('staff_id');
+    }
+
+    public function scopeByStaff($query, $staffId)
+    {
+        return $query->where('staff_id', $staffId);
     }
 
     // Accessors

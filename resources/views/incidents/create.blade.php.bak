@@ -1,0 +1,418 @@
+﻿<x-app-layout>
+    <x-slot name="header">
+        <div class="flex justify-between items-center">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                ThĂªm chuyáº¿n Ä‘i má»›i
+            </h2>
+            <a href="{{ route('incidents.index') }}" class="text-indigo-600 hover:text-indigo-900">
+                â† Quay láº¡i danh sĂ¡ch
+            </a>
+        </div>
+    </x-slot>
+
+    <div class="py-6">
+        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6">
+                    <h3 class="text-lg font-semibold mb-2">ThĂ´ng tin chuyáº¿n Ä‘i</h3>
+                    <p class="text-xs text-gray-500 mb-4">đŸ“Œ ID chuyáº¿n Ä‘i sáº½ Ä‘Æ°á»£c táº¡o tá»± Ä‘á»™ng sau khi lÆ°u</p>
+                    
+                    <form method="POST" action="{{ route('incidents.store') }}" class="space-y-4">
+                        @csrf
+
+                        {{-- 1. ThĂ´ng tin xe --}}
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-800 mb-2">đŸ— ThĂ´ng tin xe</h4>
+                            <label for="vehicle_id" class="block text-xs font-medium text-gray-700">Biá»ƒn sá»‘ xe <span class="text-red-500">*</span></label>
+                            <select id="vehicle_id" name="vehicle_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <option value="">-- Chá»n xe --</option>
+                                @foreach($vehicles as $vehicle)
+                                    <option value="{{ $vehicle->id }}" {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
+                                        {{ $vehicle->license_plate }} @if($vehicle->driver_name) - {{ $vehicle->driver_name }} @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('vehicle_id')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+
+                            <label for="date" class="block text-xs font-medium text-gray-700 mt-2">NgĂ y giá» <span class="text-red-500">*</span></label>
+                            <input type="datetime-local" id="date" name="date" value="{{ old('date', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                            @error('date')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+
+                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                <input type="text" 
+                                    id="from_location" 
+                                    name="from_location" 
+                                    list="from_locations_list"
+                                    value="{{ old('from_location') }}" 
+                                    placeholder="NÆ¡i Ä‘i..."
+                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <datalist id="from_locations_list">
+                                    @foreach(\App\Models\Location::active()->whereIn('type', ['from', 'both'])->orderBy('name')->get() as $location)
+                                        <option value="{{ $location->name }}">
+                                    @endforeach
+                                </datalist>
+
+                                <input type="text" 
+                                    id="to_location" 
+                                    name="to_location" 
+                                    list="to_locations_list"
+                                    value="{{ old('to_location') }}" 
+                                    placeholder="NÆ¡i Ä‘áº¿n..."
+                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <datalist id="to_locations_list">
+                                    @foreach(\App\Models\Location::active()->whereIn('type', ['to', 'both'])->orderBy('name')->get() as $location)
+                                        <option value="{{ $location->name }}">
+                                    @endforeach
+                                </datalist>
+                            </div>
+                        </div>
+
+                        {{-- 2. ThĂ´ng tin bá»‡nh nhĂ¢n --}}
+                        <details class="border-t pt-3" open>
+                            <summary class="text-sm font-semibold text-gray-800 cursor-pointer hover:text-gray-900">đŸ¥ ThĂ´ng tin bá»‡nh nhĂ¢n</summary>
+                            <div class="mt-2 space-y-2">
+                                <select id="patient_id" name="patient_id" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                    <option value="">-- Táº¡o má»›i --</option>
+                                    @foreach($patients as $patient)
+                                        <option value="{{ $patient->id }}" {{ old('patient_id') == $patient->id ? 'selected' : '' }}>
+                                            {{ $patient->name }} @if($patient->phone) - {{ $patient->phone }} @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div id="new_patient_fields">
+                                    <input type="text" name="patient_name" placeholder="TĂªn bá»‡nh nhĂ¢n" value="{{ old('patient_name') }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                    <input type="text" name="patient_phone" placeholder="Sá»‘ Ä‘iá»‡n thoáº¡i" value="{{ old('patient_phone') }}" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                    <div class="grid grid-cols-2 gap-2 mt-2">
+                                        <input type="number" name="patient_birth_year" placeholder="NÄƒm sinh" min="1900" max="{{ date('Y') }}" value="{{ old('patient_birth_year') }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                        <select name="patient_gender" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                            <option value="">Giá»›i tĂ­nh</option>
+                                            <option value="male" {{ old('patient_gender') == 'male' ? 'selected' : '' }}>Nam</option>
+                                            <option value="female" {{ old('patient_gender') == 'female' ? 'selected' : '' }}>Ná»¯</option>
+                                            <option value="other" {{ old('patient_gender') == 'other' ? 'selected' : '' }}>KhĂ¡c</option>
+                                        </select>
+                                    </div>
+                                    <textarea name="patient_address" rows="2" placeholder="Äá»‹a chá»‰" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">{{ old('patient_address') }}</textarea>
+                                </div>
+                            </div>
+                        </details>
+
+                        {{-- 3. ThĂ´ng tin nhĂ¢n sá»± --}}
+                            <h4 class="text-sm font-semibold text-gray-800 mb-2">đŸ‘¥ ThĂ´ng tin nhĂ¢n sá»± & Tiá»n cĂ´ng</h4>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">LĂ¡i xe</label>
+                                    <div id="drivers-container" class="space-y-2">
+                                        <div class="driver-item grid grid-cols-[1fr_auto_auto] gap-2">
+                                            <select name="drivers[0][staff_id]" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                <option value="">-- Chá»n lĂ¡i xe --</option>
+                                                @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
+                                                    <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
+                                                @endforeach
+                                            </select>
+                                            <input type="number" name="drivers[0][wage]" placeholder="Tiá»n cĂ´ng" min="0" step="1000" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                            <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">âœ•</button>
+                                        </div>
+                                    </div>
+                                    <button type="button" onclick="addDriverRow()" class="mt-1 text-xs text-blue-600 hover:text-blue-800">+ ThĂªm</button>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">NhĂ¢n viĂªn y táº¿</label>
+                                    <div id="medical-staff-container" class="space-y-2">
+                                        <div class="medical-staff-item grid grid-cols-[1fr_auto_auto] gap-2">
+                                            <select name="medical_staff[0][staff_id]" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                <option value="">-- Chá»n NVYT --</option>
+                                                @foreach(\App\Models\Staff::active()->where('staff_type', 'medical_staff')->orderBy('full_name')->get() as $staff)
+                                                    <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
+                                                @endforeach
+                                            </select>
+                                            <input type="number" name="medical_staff[0][wage]" placeholder="Tiá»n cĂ´ng" min="0" step="1000" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                            <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">âœ•</button>
+                                        </div>
+                                    </div>
+                                    <button type="button" onclick="addMedicalStaffRow()" class="mt-1 text-xs text-blue-600 hover:text-blue-800">+ ThĂªm</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- 5. ThĂ´ng tin thu chi --}}
+                        <div class="border-t pt-3">
+                            <h4 class="text-sm font-semibold text-gray-800 mb-2">đŸ’° ThĂ´ng tin thu - chi</h4>
+                            <div class="grid grid-cols-2 gap-3">
+                                {{-- Revenue --}}
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="block text-xs font-medium text-green-600">Thu</label>
+                                        <button type="button" id="add-service-btn" class="text-xs text-green-600 hover:text-green-700">+</button>
+                                    </div>
+                                    <input type="number" 
+                                        id="amount_thu" 
+                                        name="amount_thu" 
+                                        value="{{ old('amount_thu') }}" 
+                                        min="0" 
+                                        step="1000" 
+                                        placeholder="Sá»‘ tiá»n thu" 
+                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm">
+                                    <input type="text" 
+                                        name="revenue_main_name" 
+                                        value="{{ old('revenue_main_name', 'Thu chuyáº¿n Ä‘i') }}" 
+                                        placeholder="Ghi chĂº" 
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-xs">
+                                    <div id="additional-services-container" class="mt-2 space-y-1"></div>
+                                </div>
+
+                                {{-- Expense --}}
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="block text-xs font-medium text-red-600">Chi</label>
+                                        <button type="button" id="add-expense-btn" class="text-xs text-red-600 hover:text-red-700">+</button>
+                                    </div>
+                                    <input type="number" 
+                                        id="amount_chi" 
+                                        name="amount_chi" 
+                                        value="{{ old('amount_chi') }}" 
+                                        min="0" 
+                                        step="1000" 
+                                        placeholder="Sá»‘ tiá»n chi" 
+                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-sm">
+                                    <input type="text" 
+                                        name="expense_main_name" 
+                                        value="{{ old('expense_main_name', 'Chi phĂ­ chuyáº¿n Ä‘i') }}" 
+                                        placeholder="Ghi chĂº" 
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-xs">
+                                    <div id="additional-expenses-container" class="mt-2 space-y-1"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- 4. ThĂ´ng tin cá»™ng tĂ¡c viĂªn --}}
+                        <details class="border-t pt-3">
+                            <summary class="text-sm font-semibold text-gray-800 cursor-pointer hover:text-gray-900">đŸ¤ ThĂ´ng tin cá»™ng tĂ¡c viĂªn (tĂ¹y chá»n)</summary>
+                            <div class="mt-2 space-y-2">
+                                <select id="partner_id" name="partner_id" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                    <option value="">-- KhĂ´ng cĂ³ --</option>
+                                    @foreach(\App\Models\Partner::collaborators()->active()->orderBy('name')->get() as $partner)
+                                        <option value="{{ $partner->id }}" data-commission="{{ $partner->commission_rate }}" {{ old('partner_id') == $partner->id ? 'selected' : '' }}>
+                                            {{ $partner->name }} @if($partner->commission_rate) ({{ $partner->commission_rate }}%) @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <input type="number" id="commission_amount" name="commission_amount" value="{{ old('commission_amount') }}" min="0" step="1000" placeholder="Sá»‘ tiá»n hoa há»“ng" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                            </div>
+                        </details>
+
+                        {{-- 6. ThĂ´ng tin báº£o trĂ¬ --}}
+                        <details class="border-t pt-3">
+                            <summary class="text-sm font-semibold text-gray-800 cursor-pointer hover:text-gray-900">đŸ”§ ThĂ´ng tin báº£o trĂ¬ (tĂ¹y chá»n)</summary>
+                            <div class="mt-2 space-y-2">
+                                <select name="maintenance_partner_id" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm">
+                                    <option value="">-- Chá»n Ä‘á»‘i tĂ¡c --</option>
+                                    @foreach(\App\Models\Partner::active()->where('type', 'maintenance')->orderBy('name')->get() as $partner)
+                                        <option value="{{ $partner->id }}" {{ old('maintenance_partner_id') == $partner->id ? 'selected' : '' }}>{{ $partner->name }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="text" name="maintenance_service" list="maintenance_services_list" placeholder="Loáº¡i dá»‹ch vá»¥" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm">
+                                <datalist id="maintenance_services_list">
+                                    @foreach(\App\Models\MaintenanceService::active()->orderBy('name')->get() as $service)
+                                        <option value="{{ $service->name }}">
+                                    @endforeach
+                                </datalist>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="number" name="maintenance_cost" min="0" step="1000" placeholder="Chi phĂ­" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm">
+                                    <input type="number" name="maintenance_mileage" min="0" placeholder="Sá»‘ km" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm">
+                                </div>
+                                <textarea name="maintenance_note" rows="2" placeholder="Ghi chĂº" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm"></textarea>
+                            </div>
+                        </details>
+
+                        {{-- 7. Ghi chĂº --}}
+                        <div class="border-t pt-3">
+                            <h4 class="text-sm font-semibold text-gray-800 mb-2">đŸ“ Ghi chĂº</h4>
+                            <div class="space-y-2">
+                                <label for="payment_method" class="block text-xs font-medium text-gray-700">HĂ¬nh thá»©c thanh toĂ¡n</label>
+                                <select id="payment_method" name="payment_method" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                    <option value="cash" {{ old('payment_method', 'cash') == 'cash' ? 'selected' : '' }}>Tiá»n máº·t</option>
+                                    <option value="bank" {{ old('payment_method') == 'bank' ? 'selected' : '' }}>Chuyá»ƒn khoáº£n</option>
+                                    <option value="other" {{ old('payment_method') == 'other' ? 'selected' : '' }}>KhĂ¡c</option>
+                                </select>
+
+                                <label for="summary" class="block text-xs font-medium text-gray-700 mt-2">TĂ³m táº¯t chuyáº¿n Ä‘i</label>
+                                <textarea id="summary" name="summary" rows="2" placeholder="MĂ´ táº£ ngáº¯n gá»n vá» chuyáº¿n Ä‘i..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">{{ old('summary') }}</textarea>
+
+                                <label for="tags" class="block text-xs font-medium text-gray-700 mt-2">Tags (phĂ¢n cĂ¡ch báº±ng dáº¥u pháº©y)</label>
+                                <input type="text" id="tags" name="tags" value="{{ old('tags') }}" placeholder="vd: kháº©n cáº¥p, Ä‘Æ°á»ng xa, ..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                            </div>
+                        </div>
+
+                        {{-- Submit --}}
+                        <div class="border-t pt-3 flex gap-3">
+                            <button type="submit" class="flex-1 flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                đŸ’¾ Táº¡o chuyáº¿n Ä‘i
+                            </button>
+                            <a href="{{ route('incidents.index') }}" class="px-4 py-2.5 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Há»§y
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @push('scripts')
+    <script>
+        // Partner commission auto-calculation
+        const partnerSelect = document.getElementById('partner_id');
+        const commissionInput = document.getElementById('commission_amount');
+        const revenueInput = document.getElementById('amount_thu');
+
+        if (partnerSelect && commissionInput && revenueInput) {
+            partnerSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const commissionRate = selectedOption.dataset.commission;
+                const revenue = parseFloat(revenueInput.value) || 0;
+
+                if (commissionRate && revenue > 0) {
+                    const commissionAmount = (revenue * parseFloat(commissionRate)) / 100;
+                    commissionInput.value = Math.round(commissionAmount);
+                }
+            });
+
+            revenueInput.addEventListener('input', function() {
+                if (partnerSelect.value) {
+                    const selectedOption = partnerSelect.options[partnerSelect.selectedIndex];
+                    const commissionRate = selectedOption.dataset.commission;
+                    const revenue = parseFloat(this.value) || 0;
+
+                    if (commissionRate && revenue > 0) {
+                        const commissionAmount = (revenue * parseFloat(commissionRate)) / 100;
+                        commissionInput.value = Math.round(commissionAmount);
+                    }
+                }
+            });
+        }
+
+        // Additional Services
+        let serviceCount = 0;
+        const servicesContainer = document.getElementById('additional-services-container');
+        const addServiceBtn = document.getElementById('add-service-btn');
+        
+        addServiceBtn.addEventListener('click', function() {
+            serviceCount++;
+            const serviceRow = document.createElement('div');
+            serviceRow.className = 'grid grid-cols-2 gap-1';
+            serviceRow.innerHTML = `
+                <input type="text" 
+                    name="additional_services[${serviceCount}][name]" 
+                    placeholder="TĂªn dá»‹ch vá»¥" 
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-xs">
+                <div class="flex gap-1">
+                    <input type="number" 
+                        name="additional_services[${serviceCount}][amount]" 
+                        min="0" 
+                        step="1000" 
+                        placeholder="Sá»‘ tiá»n" 
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-xs">
+                    <button type="button" onclick="this.closest('.grid').remove()" class="text-red-500 hover:text-red-700 text-xs">âœ•</button>
+                </div>
+            `;
+            servicesContainer.appendChild(serviceRow);
+        });
+
+        // Additional Expenses
+        let expenseCount = 0;
+        const expensesContainer = document.getElementById('additional-expenses-container');
+        const addExpenseBtn = document.getElementById('add-expense-btn');
+        
+        addExpenseBtn.addEventListener('click', function() {
+            expenseCount++;
+            const expenseRow = document.createElement('div');
+            expenseRow.className = 'grid grid-cols-2 gap-1';
+            expenseRow.innerHTML = `
+                <input type="text" 
+                    name="additional_expenses[${expenseCount}][name]" 
+                    placeholder="TĂªn khoáº£n chi" 
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-xs">
+                <div class="flex gap-1">
+                    <input type="number" 
+                        name="additional_expenses[${expenseCount}][amount]" 
+                        min="0" 
+                        step="1000" 
+                        placeholder="Sá»‘ tiá»n" 
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-xs">
+                    <button type="button" onclick="this.closest('.grid').remove()" class="text-red-500 hover:text-red-700 text-xs">âœ•</button>
+                </div>
+            `;
+            expensesContainer.appendChild(expenseRow);
+        });
+
+        // Staff management functions
+        let driverIndex = 1;
+        let medicalStaffIndex = 1;
+
+        function addDriverRow() {
+            const container = document.getElementById('drivers-container');
+            const newRow = document.createElement('div');
+            newRow.className = 'driver-item grid grid-cols-[1fr_auto_auto] gap-2';
+            newRow.innerHTML = `
+                <select name="drivers[${driverIndex}][staff_id]" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <option value="">-- Chá»n lĂ¡i xe --</option>
+                    @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
+                        <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
+                    @endforeach
+                </select>
+                <input type="number" name="drivers[${driverIndex}][wage]" placeholder="Tiá»n cĂ´ng" min="0" step="1000" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">âœ•</button>
+            `;
+            container.appendChild(newRow);
+            driverIndex++;
+        }
+
+        function addMedicalStaffRow() {
+            const container = document.getElementById('medical-staff-container');
+            const newRow = document.createElement('div');
+            newRow.className = 'medical-staff-item grid grid-cols-[1fr_auto_auto] gap-2';
+            newRow.innerHTML = `
+                <select name="medical_staff[${medicalStaffIndex}][staff_id]" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <option value="">-- Chá»n NVYT --</option>
+                    @foreach(\App\Models\Staff::active()->where('staff_type', 'medical_staff')->orderBy('full_name')->get() as $staff)
+                        <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
+                    @endforeach
+                </select>
+                <input type="number" name="medical_staff[${medicalStaffIndex}][wage]" placeholder="Tiá»n cĂ´ng" min="0" step="1000" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">âœ•</button>
+            `;
+            container.appendChild(newRow);
+            medicalStaffIndex++;
+        }
+
+        function removeStaffRow(button) {
+            button.closest('.driver-item, .medical-staff-item').remove();
+        }
+
+        // Patient selection toggle
+        const patientSelect = document.getElementById('patient_id');
+        const newPatientFields = document.getElementById('new_patient_fields');
+
+        if (patientSelect && newPatientFields) {
+            patientSelect.addEventListener('change', function() {
+                if (this.value) {
+                    newPatientFields.style.display = 'none';
+                } else {
+                    newPatientFields.style.display = 'block';
+                }
+            });
+
+            // Initialize on load
+            if (patientSelect.value) {
+                newPatientFields.style.display = 'none';
+            }
+        }
+    </script>
+    @endpush
+</x-app-layout> 

@@ -19,6 +19,7 @@ class RoleSeeder extends Seeder
             'create vehicles',
             'edit vehicles',
             'delete vehicles',
+            'manage vehicles',
             
             'view incidents',
             'create incidents',
@@ -30,11 +31,17 @@ class RoleSeeder extends Seeder
             'edit transactions',
             'delete transactions',
             
+            'view patients',
+            'create patients',
+            'edit patients',
+            'delete patients',
+            
             'view reports',
             'export reports',
             
             'view audits',
             'manage users',
+            'manage settings',
         ];
 
         foreach ($permissions as $permission) {
@@ -56,7 +63,11 @@ class RoleSeeder extends Seeder
             'edit incidents',
             'view transactions',
             'create transactions',
+            'view patients',
+            'create patients',
+            'edit patients',
             'view reports',
+            'manage settings',
         ]);
 
         // Accountant - manage transactions & export reports
@@ -67,8 +78,10 @@ class RoleSeeder extends Seeder
             'view transactions',
             'create transactions',
             'edit transactions',
+            'view patients',
             'view reports',
             'export reports',
+            'manage settings',
         ]);
 
         // Driver - view only own vehicle

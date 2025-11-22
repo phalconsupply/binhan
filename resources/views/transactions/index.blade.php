@@ -25,7 +25,7 @@
             @endif
 
             {{-- Statistics --}}
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                     <p class="text-sm text-gray-500">Tổng thu</p>
                     <p class="text-2xl font-bold text-green-600">{{ number_format($stats['total_revenue'], 0, ',', '.') }}đ</p>
@@ -35,6 +35,11 @@
                     <p class="text-sm text-gray-500">Tổng chi</p>
                     <p class="text-2xl font-bold text-red-600">{{ number_format($stats['total_expense'], 0, ',', '.') }}đ</p>
                     <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['month_expense'], 0, ',', '.') }}đ</p>
+                </div>
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                    <p class="text-sm text-gray-500">Chi từ công ty</p>
+                    <p class="text-2xl font-bold text-orange-600">{{ number_format($stats['company_expense'], 0, ',', '.') }}đ</p>
+                    <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['company_month_expense'], 0, ',', '.') }}đ</p>
                 </div>
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                     <p class="text-sm text-gray-500">Lợi nhuận</p>
@@ -99,66 +104,132 @@
                     @if($transactions->isEmpty())
                         <p class="text-gray-500 text-center py-8">Không tìm thấy giao dịch nào.</p>
                     @else
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loại</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Xe</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bệnh nhân</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Số tiền</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phương thức</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Thao tác</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach($transactions as $transaction)
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                            {{ $transaction->date->format('d/m/Y') }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $transaction->type == 'thu' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                                {{ $transaction->type_label }}
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <a href="{{ route('vehicles.show', $transaction->vehicle) }}" class="text-blue-600 hover:text-blue-900 font-semibold">
-                                                {{ $transaction->vehicle->license_plate }}
-                                            </a>
-                                        </td>
-                                        <td class="px-6 py-4 text-sm">
-                                            @if($transaction->incident && $transaction->incident->patient)
-                                                {{ $transaction->incident->patient->name }}
-                                            @else
-                                                <span class="text-gray-400">-</span>
+                        <div class="space-y-3">
+                            @foreach($transactions as $group)
+                            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                {{-- Header - Click để mở rộng --}}
+                                <div class="bg-gray-50 px-4 py-3 cursor-pointer hover:bg-gray-100 transition" onclick="toggleDetail('detail-{{ $loop->index }}')">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-4">
+                                            {{-- Icon mở rộng --}}
+                                            <svg id="icon-{{ $loop->index }}" class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                            </svg>
+                                            
+                                            {{-- Mã chuyến đi --}}
+                                            <div>
+                                                @if($group['incident'])
+                                                    <a href="{{ route('incidents.show', $group['incident']) }}" class="text-base font-semibold text-blue-600 hover:text-blue-800" onclick="event.stopPropagation()">
+                                                        Chuyến #{{ $group['incident']->id }}
+                                                    </a>
+                                                @else
+                                                    <span class="text-base font-semibold text-gray-600">Giao dịch khác</span>
+                                                @endif
+                                            </div>
+
+                                            {{-- Thông tin cơ bản --}}
+                                            <div class="flex items-center space-x-3 text-sm text-gray-600">
+                                                <span>{{ $group['date']->format('d/m/Y') }}</span>
+                                                <span>•</span>
+                                                <a href="{{ route('vehicles.show', $group['vehicle']) }}" class="text-blue-600 hover:text-blue-800 font-medium" onclick="event.stopPropagation()">
+                                                    {{ $group['vehicle']->license_plate }}
+                                                </a>
+                                                @if($group['incident'] && $group['incident']->patient)
+                                                    <span>•</span>
+                                                    <span>{{ $group['incident']->patient->name }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        {{-- Tổng thu chi --}}
+                                        <div class="flex items-center space-x-6 text-sm">
+                                            <div class="text-right">
+                                                <div class="text-green-600 font-semibold">+{{ number_format($group['total_revenue'], 0, ',', '.') }}đ</div>
+                                                <div class="text-xs text-gray-500">Thu</div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-red-600 font-semibold">-{{ number_format($group['total_expense'], 0, ',', '.') }}đ</div>
+                                                <div class="text-xs text-gray-500">Chi</div>
+                                            </div>
+                                            <div class="text-right min-w-[120px]">
+                                                <div class="text-lg font-bold {{ $group['net_amount'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                                    {{ $group['net_amount'] >= 0 ? '+' : '' }}{{ number_format($group['net_amount'], 0, ',', '.') }}đ
+                                                </div>
+                                                <div class="text-xs text-gray-500">Lợi nhuận</div>
+                                            </div>
+                                            
+                                            {{-- Nút xóa hết --}}
+                                            @if($group['incident'])
+                                                @can('delete transactions')
+                                                <form action="{{ route('transactions.destroyByIncident', $group['incident']->id) }}" method="POST" class="inline" onsubmit="return confirm('Bạn có chắc muốn xóa TẤT CẢ {{ $group['transactions']->count() }} giao dịch của chuyến này?')" onclick="event.stopPropagation()">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="px-3 py-1.5 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition">
+                                                        Xóa hết
+                                                    </button>
+                                                </form>
+                                                @endcan
                                             @endif
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right">
-                                            <span class="text-base font-bold {{ $transaction->type == 'thu' ? 'text-green-600' : 'text-red-600' }}">
-                                                {{ $transaction->type == 'thu' ? '+' : '-' }}{{ number_format($transaction->amount, 0, ',', '.') }}đ
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                            {{ $transaction->method_label }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                            @can('edit transactions')
-                                            <a href="{{ route('transactions.edit', $transaction) }}" class="text-indigo-600 hover:text-indigo-900">Sửa</a>
-                                            @endcan
-                                            @can('delete transactions')
-                                            <form action="{{ route('transactions.destroy', $transaction) }}" method="POST" class="inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-900">Xóa</button>
-                                            </form>
-                                            @endcan
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Chi tiết giao dịch - Ẩn mặc định --}}
+                                <div id="detail-{{ $loop->index }}" class="hidden bg-white">
+                                    <div class="px-4 py-3 border-t border-gray-200">
+                                        <table class="w-full text-sm">
+                                            <thead class="text-xs text-gray-500 uppercase border-b">
+                                                <tr>
+                                                    <th class="py-2 text-left">Loại</th>
+                                                    <th class="py-2 text-left">Tên khoản</th>
+                                                    <th class="py-2 text-right">Số tiền</th>
+                                                    <th class="py-2 text-left">Phương thức</th>
+                                                    <th class="py-2 text-right">Thao tác</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-100">
+                                                @foreach($group['transactions'] as $transaction)
+                                                <tr class="hover:bg-gray-50 {{ $transaction->category == 'điều_chỉnh_lương' ? 'bg-blue-50' : '' }}">
+                                                    <td class="py-2">
+                                                        <span class="px-2 py-1 text-xs rounded-full {{ $transaction->type == 'thu' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                                            {{ $transaction->type_label }}
+                                                        </span>
+                                                        @if($transaction->category == 'điều_chỉnh_lương')
+                                                            <span class="ml-1 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                                                                ⚙️ Điều chỉnh
+                                                            </span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="py-2">
+                                                        {{ $transaction->note ?? '-' }}
+                                                        @if($transaction->category == 'điều_chỉnh_lương' && !$transaction->incident_id)
+                                                            <span class="text-xs text-orange-600">(từ quỹ công ty)</span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="py-2 text-right font-semibold {{ $transaction->type == 'thu' ? 'text-green-600' : 'text-red-600' }}">
+                                                        {{ $transaction->type == 'thu' ? '+' : '-' }}{{ number_format($transaction->amount, 0, ',', '.') }}đ
+                                                    </td>
+                                                    <td class="py-2">{{ $transaction->method_label }}</td>
+                                                    <td class="py-2 text-right space-x-2">
+                                                        @can('edit transactions')
+                                                        <a href="{{ route('transactions.edit', $transaction) }}" class="text-indigo-600 hover:text-indigo-900">Sửa</a>
+                                                        @endcan
+                                                        @can('delete transactions')
+                                                        <form action="{{ route('transactions.destroy', $transaction) }}" method="POST" class="inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="text-red-600 hover:text-red-900">Xóa</button>
+                                                        </form>
+                                                        @endcan
+                                                    </td>
+                                                </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
                         </div>
 
                         <div class="mt-4">
@@ -169,4 +240,22 @@
             </div>
         </div>
     </div>
+
+    @push('scripts')
+    <script>
+        function toggleDetail(id) {
+            const detail = document.getElementById(id);
+            const iconId = id.replace('detail-', 'icon-');
+            const icon = document.getElementById(iconId);
+            
+            if (detail.classList.contains('hidden')) {
+                detail.classList.remove('hidden');
+                icon.style.transform = 'rotate(90deg)';
+            } else {
+                detail.classList.add('hidden');
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+    </script>
+    @endpush
 </x-app-layout>
