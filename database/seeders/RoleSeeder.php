@@ -92,6 +92,41 @@ class RoleSeeder extends Seeder
             'view transactions',
         ]);
 
+        // Medical Staff - similar to driver
+        $medicalStaff = Role::create(['name' => 'medical_staff']);
+        $medicalStaff->givePermissionTo([
+            'view vehicles',
+            'view incidents',
+            'view transactions',
+            'view patients',
+        ]);
+
+        // Manager - broader access
+        $manager = Role::create(['name' => 'manager']);
+        $manager->givePermissionTo([
+            'view vehicles',
+            'view incidents',
+            'view transactions',
+            'view patients',
+            'view reports',
+            'export reports',
+        ]);
+
+        // Investor - view reports only
+        $investor = Role::create(['name' => 'investor']);
+        $investor->givePermissionTo([
+            'view reports',
+        ]);
+
+        // Vehicle Owner - view vehicle and earnings
+        $vehicleOwner = Role::create(['name' => 'vehicle_owner']);
+        $vehicleOwner->givePermissionTo([
+            'view vehicles',
+            'view incidents',
+            'view transactions',
+            'view reports',
+        ]);
+
         $this->command->info('Roles and permissions created successfully!');
     }
 }
