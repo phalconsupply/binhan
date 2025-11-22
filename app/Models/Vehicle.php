@@ -41,6 +41,11 @@ class Vehicle extends Model
         return $this->belongsTo(Staff::class, 'driver_id');
     }
 
+    public function owner()
+    {
+        return $this->hasOne(Staff::class, 'vehicle_id')->where('staff_type', 'vehicle_owner');
+    }
+
     public function incidents()
     {
         return $this->hasMany(Incident::class);

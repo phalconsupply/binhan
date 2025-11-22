@@ -79,6 +79,8 @@ class VehicleController extends Controller
     {
         // Load relationships
         $vehicle->load([
+            'driver',
+            'owner',
             'incidents' => function($q) {
                 $q->with(['patient', 'dispatcher'])->orderBy('date', 'desc')->limit(20);
             },
