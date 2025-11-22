@@ -91,8 +91,16 @@ class VehicleController extends Controller
             },
         ]);
 
+        // Get maintenance history
+        $maintenances = $vehicle->vehicleMaintenances()
+            ->with(['maintenanceService', 'partner', 'user', 'transaction'])
+            ->orderBy('date', 'desc')
+            ->paginate(10, ['*'], 'maintenance_page');
+
         // Build transactions query with filters
-        $transactionsQuery = $vehicle->transactions()->with(['incident.patient', 'recorder'])->orderBy('date', 'desc');
+        $transactionsQuery = $vehicle->transactions()
+            ->with(['incident.patient', 'recorder', 'vehicleMaintenance.maintenanceService', 'vehicleMaintenance.partner'])
+            ->orderBy('date', 'desc');
         
         if ($type) {
             $transactionsQuery->where('type', $type);
@@ -109,8 +117,17 @@ class VehicleController extends Controller
         // Get all filtered transactions
         $allTransactions = $transactionsQuery->get();
 
-        // Group by incident_id
-        $groupedTransactions = $allTransactions->groupBy('incident_id')->map(function($group) use ($vehicle) {
+        // Group by incident_id (for incidents) or vehicle_maintenance_id (for maintenances)
+        // Transactions without both will be grouped individually
+        $groupedTransactions = $allTransactions->groupBy(function($transaction) {
+            if ($transaction->incident_id) {
+                return 'incident_' . $transaction->incident_id;
+            } elseif ($transaction->vehicle_maintenance_id) {
+                return 'maintenance_' . $transaction->vehicle_maintenance_id;
+            } else {
+                return 'other_' . $transaction->id;
+            }
+        })->map(function($group) use ($vehicle) {
             $totalRevenue = $group->where('type', 'thu')->sum('amount');
             $totalExpense = $group->where('type', 'chi')->sum('amount');
             $totalPlannedExpense = $group->where('type', 'du_kien_chi')->sum('amount');
@@ -171,24 +188,42 @@ class VehicleController extends Controller
             'month_planned_expense' => $vehicle->transactions()->plannedExpense()->thisMonth()->sum('amount'),
         ];
 
-        $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'] - $stats['total_planned_expense'];
-        $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
-        
-        // For vehicles with owner, calculate profit after 15% management fee
+        // For vehicles with owner, separate owner maintenance costs
         $stats['has_owner'] = $vehicle->hasOwner();
         if ($stats['has_owner']) {
-            // Total profit after fee (only count positive profits)
-            $totalManagementFee = $stats['total_net'] > 0 ? $stats['total_net'] * 0.15 : 0;
-            $stats['total_management_fee'] = $totalManagementFee;
-            $stats['total_profit_after_fee'] = $stats['total_net'] - $totalManagementFee;
+            // Get maintenance costs for owner's vehicle (deducted from vehicle profit, not company)
+            $totalOwnerMaintenance = (clone $statsQuery)->expense()->where('category', 'bảo_trì_xe_chủ_riêng')->sum('amount');
+            $monthOwnerMaintenance = $vehicle->transactions()->expense()->thisMonth()->where('category', 'bảo_trì_xe_chủ_riêng')->sum('amount');
             
-            // Monthly profit after fee
+            // Adjust expenses: remove owner maintenance from company expenses
+            $stats['total_expense_company'] = $stats['total_expense'] - $totalOwnerMaintenance;
+            $stats['month_expense_company'] = $stats['month_expense'] - $monthOwnerMaintenance;
+            
+            // Calculate net before owner costs
+            $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense_company'] - $stats['total_planned_expense'];
+            $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense_company'] - $stats['month_planned_expense'];
+            
+            // Calculate management fee (15% of profit before owner maintenance)
+            $totalManagementFee = $stats['total_net'] > 0 ? $stats['total_net'] * 0.15 : 0;
             $monthManagementFee = $stats['month_net'] > 0 ? $stats['month_net'] * 0.15 : 0;
+            
+            $stats['total_management_fee'] = $totalManagementFee;
             $stats['month_management_fee'] = $monthManagementFee;
-            $stats['month_profit_after_fee'] = $stats['month_net'] - $monthManagementFee;
+            
+            // Profit after fee and owner maintenance
+            $stats['total_profit_after_fee'] = $stats['total_net'] - $totalManagementFee - $totalOwnerMaintenance;
+            $stats['month_profit_after_fee'] = $stats['month_net'] - $monthManagementFee - $monthOwnerMaintenance;
+            
+            // Track owner maintenance separately
+            $stats['total_owner_maintenance'] = $totalOwnerMaintenance;
+            $stats['month_owner_maintenance'] = $monthOwnerMaintenance;
+        } else {
+            // Company vehicle: include all expenses
+            $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'] - $stats['total_planned_expense'];
+            $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
         }
 
-        return view('vehicles.show', compact('vehicle', 'stats', 'transactions'));
+        return view('vehicles.show', compact('vehicle', 'stats', 'transactions', 'maintenances'));
     }
 
     /**

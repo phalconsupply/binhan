@@ -14,15 +14,21 @@ class Transaction extends Model
     protected $fillable = [
         'incident_id',
         'vehicle_id',
+        'vehicle_maintenance_id',
         'staff_id',
         'type',
         'category',
+        'transaction_category',
         'amount',
         'method',
         'payment_method',
         'note',
         'recorded_by',
         'date',
+        'is_active',
+        'replaced_by',
+        'edited_at',
+        'edited_by',
     ];
 
     protected $casts = [
@@ -30,6 +36,8 @@ class Transaction extends Model
         'date' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'is_active' => 'boolean',
+        'edited_at' => 'datetime',
     ];
 
     // Activity Log
@@ -62,7 +70,26 @@ class Transaction extends Model
         return $this->belongsTo(Staff::class);
     }
 
+    public function vehicleMaintenance()
+    {
+        return $this->belongsTo(VehicleMaintenance::class);
+    }
+
+    public function editor()
+    {
+        return $this->belongsTo(User::class, 'edited_by');
+    }
+
+    public function replacedByTransaction()
+    {
+        return $this->belongsTo(Transaction::class, 'replaced_by');
+    }
+
     // Scopes
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
     public function scopeRevenue($query)
     {
         return $query->where('type', 'thu');

@@ -1312,6 +1312,112 @@ class StaffController extends Controller
                 ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Display payroll calendar
+     */
+    public function payroll(Request $request)
+    {
+        $year = $request->input('year', now()->year);
+        $currentMonth = now()->month;
+        $currentYear = now()->year;
+
+        return view('staff.payroll', compact('year', 'currentMonth', 'currentYear'));
+    }
+
+    /**
+     * Display payroll detail for specific month
+     */
+    public function payrollDetail(Request $request, $year, $month)
+    {
+        $monthDate = \Carbon\Carbon::createFromDate($year, $month, 1);
+        
+        // Get all staff with base salary
+        $staff = Staff::where('is_active', true)
+            ->whereNotNull('base_salary')
+            ->where('base_salary', '>', 0)
+            ->orderBy('full_name')
+            ->get();
+
+        $payrollData = [];
+
+        foreach ($staff as $member) {
+            // Base salary
+            $baseSalary = $member->base_salary;
+
+            // Get adjustments for this month
+            $adjustments = StaffAdjustment::where('staff_id', $member->id)
+                ->whereYear('month', $year)
+                ->whereMonth('month', $month)
+                ->get();
+
+            $additions = $adjustments->where('type', 'addition')->sum('amount');
+            $deductions = $adjustments->where('type', 'deduction')->sum('amount');
+
+            // Get earnings from trips for this month (from incident_staff pivot table)
+            $earningRecords = DB::table('incident_staff')
+                ->join('incidents', 'incident_staff.incident_id', '=', 'incidents.id')
+                ->leftJoin('patients', 'incidents.patient_id', '=', 'patients.id')
+                ->where('incident_staff.staff_id', $member->id)
+                ->whereNotNull('incident_staff.wage_amount')
+                ->whereYear('incidents.date', $year)
+                ->whereMonth('incidents.date', $month)
+                ->select(
+                    'incident_staff.*',
+                    'incidents.id as incident_id',
+                    'patients.name as patient_name',
+                    'incidents.date as incident_date',
+                    'incidents.destination'
+                )
+                ->orderBy('incidents.date', 'desc')
+                ->get();
+
+            // Get other earnings from transactions (NOT linked to incidents to avoid double counting)
+            $earningTransactions = Transaction::where('staff_id', $member->id)
+                ->where('type', 'chi')
+                ->whereNull('incident_id') // Only get transactions NOT linked to incidents
+                ->where(function($q) {
+                    $q->whereNull('category')
+                      ->orWhere('category', '!=', 'điều_chỉnh_lương');
+                })
+                ->whereYear('date', $year)
+                ->whereMonth('date', $month)
+                ->orderBy('date', 'desc')
+                ->get();
+
+            $earnings = $earningRecords->sum('wage_amount') + $earningTransactions->sum('amount');
+
+            // Get salary advances for this month (with details)
+            $advanceRecords = $member->salaryAdvances()
+                ->whereYear('date', $year)
+                ->whereMonth('date', $month)
+                ->orderBy('date', 'desc')
+                ->get();
+
+            $advances = $advanceRecords->sum('amount');
+
+            // Calculate total
+            $totalSalary = $baseSalary + $additions + $earnings - $deductions - $advances;
+
+            $payrollData[] = [
+                'staff' => $member,
+                'base_salary' => $baseSalary,
+                'additions' => $additions,
+                'deductions' => $deductions,
+                'earnings' => $earnings,
+                'advances' => $advances,
+                'total' => $totalSalary,
+                'adjustments' => $adjustments,
+                'earning_records' => $earningRecords,
+                'earning_transactions' => $earningTransactions,
+                'advance_records' => $advanceRecords,
+            ];
+        }
+
+        return view('staff.payroll-detail', compact('payrollData', 'year', 'month', 'monthDate'));
+    }
 }
+
+
 
 

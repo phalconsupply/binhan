@@ -125,11 +125,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Vehicle Maintenance routes
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('vehicle-maintenances/search/services', [VehicleMaintenanceController::class, 'searchServices'])->name('vehicle-maintenances.search.services');
+    Route::get('vehicle-maintenances/search/partners', [VehicleMaintenanceController::class, 'searchPartners'])->name('vehicle-maintenances.search.partners');
     Route::resource('vehicle-maintenances', VehicleMaintenanceController::class);
 });
 
 // Staff routes
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('staff/payroll', [StaffController::class, 'payroll'])->name('staff.payroll')->middleware('permission:view staff');
+    Route::get('staff/payroll/{year}/{month}', [StaffController::class, 'payrollDetail'])->name('staff.payroll.detail')->middleware('permission:view staff');
     Route::get('staff/{staff}/earnings', [StaffController::class, 'earnings'])->name('staff.earnings');
     Route::post('staff/{staff}/adjustments', [StaffController::class, 'storeAdjustment'])->name('staff.adjustments.store')->middleware('permission:manage settings');
     Route::put('adjustment/{adjustment}', [StaffController::class, 'updateAdjustment'])->name('adjustment.update')->middleware('permission:manage settings');

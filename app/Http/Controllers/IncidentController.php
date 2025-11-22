@@ -136,41 +136,79 @@ class IncidentController extends Controller
         try {
             DB::beginTransaction();
 
-            // Find or create locations based on names
+            // Find or create locations based on names (case-insensitive)
             $fromLocationId = null;
             $toLocationId = null;
             
             if (!empty($validated['from_location'])) {
-                $location = \App\Models\Location::firstOrCreate(
-                    ['name' => $validated['from_location']],
-                    ['type' => 'from', 'is_active' => true]
-                );
+                $normalizedName = trim($validated['from_location']);
+                
+                // Search case-insensitive first
+                $location = \App\Models\Location::whereRaw('LOWER(name) = ?', [mb_strtolower($normalizedName)])
+                    ->first();
+                
+                if (!$location) {
+                    // Create new if not found
+                    $location = \App\Models\Location::create([
+                        'name' => $normalizedName,
+                        'type' => 'from',
+                        'is_active' => true
+                    ]);
+                }
+                
                 $fromLocationId = $location->id;
             }
             
             if (!empty($validated['to_location'])) {
-                $location = \App\Models\Location::firstOrCreate(
-                    ['name' => $validated['to_location']],
-                    ['type' => 'to', 'is_active' => true]
-                );
+                $normalizedName = trim($validated['to_location']);
+                
+                // Search case-insensitive first
+                $location = \App\Models\Location::whereRaw('LOWER(name) = ?', [mb_strtolower($normalizedName)])
+                    ->first();
+                
+                if (!$location) {
+                    // Create new if not found
+                    $location = \App\Models\Location::create([
+                        'name' => $normalizedName,
+                        'type' => 'to',
+                        'is_active' => true
+                    ]);
+                }
+                
                 $toLocationId = $location->id;
             }
 
-            // Create or select patient
+            // Create or select patient (case-insensitive, handle NULL phone)
             $patientId = $validated['patient_id'] ?? null;
             
             if (!$patientId && !empty($validated['patient_name'])) {
-                $patient = Patient::firstOrCreate(
-                    [
-                        'name' => $validated['patient_name'],
-                        'phone' => $validated['patient_phone'] ?? null,
-                    ],
-                    [
+                $normalizedName = trim($validated['patient_name']);
+                $normalizedPhone = !empty($validated['patient_phone']) ? trim($validated['patient_phone']) : null;
+                
+                // Search case-insensitive
+                $patientQuery = Patient::whereRaw('LOWER(name) = ?', [mb_strtolower($normalizedName)]);
+                
+                // Match phone if provided
+                if ($normalizedPhone) {
+                    $patientQuery->where('phone', $normalizedPhone);
+                } else {
+                    // If no phone provided, find any patient with this name
+                    $patientQuery->whereNull('phone');
+                }
+                
+                $patient = $patientQuery->first();
+                
+                if (!$patient) {
+                    // Create new patient
+                    $patient = Patient::create([
+                        'name' => $normalizedName,
+                        'phone' => $normalizedPhone,
                         'birth_year' => $validated['patient_birth_year'] ?? null,
                         'gender' => $validated['patient_gender'] ?? null,
                         'address' => $validated['patient_address'] ?? null,
-                    ]
-                );
+                    ]);
+                }
+                
                 $patientId = $patient->id;
             }
 
@@ -491,23 +529,45 @@ class IncidentController extends Controller
         try {
             DB::beginTransaction();
 
-            // Find or create locations based on names
+            // Find or create locations based on names (case-insensitive)
             $fromLocationId = null;
             $toLocationId = null;
             
             if (!empty($validated['from_location'])) {
-                $location = \App\Models\Location::firstOrCreate(
-                    ['name' => $validated['from_location']],
-                    ['type' => 'from', 'is_active' => true]
-                );
+                $normalizedName = trim($validated['from_location']);
+                
+                // Search case-insensitive first
+                $location = \App\Models\Location::whereRaw('LOWER(name) = ?', [mb_strtolower($normalizedName)])
+                    ->first();
+                
+                if (!$location) {
+                    // Create new if not found
+                    $location = \App\Models\Location::create([
+                        'name' => $normalizedName,
+                        'type' => 'from',
+                        'is_active' => true
+                    ]);
+                }
+                
                 $fromLocationId = $location->id;
             }
             
             if (!empty($validated['to_location'])) {
-                $location = \App\Models\Location::firstOrCreate(
-                    ['name' => $validated['to_location']],
-                    ['type' => 'to', 'is_active' => true]
-                );
+                $normalizedName = trim($validated['to_location']);
+                
+                // Search case-insensitive first
+                $location = \App\Models\Location::whereRaw('LOWER(name) = ?', [mb_strtolower($normalizedName)])
+                    ->first();
+                
+                if (!$location) {
+                    // Create new if not found
+                    $location = \App\Models\Location::create([
+                        'name' => $normalizedName,
+                        'type' => 'to',
+                        'is_active' => true
+                    ]);
+                }
+                
                 $toLocationId = $location->id;
             }
 

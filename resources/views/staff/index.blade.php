@@ -4,11 +4,18 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 Quản lý nhân sự
             </h2>
-            @can('create staff')
-            <a href="{{ route('staff.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                + Thêm nhân sự
-            </a>
-            @endcan
+            <div class="flex items-center space-x-2">
+                @can('view staff')
+                <a href="{{ route('staff.payroll') }}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                    💰 Bảng lương
+                </a>
+                @endcan
+                @can('create staff')
+                <a href="{{ route('staff.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                    + Thêm nhân sự
+                </a>
+                @endcan
+            </div>
         </div>
     </x-slot>
 

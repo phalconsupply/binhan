@@ -51,45 +51,84 @@
                                 <label for="cost" class="block text-sm font-medium text-gray-700">
                                     Chi phí (đ) <span class="text-red-500">*</span>
                                 </label>
-                                <input type="number" id="cost" name="cost" value="{{ old('cost') }}" required step="1000" min="0" 
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <input type="number" id="cost" name="cost" value="{{ old('cost') }}" required step="1" min="0" 
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    placeholder="Ví dụ: 518298">
                                 @error('cost')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
                         </div>
 
-                        <div>
-                            <label for="maintenance_service_id" class="block text-sm font-medium text-gray-700">
+                        <div x-data="serviceAutocomplete()">
+                            <label for="service_search" class="block text-sm font-medium text-gray-700">
                                 Loại dịch vụ bảo trì
                             </label>
-                            <select id="maintenance_service_id" name="maintenance_service_id" 
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">-- Chọn dịch vụ --</option>
-                                @foreach($services as $service)
-                                    <option value="{{ $service->id }}" {{ old('maintenance_service_id') == $service->id ? 'selected' : '' }}>
-                                        {{ $service->name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <div class="relative mt-1">
+                                <input type="text" 
+                                    id="service_search"
+                                    x-model="searchTerm"
+                                    @input.debounce.300ms="search()"
+                                    @focus="showResults = true"
+                                    @keydown.escape="showResults = false"
+                                    placeholder="Nhập tên dịch vụ..."
+                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                
+                                <input type="hidden" name="maintenance_service_id" x-model="selectedId">
+                                <input type="hidden" name="maintenance_service_name" x-model="searchTerm">
+                                
+                                <div x-show="showResults && results.length > 0" 
+                                     @click.away="showResults = false"
+                                     class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                    
+                                    <template x-for="result in results" :key="result.id">
+                                        <div @click="selectService(result)" 
+                                             class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-600 hover:text-white">
+                                            <span x-text="result.text"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">
+                                💡 Tự động thêm mới nếu chưa có trong danh sách
+                            </p>
                             @error('maintenance_service_id')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
 
-                        <div>
-                            <label for="partner_id" class="block text-sm font-medium text-gray-700">
+                        <div x-data="partnerAutocomplete()">
+                            <label for="partner_search" class="block text-sm font-medium text-gray-700">
                                 Đối tác bảo trì
                             </label>
-                            <select id="partner_id" name="partner_id" 
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">-- Chọn đối tác --</option>
-                                @foreach($partners as $partner)
-                                    <option value="{{ $partner->id }}" {{ old('partner_id') == $partner->id ? 'selected' : '' }}>
-                                        {{ $partner->name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <div class="relative mt-1">
+                                <input type="text" 
+                                    id="partner_search"
+                                    x-model="searchTerm"
+                                    @input.debounce.300ms="search()"
+                                    @focus="showResults = true"
+                                    @keydown.escape="showResults = false"
+                                    placeholder="Nhập tên đối tác..."
+                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                
+                                <input type="hidden" name="partner_id" x-model="selectedId">
+                                <input type="hidden" name="partner_name" x-model="searchTerm">
+                                
+                                <div x-show="showResults && results.length > 0" 
+                                     @click.away="showResults = false"
+                                     class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                    
+                                    <template x-for="result in results" :key="result.id">
+                                        <div @click="selectPartner(result)" 
+                                             class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-600 hover:text-white">
+                                            <span x-text="result.text"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">
+                                💡 Tự động thêm mới nếu chưa có trong danh sách
+                            </p>
                             @error('partner_id')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -128,12 +167,17 @@
                             @enderror
                         </div>
 
+                        <input type="hidden" name="action" id="form_action" value="save_and_exit">
+                        
                         <div class="flex justify-end gap-3">
                             <a href="{{ route('vehicle-maintenances.index') }}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
                                 Hủy
                             </a>
-                            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                                Lưu bảo trì
+                            <button type="submit" onclick="document.getElementById('form_action').value='save_and_continue'" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                💾 Lưu và tiếp tục
+                            </button>
+                            <button type="submit" onclick="document.getElementById('form_action').value='save_and_exit'" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                                ✓ Lưu và thoát
                             </button>
                         </div>
                     </form>
@@ -141,4 +185,66 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function serviceAutocomplete() {
+            return {
+                searchTerm: '',
+                selectedId: '',
+                results: [],
+                showResults: false,
+                
+                async search() {
+                    if (this.searchTerm.length < 1) {
+                        this.results = [];
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`{{ route('vehicle-maintenances.search.services') }}?q=${encodeURIComponent(this.searchTerm)}`);
+                        const data = await response.json();
+                        this.results = data.results;
+                    } catch (error) {
+                        console.error('Search error:', error);
+                    }
+                },
+                
+                selectService(service) {
+                    this.searchTerm = service.text;
+                    this.selectedId = service.id;
+                    this.showResults = false;
+                }
+            }
+        }
+        
+        function partnerAutocomplete() {
+            return {
+                searchTerm: '',
+                selectedId: '',
+                results: [],
+                showResults: false,
+                
+                async search() {
+                    if (this.searchTerm.length < 1) {
+                        this.results = [];
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`{{ route('vehicle-maintenances.search.partners') }}?q=${encodeURIComponent(this.searchTerm)}`);
+                        const data = await response.json();
+                        this.results = data.results;
+                    } catch (error) {
+                        console.error('Search error:', error);
+                    }
+                },
+                
+                selectPartner(partner) {
+                    this.searchTerm = partner.text;
+                    this.selectedId = partner.id;
+                    this.showResults = false;
+                }
+            }
+        }
+    </script>
 </x-app-layout>

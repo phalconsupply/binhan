@@ -129,8 +129,13 @@
                                 {{ number_format($stats['month_profit_after_fee'], 0, ',', '.') }}đ tháng này
                             </p>
                             <p class="text-xs text-orange-500 mt-1">
-                                (Sau phí 15%)
+                                (Sau phí 15% & bảo trì)
                             </p>
+                            @if($stats['total_owner_maintenance'] > 0)
+                            <p class="text-xs text-gray-500 mt-1">
+                                🔧 Bảo trì: {{ number_format($stats['total_owner_maintenance'], 0, ',', '.') }}đ
+                            </p>
+                            @endif
                         @else
                             <p class="text-xl font-bold {{ $stats['total_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                 {{ number_format($stats['total_net'], 0, ',', '.') }}đ
@@ -199,6 +204,111 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {{-- Maintenance History --}}
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg lg:col-span-2">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">🔧 Lịch sử bảo trì xe</h3>
+                            @can('manage vehicles')
+                            <a href="{{ route('vehicle-maintenances.create', ['vehicle_id' => $vehicle->id]) }}" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">
+                                + Thêm bảo trì
+                            </a>
+                            @endcan
+                        </div>
+                        
+                        @if($maintenances->isEmpty())
+                            <p class="text-gray-500 text-sm">Chưa có lịch sử bảo trì nào.</p>
+                        @else
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dịch vụ</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Đối tác</th>
+                                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Chi phí</th>
+                                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Km</th>
+                                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Loại chi</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ghi chú</th>
+                                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        @foreach($maintenances as $maintenance)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                                {{ $maintenance->date->format('d/m/Y') }}
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-900">
+                                                {{ $maintenance->maintenanceService->name ?? '-' }}
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-600">
+                                                {{ $maintenance->partner->name ?? '-' }}
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-right text-red-600">
+                                                {{ number_format($maintenance->cost, 0, ',', '.') }}đ
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-600">
+                                                {{ $maintenance->mileage ? number_format($maintenance->mileage, 0, ',', '.') : '-' }}
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-center">
+                                                @if($maintenance->transaction)
+                                                    @if($maintenance->transaction->category == 'bảo_trì_xe_chủ_riêng')
+                                                        <span class="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800" title="Chi phí trừ từ lợi nhuận xe chủ riêng">
+                                                            🏠 Xe chủ riêng
+                                                        </span>
+                                                    @else
+                                                        <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800" title="Chi phí trừ từ tài khoản công ty">
+                                                            🏢 Công ty
+                                                        </span>
+                                                    @endif
+                                                @else
+                                                    <span class="text-gray-400 text-xs">-</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-600">
+                                                <div class="max-w-xs">
+                                                    @if($maintenance->description)
+                                                        <p class="text-gray-700 mb-1">{{ $maintenance->description }}</p>
+                                                    @endif
+                                                    @if($maintenance->note)
+                                                        <p class="text-gray-500 text-xs">{{ $maintenance->note }}</p>
+                                                    @endif
+                                                    @if(!$maintenance->description && !$maintenance->note)
+                                                        -
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-center">
+                                                @can('manage vehicles')
+                                                <div class="flex items-center justify-center space-x-2">
+                                                    <a href="{{ route('vehicle-maintenances.edit', $maintenance) }}" class="text-indigo-600 hover:text-indigo-900">
+                                                        Sửa
+                                                    </a>
+                                                    <form action="{{ route('vehicle-maintenances.destroy', $maintenance) }}" method="POST" class="inline">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-red-600 hover:text-red-900" onclick="return confirm('Xóa lịch sử bảo trì này?\n\nLưu ý: Giao dịch liên quan cũng sẽ bị xóa!')">
+                                                            Xóa
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                                @endcan
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            {{-- Maintenance Pagination --}}
+                            <div class="mt-4">
+                                {{ $maintenances->links() }}
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
                 {{-- Recent Incidents --}}
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
@@ -272,12 +382,16 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                                 </svg>
                                                 
-                                                {{-- Mã chuyến đi --}}
+                                                {{-- Mã chuyến đi hoặc bảo trì --}}
                                                 <div>
                                                     @if($group['incident'])
                                                         <a href="{{ route('incidents.show', $group['incident']) }}" class="text-base font-semibold text-blue-600 hover:text-blue-800" onclick="event.stopPropagation()">
                                                             Chuyến #{{ $group['incident']->id }}
                                                         </a>
+                                                    @elseif($group['transactions']->first()->vehicleMaintenance)
+                                                        <span class="text-base font-semibold text-green-600">
+                                                            🔧 {{ $group['transactions']->first()->vehicleMaintenance->maintenanceService->name ?? 'Bảo trì' }}
+                                                        </span>
                                                     @else
                                                         <span class="text-base font-semibold text-gray-600">Giao dịch khác</span>
                                                     @endif
@@ -289,6 +403,11 @@
                                                     @if($group['incident'] && $group['incident']->patient)
                                                         <span>•</span>
                                                         <span>{{ $group['incident']->patient->name }}</span>
+                                                    @elseif($group['transactions']->first()->vehicleMaintenance)
+                                                        @if($group['transactions']->first()->vehicleMaintenance->partner)
+                                                            <span>•</span>
+                                                            <span>{{ $group['transactions']->first()->vehicleMaintenance->partner->name }}</span>
+                                                        @endif
                                                     @endif
                                                 </div>
                                             </div>
@@ -348,7 +467,7 @@
                                                 </thead>
                                                 <tbody class="divide-y divide-gray-100">
                                                     @foreach($group['transactions'] as $transaction)
-                                                    <tr class="hover:bg-gray-50 {{ $transaction->category == 'điều_chỉnh_lương' ? 'bg-blue-50' : '' }}">
+                                                    <tr class="hover:bg-gray-50 {{ $transaction->category == 'điều_chỉnh_lương' ? 'bg-blue-50' : '' }} {{ $transaction->vehicle_maintenance_id ? 'bg-green-50' : '' }}">
                                                         <td class="py-2">
                                                             <span class="px-2 py-1 text-xs rounded-full {{ $transaction->type == 'thu' ? 'bg-green-100 text-green-800' : ($transaction->type == 'du_kien_chi' ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800') }}">
                                                                 {{ $transaction->type_label }}
@@ -356,6 +475,14 @@
                                                             @if($transaction->category == 'điều_chỉnh_lương')
                                                                 <span class="ml-1 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
                                                                     ⚙️ Điều chỉnh
+                                                                </span>
+                                                            @elseif($transaction->category == 'bảo_trì_xe_chủ_riêng')
+                                                                <span class="ml-1 px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800">
+                                                                    🏠 Xe chủ riêng
+                                                                </span>
+                                                            @elseif($transaction->category == 'bảo_trì_xe')
+                                                                <span class="ml-1 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                                                                    🏢 Công ty
                                                                 </span>
                                                             @endif
                                                         </td>

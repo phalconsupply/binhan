@@ -62,4 +62,48 @@ class VehicleMaintenance extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function transaction()
+    {
+        return $this->hasOne(Transaction::class, 'vehicle_maintenance_id');
+    }
+
+    /**
+     * Create a transaction for this maintenance
+     * If vehicle has owner, deduct from vehicle profit
+     * Otherwise, deduct from company account
+     */
+    public function createTransaction()
+    {
+        // Skip if transaction already exists
+        if ($this->transaction()->exists()) {
+            return $this->transaction;
+        }
+
+        $vehicle = $this->vehicle;
+        $hasOwner = $vehicle->hasOwner();
+        
+        $serviceName = $this->maintenanceService ? $this->maintenanceService->name : 'Bảo trì xe';
+        $partnerName = $this->partner ? ' - ' . $this->partner->name : '';
+        
+        $note = "[Bảo trì] {$serviceName}{$partnerName}";
+        if ($this->description) {
+            $note .= " - {$this->description}";
+        }
+
+        $transaction = Transaction::create([
+            'vehicle_id' => $this->vehicle_id,
+            'vehicle_maintenance_id' => $this->id,
+            'incident_id' => $this->incident_id,
+            'type' => 'chi',
+            'category' => $hasOwner ? 'bảo_trì_xe_chủ_riêng' : 'bảo_trì_xe',
+            'amount' => $this->cost,
+            'method' => 'cash',
+            'note' => $note,
+            'date' => $this->date,
+            'recorded_by' => $this->user_id ?? auth()->id(),
+        ]);
+
+        return $transaction;
+    }
 }

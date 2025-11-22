@@ -61,6 +61,11 @@ class Vehicle extends Model
         return $this->hasMany(Note::class);
     }
 
+    public function vehicleMaintenances()
+    {
+        return $this->hasMany(VehicleMaintenance::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {

@@ -52,7 +52,9 @@ class VehicleMaintenanceController extends Controller
         $validated = $request->validate([
             'vehicle_id' => 'required|exists:vehicles,id',
             'maintenance_service_id' => 'nullable|exists:maintenance_services,id',
+            'maintenance_service_name' => 'nullable|string|max:255',
             'partner_id' => 'nullable|exists:partners,id',
+            'partner_name' => 'nullable|string|max:255',
             'incident_id' => 'nullable|exists:incidents,id',
             'date' => 'required|date',
             'cost' => 'required|numeric|min:0',
@@ -61,13 +63,45 @@ class VehicleMaintenanceController extends Controller
             'note' => 'nullable|string',
         ]);
 
+        // Create new maintenance service if name provided but no ID
+        if (!$validated['maintenance_service_id'] && !empty($validated['maintenance_service_name'])) {
+            $service = MaintenanceService::firstOrCreate(
+                ['name' => $validated['maintenance_service_name']], // Search condition
+                ['is_active' => true] // Additional attributes if creating
+            );
+            $validated['maintenance_service_id'] = $service->id;
+        }
+
+        // Create new partner if name provided but no ID
+        if (!$validated['partner_id'] && !empty($validated['partner_name'])) {
+            $partner = Partner::firstOrCreate(
+                [
+                    'name' => $validated['partner_name'],
+                    'type' => 'maintenance'
+                ], // Search condition
+                ['is_active' => true] // Additional attributes if creating
+            );
+            $validated['partner_id'] = $partner->id;
+        }
+
         $validated['user_id'] = auth()->id();
 
         $maintenance = VehicleMaintenance::create($validated);
         $vehicle = $maintenance->vehicle;
 
+        // Create transaction for this maintenance
+        $maintenance->createTransaction();
+
+        $message = "Đã thêm lịch sử bảo trì cho xe {$vehicle->license_plate} thành công!";
+
+        // Check action type
+        if ($request->input('action') === 'save_and_continue') {
+            return redirect()->route('vehicle-maintenances.create', ['vehicle_id' => $vehicle->id])
+                ->with('success', $message);
+        }
+
         return redirect()->route('vehicle-maintenances.index', ['vehicle_id' => $vehicle->id])
-            ->with('success', "Đã thêm lịch sử bảo trì cho xe {$vehicle->license_plate} thành công!");
+            ->with('success', $message);
     }
 
     public function edit(VehicleMaintenance $vehicleMaintenance)
@@ -84,7 +118,9 @@ class VehicleMaintenanceController extends Controller
         $validated = $request->validate([
             'vehicle_id' => 'required|exists:vehicles,id',
             'maintenance_service_id' => 'nullable|exists:maintenance_services,id',
+            'maintenance_service_name' => 'nullable|string|max:255',
             'partner_id' => 'nullable|exists:partners,id',
+            'partner_name' => 'nullable|string|max:255',
             'incident_id' => 'nullable|exists:incidents,id',
             'date' => 'required|date',
             'cost' => 'required|numeric|min:0',
@@ -93,19 +129,130 @@ class VehicleMaintenanceController extends Controller
             'note' => 'nullable|string',
         ]);
 
+        // Create new maintenance service if name provided but no ID
+        if (!$validated['maintenance_service_id'] && !empty($validated['maintenance_service_name'])) {
+            $service = MaintenanceService::firstOrCreate(
+                ['name' => $validated['maintenance_service_name']], // Search condition
+                ['is_active' => true] // Additional attributes if creating
+            );
+            $validated['maintenance_service_id'] = $service->id;
+        }
+
+        // Create new partner if name provided but no ID
+        if (!$validated['partner_id'] && !empty($validated['partner_name'])) {
+            $partner = Partner::firstOrCreate(
+                [
+                    'name' => $validated['partner_name'],
+                    'type' => 'maintenance'
+                ], // Search condition
+                ['is_active' => true] // Additional attributes if creating
+            );
+            $validated['partner_id'] = $partner->id;
+        }
+
         $vehicleMaintenance->update($validated);
         $vehicle = $vehicleMaintenance->vehicle;
 
+        // Update or create transaction
+        if ($vehicleMaintenance->transaction) {
+            $transaction = $vehicleMaintenance->transaction;
+            $hasOwner = $vehicle->hasOwner();
+            
+            $serviceName = $vehicleMaintenance->maintenanceService ? $vehicleMaintenance->maintenanceService->name : 'Bảo trì xe';
+            $partnerName = $vehicleMaintenance->partner ? ' - ' . $vehicleMaintenance->partner->name : '';
+            
+            $note = "[Bảo trì] {$serviceName}{$partnerName}";
+            if ($vehicleMaintenance->description) {
+                $note .= " - {$vehicleMaintenance->description}";
+            }
+
+            $transaction->update([
+                'vehicle_id' => $vehicleMaintenance->vehicle_id,
+                'incident_id' => $vehicleMaintenance->incident_id,
+                'category' => $hasOwner ? 'bảo_trì_xe_chủ_riêng' : 'bảo_trì_xe',
+                'amount' => $vehicleMaintenance->cost,
+                'note' => $note,
+                'date' => $vehicleMaintenance->date,
+            ]);
+        } else {
+            $vehicleMaintenance->createTransaction();
+        }
+
+        $message = "Đã cập nhật lịch sử bảo trì cho xe {$vehicle->license_plate} thành công!";
+
+        // Check action type
+        if ($request->input('action') === 'save_and_continue') {
+            return redirect()->route('vehicle-maintenances.edit', $vehicleMaintenance)
+                ->with('success', $message);
+        }
+
         return redirect()->route('vehicle-maintenances.index', ['vehicle_id' => $vehicle->id])
-            ->with('success', "Đã cập nhật lịch sử bảo trì cho xe {$vehicle->license_plate} thành công!");
+            ->with('success', $message);
     }
 
     public function destroy(VehicleMaintenance $vehicleMaintenance)
     {
         $vehicleId = $vehicleMaintenance->vehicle_id;
+        
+        // Delete associated transaction
+        if ($vehicleMaintenance->transaction) {
+            $vehicleMaintenance->transaction->delete();
+        }
+        
         $vehicleMaintenance->delete();
 
         return redirect()->route('vehicle-maintenances.index', ['vehicle_id' => $vehicleId])
             ->with('success', "Đã xóa lịch sử bảo trì thành công!");
+    }
+
+    /**
+     * Search maintenance services for autocomplete
+     */
+    public function searchServices(Request $request)
+    {
+        $query = $request->input('q', '');
+        
+        $services = MaintenanceService::where('is_active', true)
+            ->where('name', 'like', "%{$query}%")
+            ->orderBy('name')
+            ->limit(10)
+            ->get()
+            ->map(function($service) {
+                return [
+                    'id' => $service->id,
+                    'text' => $service->name
+                ];
+            });
+
+        return response()->json([
+            'results' => $services,
+            'pagination' => ['more' => false]
+        ]);
+    }
+
+    /**
+     * Search partners for autocomplete
+     */
+    public function searchPartners(Request $request)
+    {
+        $query = $request->input('q', '');
+        
+        $partners = Partner::where('type', 'maintenance')
+            ->where('is_active', true)
+            ->where('name', 'like', "%{$query}%")
+            ->orderBy('name')
+            ->limit(10)
+            ->get()
+            ->map(function($partner) {
+                return [
+                    'id' => $partner->id,
+                    'text' => $partner->name
+                ];
+            });
+
+        return response()->json([
+            'results' => $partners,
+            'pagination' => ['more' => false]
+        ]);
     }
 }
