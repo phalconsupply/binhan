@@ -130,6 +130,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('staff/{staff}/earnings', [StaffController::class, 'earnings'])->name('staff.earnings');
     Route::post('staff/{staff}/adjustments', [StaffController::class, 'storeAdjustment'])->name('staff.adjustments.store')->middleware('permission:manage settings');
+    Route::put('adjustment/{adjustment}', [StaffController::class, 'updateAdjustment'])->name('adjustment.update')->middleware('permission:manage settings');
+    Route::delete('adjustment/{adjustment}', [StaffController::class, 'destroyAdjustment'])->name('adjustment.destroy')->middleware('permission:manage settings');
     Route::post('staff/{staff}/salary-advance', [StaffController::class, 'storeSalaryAdvance'])->name('staff.salary-advance.store')->middleware('permission:manage settings');
     Route::put('salary-advance/{salaryAdvance}', [StaffController::class, 'updateSalaryAdvance'])->name('salary-advance.update')->middleware('permission:manage settings');
     Route::delete('salary-advance/{salaryAdvance}', [StaffController::class, 'destroySalaryAdvance'])->name('salary-advance.destroy')->middleware('permission:manage settings');

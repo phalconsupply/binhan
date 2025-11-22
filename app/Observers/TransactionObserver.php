@@ -102,10 +102,7 @@ class TransactionObserver
      */
     public function deleted(Transaction $transaction): void
     {
-        // Only handle deletion of salary advance debt transactions if deleted outside of salary advance flow
-        // Category 'ứng_lương_nợ' transactions should not be deleted directly
-        // They are managed through salary advance CRUD operations
-        
+        // Handle deletion of salary advance debt transactions
         if ($transaction->category === 'ứng_lương_nợ') {
             \Log::warning('Salary advance debt transaction deleted directly', [
                 'transaction_id' => $transaction->id,
@@ -113,6 +110,29 @@ class TransactionObserver
                 'amount' => $transaction->amount,
             ]);
             // Don't auto-delete salary advance as it's managed in controller
+        }
+        
+        // Handle deletion of adjustment transactions (điều_chỉnh_lương)
+        if ($transaction->category === 'điều_chỉnh_lương') {
+            // Find the adjustment that contains this transaction ID
+            $adjustment = StaffAdjustment::whereJsonContains('transaction_ids', $transaction->id)->first();
+            
+            if ($adjustment) {
+                \Log::info('Deleting staff adjustment due to transaction deletion', [
+                    'adjustment_id' => $adjustment->id,
+                    'transaction_id' => $transaction->id,
+                    'staff_id' => $transaction->staff_id,
+                ]);
+                
+                // Delete other transactions linked to this adjustment
+                $otherTransactionIds = array_diff($adjustment->transaction_ids ?? [], [$transaction->id]);
+                if (!empty($otherTransactionIds)) {
+                    Transaction::whereIn('id', $otherTransactionIds)->delete();
+                }
+                
+                // Delete the adjustment record
+                $adjustment->delete();
+            }
         }
     }
 

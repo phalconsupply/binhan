@@ -338,18 +338,28 @@
                                     <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Số tiền</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Người tạo</th>
+                                    @can('manage settings')
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
+                                    @endcan
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @foreach($adjustments as $adj)
-                                    <tr class="hover:bg-gray-50">
+                                    <tr class="hover:bg-gray-50" x-data="{ editing: false }">
                                         <td class="px-4 py-3 whitespace-nowrap">
                                             <span class="px-2 py-1 text-xs rounded-full {{ $adj->type == 'addition' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
                                                 {{ $adj->type_label }}
                                             </span>
                                         </td>
                                         <td class="px-4 py-3 text-sm">{{ $adj->category }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">{{ Str::limit($adj->reason, 50) }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">
+                                            <div x-show="!editing">
+                                                {{ Str::limit($adj->reason, 50) }}
+                                            </div>
+                                            <div x-show="editing" x-cloak>
+                                                <textarea x-model="reason" class="w-full px-2 py-1 border rounded text-sm" rows="2">{{ $adj->reason }}</textarea>
+                                            </div>
+                                        </td>
                                         <td class="px-4 py-3 text-xs">
                                             @if($adj->incident_id)
                                                 <a href="{{ route('incidents.show', $adj->incident_id) }}" class="text-blue-600 hover:text-blue-900">
@@ -371,8 +381,13 @@
                                                 @endif
                                             @endif
                                         </td>
-                                        <td class="px-4 py-3 text-sm text-right font-semibold {{ $adj->type == 'addition' ? 'text-green-600' : 'text-red-600' }}">
-                                            {{ $adj->type == 'addition' ? '+' : '-' }}{{ number_format($adj->amount, 0, ',', '.') }}đ
+                                        <td class="px-4 py-3 text-sm text-right">
+                                            <div x-show="!editing" class="font-semibold {{ $adj->type == 'addition' ? 'text-green-600' : 'text-red-600' }}">
+                                                {{ $adj->type == 'addition' ? '+' : '-' }}{{ number_format($adj->amount, 0, ',', '.') }}đ
+                                            </div>
+                                            <div x-show="editing" x-cloak>
+                                                <input type="number" x-model="amount" step="1000" class="w-32 px-2 py-1 border rounded text-sm text-right" value="{{ $adj->amount }}">
+                                            </div>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-center">
                                             <span class="px-2 py-1 text-xs rounded-full bg-{{ $adj->status_color }}-100 text-{{ $adj->status_color }}-800">
@@ -387,6 +402,38 @@
                                             <br>
                                             <span class="text-xs text-gray-400">{{ $adj->created_at->format('d/m/Y H:i') }}</span>
                                         </td>
+                                        @can('manage settings')
+                                        <td class="px-4 py-3 text-center">
+                                            <div x-show="!editing" class="flex gap-2 justify-center">
+                                                <button @click="editing = true; amount = {{ $adj->amount }}; reason = '{{ addslashes($adj->reason) }}'" 
+                                                        class="text-blue-600 hover:text-blue-900" title="Sửa">
+                                                    ✏️
+                                                </button>
+                                                <form action="{{ route('adjustment.destroy', $adj) }}" method="POST" 
+                                                      onsubmit="return confirm('Xác nhận xóa điều chỉnh này?');" class="inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-red-600 hover:text-red-900" title="Xóa">
+                                                        🗑️
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            <div x-show="editing" x-cloak class="flex gap-2 justify-center">
+                                                <form :action="'{{ route('adjustment.update', ':id') }}'.replace(':id', {{ $adj->id }})" method="POST" class="inline">
+                                                    @csrf
+                                                    @method('PUT')
+                                                    <input type="hidden" name="amount" :value="amount">
+                                                    <input type="hidden" name="reason" :value="reason">
+                                                    <button type="submit" class="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                                        💾 Lưu
+                                                    </button>
+                                                </form>
+                                                <button @click="editing = false" class="px-2 py-1 bg-gray-400 text-white text-xs rounded hover:bg-gray-500">
+                                                    ❌ Hủy
+                                                </button>
+                                            </div>
+                                        </td>
+                                        @endcan
                                     </tr>
                                 @endforeach
                             </tbody>

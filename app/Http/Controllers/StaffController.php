@@ -1042,6 +1042,214 @@ class StaffController extends Controller
                 ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Update staff adjustment
+     */
+    public function updateAdjustment(Request $request, StaffAdjustment $adjustment)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0',
+            'reason' => 'required|string',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $staff = $adjustment->staff;
+            $oldAmount = $adjustment->amount;
+            $newAmount = $validated['amount'];
+            $incidentId = $adjustment->incident_id;
+
+            // Update adjustment amount and reason
+            $adjustment->update([
+                'amount' => $newAmount,
+                'reason' => $validated['reason'],
+            ]);
+
+            // Update transactions
+            if ($adjustment->type === 'addition') {
+                // For addition, recalculate split and update transactions
+                if ($incidentId) {
+                    $incident = \App\Models\Incident::find($incidentId);
+                    $revenue = Transaction::where('incident_id', $incidentId)->where('type', 'thu')->sum('amount');
+                    $expenses = Transaction::where('incident_id', $incidentId)
+                        ->where('type', 'chi')
+                        ->whereNotIn('id', $adjustment->transaction_ids ?? [])
+                        ->sum('amount');
+                    $availableFromIncident = max(0, $revenue - $expenses);
+
+                    // Delete old transactions
+                    if ($adjustment->transaction_ids) {
+                        Transaction::whereIn('id', $adjustment->transaction_ids)->delete();
+                    }
+
+                    $transactionIds = [];
+
+                    if ($availableFromIncident >= $newAmount) {
+                        // All from incident
+                        $transaction = Transaction::create([
+                            'incident_id' => $incidentId,
+                            'vehicle_id' => $incident->vehicle_id,
+                            'staff_id' => $staff->id,
+                            'type' => 'chi',
+                            'category' => 'điều_chỉnh_lương',
+                            'amount' => $newAmount,
+                            'date' => now(),
+                            'note' => "Điều chỉnh: {$adjustment->category} - {$staff->full_name} (#{$incident->id})",
+                            'payment_method' => 'chuyển khoản',
+                            'recorded_by' => auth()->id(),
+                        ]);
+                        $transactionIds[] = $transaction->id;
+                        $adjustment->update([
+                            'from_incident_amount' => $newAmount,
+                            'from_company_amount' => 0,
+                            'transaction_ids' => $transactionIds,
+                        ]);
+                    } else {
+                        // Split between incident and company
+                        if ($availableFromIncident > 0) {
+                            $transaction1 = Transaction::create([
+                                'incident_id' => $incidentId,
+                                'vehicle_id' => $incident->vehicle_id,
+                                'staff_id' => $staff->id,
+                                'type' => 'chi',
+                                'category' => 'điều_chỉnh_lương',
+                                'amount' => $availableFromIncident,
+                                'date' => now(),
+                                'note' => "Điều chỉnh: {$adjustment->category} - {$staff->full_name} (#{$incident->id} - phần từ chuyến đi)",
+                                'payment_method' => 'chuyển khoản',
+                                'recorded_by' => auth()->id(),
+                            ]);
+                            $transactionIds[] = $transaction1->id;
+                        }
+
+                        $fromCompany = $newAmount - $availableFromIncident;
+                        $transaction2 = Transaction::create([
+                            'incident_id' => null,
+                            'vehicle_id' => null,
+                            'staff_id' => $staff->id,
+                            'type' => 'chi',
+                            'category' => 'điều_chỉnh_lương',
+                            'amount' => $fromCompany,
+                            'date' => now(),
+                            'note' => "Điều chỉnh: {$adjustment->category} - {$staff->full_name} (từ quỹ công ty)",
+                            'payment_method' => 'chuyển khoản',
+                            'recorded_by' => auth()->id(),
+                        ]);
+                        $transactionIds[] = $transaction2->id;
+                        $adjustment->update([
+                            'from_incident_amount' => $availableFromIncident,
+                            'from_company_amount' => $fromCompany,
+                            'transaction_ids' => $transactionIds,
+                        ]);
+                    }
+                } else {
+                    // All from company - just update amount
+                    if ($adjustment->transaction_ids && count($adjustment->transaction_ids) > 0) {
+                        $transaction = Transaction::find($adjustment->transaction_ids[0]);
+                        if ($transaction) {
+                            $transaction->update([
+                                'amount' => $newAmount,
+                                'note' => "Điều chỉnh: {$adjustment->category} - {$staff->full_name} (từ quỹ công ty)",
+                            ]);
+                        }
+                    }
+                    $adjustment->update([
+                        'from_incident_amount' => 0,
+                        'from_company_amount' => $newAmount,
+                    ]);
+                }
+            } else {
+                // For deduction, just update transaction amount
+                if ($adjustment->transaction_ids && count($adjustment->transaction_ids) > 0) {
+                    $transaction = Transaction::find($adjustment->transaction_ids[0]);
+                    if ($transaction) {
+                        $transaction->update([
+                            'amount' => $newAmount,
+                            'note' => "Trừ tiền: {$adjustment->category} - {$staff->full_name}" . ($incidentId ? " (Chuyến #{$incidentId})" : ""),
+                        ]);
+                    }
+                }
+
+                // Recalculate debt status
+                $month = $adjustment->month;
+                $baseSalary = $staff->base_salary ?? 0;
+                $wageEarnings = Transaction::where('staff_id', $staff->id)
+                    ->where('type', 'chi')
+                    ->whereYear('date', $month->year)
+                    ->whereMonth('date', $month->month)
+                    ->sum('amount');
+
+                $otherAdjustments = StaffAdjustment::where('staff_id', $staff->id)
+                    ->where('id', '!=', $adjustment->id)
+                    ->forMonth($month)
+                    ->get();
+
+                $otherAdditions = $otherAdjustments->where('type', 'addition')->sum('amount');
+                $otherDeductions = $otherAdjustments->where('type', 'deduction')->sum('amount');
+
+                $availableBalance = $baseSalary + $wageEarnings + $otherAdditions - $otherDeductions;
+
+                if ($availableBalance < $newAmount) {
+                    $debtAmount = $newAmount - max(0, $availableBalance);
+                    $adjustment->update([
+                        'status' => 'debt',
+                        'debt_amount' => $debtAmount,
+                    ]);
+                } else {
+                    $adjustment->update([
+                        'status' => 'applied',
+                        'debt_amount' => 0,
+                        'applied_at' => now(),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->back()
+                ->with('success', 'Đã cập nhật điều chỉnh thành công!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()->back()
+                ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Delete staff adjustment
+     */
+    public function destroyAdjustment(StaffAdjustment $adjustment)
+    {
+        try {
+            DB::beginTransaction();
+
+            $amount = $adjustment->amount;
+            $type = $adjustment->type_label;
+            
+            // Delete related transactions
+            if ($adjustment->transaction_ids && !empty($adjustment->transaction_ids)) {
+                Transaction::whereIn('id', $adjustment->transaction_ids)->delete();
+            }
+            
+            $adjustment->delete();
+
+            DB::commit();
+
+            return redirect()->back()
+                ->with('success', "Đã xóa điều chỉnh {$type} " . number_format($amount, 0, ',', '.') . "đ thành công!");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()->back()
+                ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
 }
 
 
