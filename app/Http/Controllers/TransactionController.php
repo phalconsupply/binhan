@@ -6,6 +6,7 @@ use App\Models\Transaction;
 use App\Models\Vehicle;
 use App\Models\Incident;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TransactionController extends Controller
 {
