@@ -75,34 +75,66 @@ class VehicleController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Vehicle $vehicle)
+    public function show(Request $request, Vehicle $vehicle)
     {
-        // Load relationships
+        // Get filter parameters
+        $type = $request->input('type');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        // Load relationships with filters
         $vehicle->load([
             'driver',
             'owner',
             'incidents' => function($q) {
                 $q->with(['patient', 'dispatcher'])->orderBy('date', 'desc')->limit(20);
             },
-            'transactions' => function($q) {
-                $q->orderBy('date', 'desc')->limit(20);
-            },
         ]);
 
-        // Statistics
+        // Build transactions query with filters
+        $transactionsQuery = $vehicle->transactions()->orderBy('date', 'desc');
+        
+        if ($type) {
+            $transactionsQuery->where('type', $type);
+        }
+        
+        if ($startDate) {
+            $transactionsQuery->whereDate('date', '>=', $startDate);
+        }
+        
+        if ($endDate) {
+            $transactionsQuery->whereDate('date', '<=', $endDate);
+        }
+
+        // Get filtered transactions (paginated)
+        $transactions = $transactionsQuery->paginate(20)->appends($request->query());
+
+        // Statistics with filters
+        $statsQuery = $vehicle->transactions();
+        
+        if ($startDate) {
+            $statsQuery->whereDate('date', '>=', $startDate);
+        }
+        
+        if ($endDate) {
+            $statsQuery->whereDate('date', '<=', $endDate);
+        }
+
         $stats = [
             'total_incidents' => $vehicle->incidents()->count(),
             'this_month_incidents' => $vehicle->incidents()->thisMonth()->count(),
-            'total_revenue' => $vehicle->transactions()->revenue()->sum('amount'),
-            'total_expense' => $vehicle->transactions()->expense()->sum('amount'),
+            'total_revenue' => (clone $statsQuery)->revenue()->sum('amount'),
+            'total_expense' => (clone $statsQuery)->expense()->sum('amount'),
+            'total_planned_expense' => (clone $statsQuery)->plannedExpense()->sum('amount'),
             'month_revenue' => $vehicle->transactions()->revenue()->thisMonth()->sum('amount'),
             'month_expense' => $vehicle->transactions()->expense()->thisMonth()->sum('amount'),
+            'month_planned_expense' => $vehicle->transactions()->plannedExpense()->thisMonth()->sum('amount'),
         ];
 
-        $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'];
-        $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'];
+        $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'] - $stats['total_planned_expense'];
+        $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
 
-        return view('vehicles.show', compact('vehicle', 'stats'));
+        return view('vehicles.show', compact('vehicle', 'stats', 'transactions'));
     }
 
     /**

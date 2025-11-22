@@ -131,6 +131,61 @@
                 </div>
             </div>
 
+            {{-- Filter Section --}}
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="p-6">
+                    <h3 class="text-lg font-semibold mb-4">🔍 Lọc dữ liệu giao dịch</h3>
+                    <form method="GET" action="{{ route('vehicles.show', $vehicle) }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Loại giao dịch</label>
+                            <select name="type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Tất cả</option>
+                                <option value="thu" {{ request('type') == 'thu' ? 'selected' : '' }}>Thu</option>
+                                <option value="chi" {{ request('type') == 'chi' ? 'selected' : '' }}>Chi</option>
+                                <option value="du_kien_chi" {{ request('type') == 'du_kien_chi' ? 'selected' : '' }}>Dự kiến chi</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Từ ngày</label>
+                            <input type="date" name="start_date" value="{{ request('start_date') }}" 
+                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Đến ngày</label>
+                            <input type="date" name="end_date" value="{{ request('end_date') }}" 
+                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div class="flex items-end gap-2">
+                            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 whitespace-nowrap">
+                                Lọc
+                            </button>
+                            @if(request()->hasAny(['type', 'start_date', 'end_date']))
+                            <a href="{{ route('vehicles.show', $vehicle) }}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap">
+                                Xóa lọc
+                            </a>
+                            @endif
+                        </div>
+                    </form>
+                    
+                    @if(request()->hasAny(['type', 'start_date', 'end_date']))
+                    <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <p class="text-sm text-blue-800">
+                            <strong>Đang lọc:</strong>
+                            @if(request('type'))
+                                Loại: <span class="font-semibold">{{ request('type') == 'thu' ? 'Thu' : (request('type') == 'chi' ? 'Chi' : 'Dự kiến chi') }}</span>
+                            @endif
+                            @if(request('start_date'))
+                                • Từ: <span class="font-semibold">{{ \Carbon\Carbon::parse(request('start_date'))->format('d/m/Y') }}</span>
+                            @endif
+                            @if(request('end_date'))
+                                • Đến: <span class="font-semibold">{{ \Carbon\Carbon::parse(request('end_date'))->format('d/m/Y') }}</span>
+                            @endif
+                        </p>
+                    </div>
+                    @endif
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {{-- Recent Incidents --}}
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -179,15 +234,25 @@
                 {{-- Recent Transactions --}}
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <h3 class="text-lg font-semibold mb-4">Giao dịch gần đây</h3>
-                        @if($vehicle->transactions->isEmpty())
-                            <p class="text-gray-500 text-sm">Chưa có giao dịch nào.</p>
+                        <h3 class="text-lg font-semibold mb-4">Giao dịch 
+                            @if(request()->hasAny(['type', 'start_date', 'end_date']))
+                            <span class="text-sm font-normal text-gray-500">(đã lọc)</span>
+                            @else
+                            <span class="text-sm font-normal text-gray-500">(gần đây)</span>
+                            @endif
+                        </h3>
+                        @if($transactions->isEmpty())
+                            <p class="text-gray-500 text-sm">Không có giao dịch nào
+                                @if(request()->hasAny(['type', 'start_date', 'end_date']))
+                                    phù hợp với bộ lọc
+                                @endif.
+                            </p>
                         @else
-                            <div class="space-y-3">
-                                @foreach($vehicle->transactions as $transaction)
+                            <div class="space-y-3 mb-4">
+                                @foreach($transactions as $transaction)
                                 <div class="flex justify-between items-center border-b pb-2">
                                     <div class="flex-1">
-                                        <p class="font-semibold {{ $transaction->type == 'thu' ? 'text-green-600' : 'text-red-600' }}">
+                                        <p class="font-semibold {{ $transaction->type == 'thu' ? 'text-green-600' : ($transaction->type == 'du_kien_chi' ? 'text-orange-600' : 'text-red-600') }}">
                                             {{ $transaction->type_label }}
                                         </p>
                                         <p class="text-xs text-gray-500">
@@ -198,12 +263,17 @@
                                         @endif
                                     </div>
                                     <div class="text-right">
-                                        <p class="text-lg font-bold {{ $transaction->type == 'thu' ? 'text-green-600' : 'text-red-600' }}">
+                                        <p class="text-lg font-bold {{ $transaction->type == 'thu' ? 'text-green-600' : ($transaction->type == 'du_kien_chi' ? 'text-orange-600' : 'text-red-600') }}">
                                             {{ $transaction->type == 'thu' ? '+' : '-' }}{{ number_format($transaction->amount, 0, ',', '.') }}đ
                                         </p>
                                     </div>
                                 </div>
                                 @endforeach
+                            </div>
+                            
+                            {{-- Pagination --}}
+                            <div class="mt-4">
+                                {{ $transactions->links() }}
                             </div>
                         @endif
                     </div>
