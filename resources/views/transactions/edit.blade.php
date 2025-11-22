@@ -68,7 +68,7 @@
                             <label for="amount" class="block text-sm font-medium text-gray-700">
                                 Số tiền <span class="text-red-500">*</span>
                             </label>
-                            <input type="number" id="amount" name="amount" value="{{ old('amount', $transaction->amount) }}" required min="0" step="1000"
+                            <input type="number" id="amount" name="amount" value="{{ old('amount', $transaction->amount) }}" required min="0" step="1"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         </div>
 
