@@ -304,8 +304,3 @@ class TransactionController extends Controller
         }
     }
 }
-
-        return redirect()->route('transactions.index')
-            ->with('success', "Đã xóa {$count} giao dịch của chuyến đi #{$incidentId} thành công!");
-    }
-}
