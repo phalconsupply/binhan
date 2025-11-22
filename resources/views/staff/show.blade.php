@@ -5,7 +5,7 @@
                 Chi tiết nhân sự: {{ $staff->full_name }}
             </h2>
             <div class="space-x-2">
-                @if(in_array($staff->staff_type, ['driver', 'medical_staff']))
+                @if(in_array($staff->staff_type, ['driver', 'medical_staff', 'manager']))
                 <a href="{{ route('staff.earnings', $staff) }}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
                     💰 Xem thu nhập
                 </a>
