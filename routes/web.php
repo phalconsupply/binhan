@@ -55,6 +55,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Incident routes
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('incidents/search', [IncidentController::class, 'search'])->name('incidents.search');
     Route::resource('incidents', IncidentController::class);
 });
 

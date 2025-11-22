@@ -150,15 +150,10 @@
                                 </label>
                                 <select id="incident_id" name="incident_id"
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                    <option value="">-- Không liên quan đến chuyến đi --</option>
-                                    @foreach(\App\Models\Incident::with(['patient', 'vehicle'])->latest()->limit(50)->get() as $inc)
-                                        <option value="{{ $inc->id }}" {{ old('incident_id') == $inc->id ? 'selected' : '' }}>
-                                            #{{ $inc->id }} - {{ $inc->patient->name ?? 'N/A' }} - {{ $inc->vehicle->license_plate ?? 'N/A' }} ({{ $inc->date->format('d/m/Y') }})
-                                        </option>
-                                    @endforeach
+                                    <option value="">-- Tìm kiếm chuyến đi (ID, tên bệnh nhân, biển số xe...) --</option>
                                 </select>
                                 <p class="mt-1 text-xs text-gray-500">
-                                    💡 Nếu chọn chuyến đi: Tiền sẽ trừ từ doanh thu chuyến đi. Nếu chuyến đi không đủ, phần còn lại lấy từ quỹ công ty.
+                                    💡 Gõ để tìm kiếm theo: Mã chuyến, tên bệnh nhân, biển số xe, ngày. Nếu chọn chuyến đi: Tiền sẽ trừ từ doanh thu chuyến đi. Nếu chuyến đi không đủ, phần còn lại lấy từ quỹ công ty.
                                 </p>
                                 @error('incident_id')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -704,4 +699,92 @@
             </div>
         </div>
     </div>
+
+    @push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        .select2-container--default .select2-selection--single {
+            height: 38px;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 38px;
+            padding-left: 12px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px;
+        }
+        .select2-dropdown {
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+        }
+        .select2-container--default .select2-results__option--highlighted[aria-selected] {
+            background-color: #4f46e5;
+        }
+    </style>
+    @endpush
+
+    @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#incident_id').select2({
+                placeholder: 'Tìm kiếm chuyến đi (ID, tên bệnh nhân, biển số xe...)',
+                allowClear: true,
+                ajax: {
+                    url: '{{ route("incidents.search") }}',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            q: params.term,
+                            page: params.page || 1
+                        };
+                    },
+                    processResults: function (data, params) {
+                        params.page = params.page || 1;
+                        return {
+                            results: data.results,
+                            pagination: {
+                                more: data.pagination.more
+                            }
+                        };
+                    },
+                    cache: true
+                },
+                minimumInputLength: 1,
+                templateResult: formatIncident,
+                templateSelection: formatIncidentSelection
+            });
+
+            function formatIncident(incident) {
+                if (incident.loading) {
+                    return incident.text;
+                }
+                
+                var $container = $(
+                    '<div class="select2-result-incident clearfix">' +
+                        '<div class="select2-result-incident__meta">' +
+                            '<div class="select2-result-incident__title"><strong>#' + incident.id + '</strong> - ' + (incident.patient_name || 'N/A') + '</div>' +
+                            '<div class="select2-result-incident__description text-sm text-gray-600">' +
+                                '🚗 ' + (incident.vehicle_plate || 'N/A') + ' • ' +
+                                '📅 ' + incident.date +
+                            '</div>' +
+                        '</div>' +
+                    '</div>'
+                );
+
+                return $container;
+            }
+
+            function formatIncidentSelection(incident) {
+                if (incident.id) {
+                    return '#' + incident.id + ' - ' + (incident.patient_name || incident.text);
+                }
+                return incident.text;
+            }
+        });
+    </script>
+    @endpush
 </x-app-layout>

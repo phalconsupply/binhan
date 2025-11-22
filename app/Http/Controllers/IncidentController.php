@@ -640,4 +640,51 @@ class IncidentController extends Controller
         return redirect()->route('incidents.index')
             ->with('success', 'Đã xóa chuyến đi thành công!');
     }
+
+    /**
+     * Search incidents for Select2 autocomplete
+     */
+    public function search(Request $request)
+    {
+        $searchTerm = $request->input('q');
+        $page = $request->input('page', 1);
+        $perPage = 20;
+
+        $query = Incident::with(['patient', 'vehicle'])
+            ->where(function($q) use ($searchTerm) {
+                $q->where('id', 'like', "%{$searchTerm}%")
+                  ->orWhereHas('patient', function($pq) use ($searchTerm) {
+                      $pq->where('name', 'like', "%{$searchTerm}%")
+                         ->orWhere('phone', 'like', "%{$searchTerm}%");
+                  })
+                  ->orWhereHas('vehicle', function($vq) use ($searchTerm) {
+                      $vq->where('license_plate', 'like', "%{$searchTerm}%");
+                  })
+                  ->orWhere('destination', 'like', "%{$searchTerm}%");
+            })
+            ->orderBy('date', 'desc');
+
+        $total = $query->count();
+        $incidents = $query->skip(($page - 1) * $perPage)
+                           ->take($perPage)
+                           ->get();
+
+        $results = $incidents->map(function($incident) {
+            return [
+                'id' => $incident->id,
+                'text' => "#" . $incident->id . " - " . ($incident->patient->name ?? 'N/A'),
+                'patient_name' => $incident->patient->name ?? 'N/A',
+                'vehicle_plate' => $incident->vehicle->license_plate ?? 'N/A',
+                'date' => $incident->date->format('d/m/Y'),
+            ];
+        });
+
+        return response()->json([
+            'results' => $results,
+            'pagination' => [
+                'more' => ($page * $perPage) < $total
+            ]
+        ]);
+    }
 }
+
