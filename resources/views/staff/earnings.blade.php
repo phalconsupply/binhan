@@ -144,14 +144,38 @@
                                 @enderror
                             </div>
 
-                            <div>
-                                <label for="incident_id" class="block text-sm font-medium text-gray-700">
+                            <div x-data="incidentSearch()">
+                                <label for="incident_search" class="block text-sm font-medium text-gray-700">
                                     Chuyến đi liên quan (tùy chọn)
                                 </label>
-                                <select id="incident_id" name="incident_id"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                    <option value="">-- Tìm kiếm chuyến đi (ID, tên bệnh nhân, biển số xe...) --</option>
-                                </select>
+                                <div class="relative">
+                                    <input type="text" 
+                                           id="incident_search" 
+                                           x-model="searchTerm"
+                                           @input.debounce.300ms="search()"
+                                           @focus="showResults = true"
+                                           autocomplete="off"
+                                           placeholder="Gõ để tìm: ID, tên bệnh nhân, biển số xe..."
+                                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <input type="hidden" id="incident_id" name="incident_id" x-model="selectedId">
+                                    
+                                    <!-- Results dropdown -->
+                                    <div x-show="showResults && results.length > 0" 
+                                         @click.away="showResults = false"
+                                         class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                        <template x-for="incident in results" :key="incident.id">
+                                            <div @click="selectIncident(incident)" 
+                                                 class="cursor-pointer select-none relative py-2 px-3 hover:bg-indigo-50">
+                                                <div class="font-semibold text-gray-900">
+                                                    #<span x-text="incident.id"></span> - <span x-text="incident.patient_name"></span>
+                                                </div>
+                                                <div class="text-sm text-gray-600">
+                                                    🚗 <span x-text="incident.vehicle_plate"></span> • 📅 <span x-text="incident.date"></span>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
                                 <p class="mt-1 text-xs text-gray-500">
                                     💡 Gõ để tìm kiếm theo: Mã chuyến, tên bệnh nhân, biển số xe, ngày. Nếu chọn chuyến đi: Tiền sẽ trừ từ doanh thu chuyến đi. Nếu chuyến đi không đủ, phần còn lại lấy từ quỹ công ty.
                                 </p>
@@ -700,92 +724,38 @@
         </div>
     </div>
 
-    @push('styles')
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <style>
-        .select2-container--default .select2-selection--single {
-            height: 38px;
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-        }
-        .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 38px;
-            padding-left: 12px;
-        }
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 36px;
-        }
-        .select2-dropdown {
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-        }
-        .select2-container--default .select2-results__option--highlighted[aria-selected] {
-            background-color: #4f46e5;
-        }
-    </style>
-    @endpush
-
     @push('scripts')
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-        $(document).ready(function() {
-            $('#incident_id').select2({
-                placeholder: 'Tìm kiếm chuyến đi (ID, tên bệnh nhân, biển số xe...)',
-                allowClear: true,
-                ajax: {
-                    url: '{{ route("incidents.search") }}',
-                    dataType: 'json',
-                    delay: 250,
-                    data: function (params) {
-                        return {
-                            q: params.term,
-                            page: params.page || 1
-                        };
-                    },
-                    processResults: function (data, params) {
-                        params.page = params.page || 1;
-                        return {
-                            results: data.results,
-                            pagination: {
-                                more: data.pagination.more
-                            }
-                        };
-                    },
-                    cache: true
-                },
-                minimumInputLength: 1,
-                templateResult: formatIncident,
-                templateSelection: formatIncidentSelection
-            });
-
-            function formatIncident(incident) {
-                if (incident.loading) {
-                    return incident.text;
-                }
+        function incidentSearch() {
+            return {
+                searchTerm: '',
+                selectedId: '',
+                results: [],
+                showResults: false,
                 
-                var $container = $(
-                    '<div class="select2-result-incident clearfix">' +
-                        '<div class="select2-result-incident__meta">' +
-                            '<div class="select2-result-incident__title"><strong>#' + incident.id + '</strong> - ' + (incident.patient_name || 'N/A') + '</div>' +
-                            '<div class="select2-result-incident__description text-sm text-gray-600">' +
-                                '🚗 ' + (incident.vehicle_plate || 'N/A') + ' • ' +
-                                '📅 ' + incident.date +
-                            '</div>' +
-                        '</div>' +
-                    '</div>'
-                );
-
-                return $container;
-            }
-
-            function formatIncidentSelection(incident) {
-                if (incident.id) {
-                    return '#' + incident.id + ' - ' + (incident.patient_name || incident.text);
+                async search() {
+                    if (this.searchTerm.length < 1) {
+                        this.results = [];
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`{{ route('incidents.search') }}?q=${encodeURIComponent(this.searchTerm)}`);
+                        const data = await response.json();
+                        this.results = data.results;
+                        this.showResults = true;
+                    } catch (error) {
+                        console.error('Search error:', error);
+                    }
+                },
+                
+                selectIncident(incident) {
+                    this.searchTerm = `#${incident.id} - ${incident.patient_name}`;
+                    this.selectedId = incident.id;
+                    this.showResults = false;
                 }
-                return incident.text;
             }
-        });
+        }
     </script>
     @endpush
 </x-app-layout>
