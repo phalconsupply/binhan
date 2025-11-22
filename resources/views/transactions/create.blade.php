@@ -32,11 +32,11 @@
                         {{-- Vehicle --}}
                         <div>
                             <label for="vehicle_id" class="block text-sm font-medium text-gray-700">
-                                Xe <span class="text-red-500">*</span>
+                                Xe (tùy chọn)
                             </label>
-                            <select id="vehicle_id" name="vehicle_id" required 
+                            <select id="vehicle_id" name="vehicle_id" 
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">-- Chọn xe --</option>
+                                <option value="">-- Không liên kết --</option>
                                 @foreach($vehicles as $vehicle)
                                     <option value="{{ $vehicle->id }}" {{ old('vehicle_id', $selectedIncident?->vehicle_id) == $vehicle->id ? 'selected' : '' }}>
                                         {{ $vehicle->license_plate }} @if($vehicle->driver_name) - {{ $vehicle->driver_name }} @endif

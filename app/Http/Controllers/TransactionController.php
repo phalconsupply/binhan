@@ -144,7 +144,7 @@ class TransactionController extends Controller
     {
         $validated = $request->validate([
             'incident_id' => 'nullable|exists:incidents,id',
-            'vehicle_id' => 'required|exists:vehicles,id',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
             'type' => 'required|in:thu,chi',
             'amount' => 'required|numeric|min:0',
             'method' => 'required|in:cash,bank,other',
@@ -193,7 +193,7 @@ class TransactionController extends Controller
     {
         $validated = $request->validate([
             'incident_id' => 'nullable|exists:incidents,id',
-            'vehicle_id' => 'required|exists:vehicles,id',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
             'type' => 'required|in:thu,chi',
             'amount' => 'required|numeric|min:0',
             'method' => 'required|in:cash,bank,other',
