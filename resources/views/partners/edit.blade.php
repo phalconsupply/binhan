@@ -80,9 +80,9 @@
 
                         <div>
                             <label for="commission_rate" class="block text-sm font-medium text-gray-700">
-                                Tỷ lệ hoa hồng (%)
+                                Đơn giá mặc định (đ)
                             </label>
-                            <input type="number" id="commission_rate" name="commission_rate" value="{{ old('commission_rate', $partner->commission_rate) }}" step="0.01" min="0" max="100" 
+                            <input type="number" id="commission_rate" name="commission_rate" value="{{ old('commission_rate', $partner->commission_rate) }}" step="1" min="0" 
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                             <p class="mt-1 text-sm text-gray-500">Áp dụng cho cộng tác viên (nếu có)</p>
                             @error('commission_rate')

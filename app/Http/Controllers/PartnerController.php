@@ -47,7 +47,7 @@ class PartnerController extends Controller
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string',
-            'commission_rate' => 'nullable|numeric|min:0|max:100',
+            'commission_rate' => 'nullable|numeric|min:0',
             'note' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
@@ -71,7 +71,7 @@ class PartnerController extends Controller
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string',
-            'commission_rate' => 'nullable|numeric|min:0|max:100',
+            'commission_rate' => 'nullable|numeric|min:0',
             'note' => 'nullable|string',
             'is_active' => 'boolean',
         ]);

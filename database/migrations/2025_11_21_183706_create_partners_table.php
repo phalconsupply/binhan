@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
             $table->text('address')->nullable();
-            $table->decimal('commission_rate', 5, 2)->nullable(); // Tỷ lệ hoa hồng %
+            $table->decimal('commission_rate', 10, 2)->nullable(); // Đơn giá mặc định (đ)
             $table->text('note')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();

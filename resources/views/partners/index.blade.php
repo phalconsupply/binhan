@@ -63,7 +63,7 @@
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên đối tác</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Liên hệ</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hoa hồng</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Đơn giá</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                                     </tr>
@@ -85,7 +85,7 @@
                                             <div class="text-gray-500 text-xs">{{ $partner->email ?? '' }}</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $partner->commission_rate ? $partner->commission_rate . '%' : '-' }}
+                                            {{ $partner->commission_rate ? number_format($partner->commission_rate, 0, ',', '.') . 'đ' : '-' }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
