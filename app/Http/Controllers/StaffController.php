@@ -67,6 +67,15 @@ class StaffController extends Controller
      */
     public function store(Request $request)
     {
+        // Log incoming request data for vehicle_owner
+        if ($request->staff_type === 'vehicle_owner') {
+            \Log::info('Creating vehicle_owner staff', [
+                'staff_type' => $request->staff_type,
+                'vehicle_id' => $request->vehicle_id,
+                'full_name' => $request->full_name,
+            ]);
+        }
+
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'staff_type' => 'required|in:medical_staff,driver,manager,investor,admin,vehicle_owner',
@@ -86,6 +95,14 @@ class StaffController extends Controller
             'notes' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
+
+        // Log validated data for vehicle_owner
+        if ($validated['staff_type'] === 'vehicle_owner') {
+            \Log::info('Validated data for vehicle_owner', [
+                'staff_type' => $validated['staff_type'],
+                'vehicle_id' => $validated['vehicle_id'] ?? 'NULL',
+            ]);
+        }
 
         try {
             DB::beginTransaction();
@@ -143,10 +160,21 @@ class StaffController extends Controller
             // Add vehicle_id only for vehicle owners
             if ($validated['staff_type'] === 'vehicle_owner') {
                 $staffData['vehicle_id'] = $validated['vehicle_id'] ?? null;
+                \Log::info('Adding vehicle_id to staffData', [
+                    'vehicle_id' => $staffData['vehicle_id'],
+                ]);
             }
+
+            \Log::info('Staff data before create', $staffData);
 
             // Create staff profile (employee_code will be auto-generated)
             $staff = Staff::create($staffData);
+
+            \Log::info('Staff created', [
+                'staff_id' => $staff->id,
+                'staff_type' => $staff->staff_type,
+                'vehicle_id' => $staff->vehicle_id,
+            ]);
 
             DB::commit();
 
