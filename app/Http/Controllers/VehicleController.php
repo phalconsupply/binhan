@@ -92,7 +92,7 @@ class VehicleController extends Controller
         ]);
 
         // Build transactions query with filters
-        $transactionsQuery = $vehicle->transactions()->orderBy('date', 'desc');
+        $transactionsQuery = $vehicle->transactions()->with(['incident.patient', 'recorder'])->orderBy('date', 'desc');
         
         if ($type) {
             $transactionsQuery->where('type', $type);
@@ -106,8 +106,41 @@ class VehicleController extends Controller
             $transactionsQuery->whereDate('date', '<=', $endDate);
         }
 
-        // Get filtered transactions (paginated)
-        $transactions = $transactionsQuery->paginate(20)->appends($request->query());
+        // Get all filtered transactions
+        $allTransactions = $transactionsQuery->get();
+
+        // Group by incident_id
+        $groupedTransactions = $allTransactions->groupBy('incident_id')->map(function($group) use ($vehicle) {
+            $totalRevenue = $group->where('type', 'thu')->sum('amount');
+            $totalExpense = $group->where('type', 'chi')->sum('amount');
+            $totalPlannedExpense = $group->where('type', 'du_kien_chi')->sum('amount');
+            $netAmount = $totalRevenue - $totalExpense - $totalPlannedExpense;
+            
+            return [
+                'incident' => $group->first()->incident,
+                'vehicle' => $vehicle,
+                'date' => $group->first()->date,
+                'transactions' => $group,
+                'total_revenue' => $totalRevenue,
+                'total_expense' => $totalExpense,
+                'total_planned_expense' => $totalPlannedExpense,
+                'net_amount' => $netAmount,
+            ];
+        })->sortByDesc('date')->values();
+
+        // Manual pagination
+        $perPage = 20;
+        $currentPage = $request->get('page', 1);
+        $total = $groupedTransactions->count();
+        $groupedTransactions = $groupedTransactions->forPage($currentPage, $perPage);
+
+        $transactions = new \Illuminate\Pagination\LengthAwarePaginator(
+            $groupedTransactions,
+            $total,
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         // Statistics with filters
         $statsQuery = $vehicle->transactions();

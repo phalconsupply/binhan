@@ -248,24 +248,104 @@
                                 @endif.
                             </p>
                         @else
-                            <div class="space-y-3 mb-4">
-                                @foreach($transactions as $transaction)
-                                <div class="flex justify-between items-center border-b pb-2">
-                                    <div class="flex-1">
-                                        <p class="font-semibold {{ $transaction->type == 'thu' ? 'text-green-600' : ($transaction->type == 'du_kien_chi' ? 'text-orange-600' : 'text-red-600') }}">
-                                            {{ $transaction->type_label }}
-                                        </p>
-                                        <p class="text-xs text-gray-500">
-                                            {{ $transaction->date->format('d/m/Y H:i') }} • {{ $transaction->method_label }}
-                                        </p>
-                                        @if($transaction->note)
-                                        <p class="text-xs text-gray-600 mt-1">{{ $transaction->note }}</p>
-                                        @endif
+                            <div class="space-y-3">
+                                @foreach($transactions as $group)
+                                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                    {{-- Header - Click để mở rộng --}}
+                                    <div class="bg-gray-50 px-4 py-3 cursor-pointer hover:bg-gray-100 transition" onclick="toggleDetail('detail-{{ $loop->index }}')">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center space-x-4">
+                                                {{-- Icon mở rộng --}}
+                                                <svg id="icon-{{ $loop->index }}" class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                                </svg>
+                                                
+                                                {{-- Mã chuyến đi --}}
+                                                <div>
+                                                    @if($group['incident'])
+                                                        <a href="{{ route('incidents.show', $group['incident']) }}" class="text-base font-semibold text-blue-600 hover:text-blue-800" onclick="event.stopPropagation()">
+                                                            Chuyến #{{ $group['incident']->id }}
+                                                        </a>
+                                                    @else
+                                                        <span class="text-base font-semibold text-gray-600">Giao dịch khác</span>
+                                                    @endif
+                                                </div>
+
+                                                {{-- Thông tin cơ bản --}}
+                                                <div class="flex items-center space-x-3 text-sm text-gray-600">
+                                                    <span>{{ $group['date']->format('d/m/Y') }}</span>
+                                                    @if($group['incident'] && $group['incident']->patient)
+                                                        <span>•</span>
+                                                        <span>{{ $group['incident']->patient->name }}</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            {{-- Tổng thu chi --}}
+                                            <div class="flex items-center space-x-6 text-sm">
+                                                <div class="text-right">
+                                                    <div class="text-green-600 font-semibold">+{{ number_format($group['total_revenue'], 0, ',', '.') }}đ</div>
+                                                    <div class="text-xs text-gray-500">Thu</div>
+                                                </div>
+                                                <div class="text-right">
+                                                    <div class="text-red-600 font-semibold">-{{ number_format($group['total_expense'], 0, ',', '.') }}đ</div>
+                                                    <div class="text-xs text-gray-500">Chi</div>
+                                                </div>
+                                                @if($group['total_planned_expense'] > 0)
+                                                <div class="text-right">
+                                                    <div class="text-orange-600 font-semibold">-{{ number_format($group['total_planned_expense'], 0, ',', '.') }}đ</div>
+                                                    <div class="text-xs text-gray-500">Dự kiến chi</div>
+                                                </div>
+                                                @endif
+                                                <div class="text-right min-w-[120px]">
+                                                    <div class="text-lg font-bold {{ $group['net_amount'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                                        {{ $group['net_amount'] >= 0 ? '+' : '' }}{{ number_format($group['net_amount'], 0, ',', '.') }}đ
+                                                    </div>
+                                                    <div class="text-xs text-gray-500">Lợi nhuận</div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="text-right">
-                                        <p class="text-lg font-bold {{ $transaction->type == 'thu' ? 'text-green-600' : ($transaction->type == 'du_kien_chi' ? 'text-orange-600' : 'text-red-600') }}">
-                                            {{ $transaction->type == 'thu' ? '+' : '-' }}{{ number_format($transaction->amount, 0, ',', '.') }}đ
-                                        </p>
+
+                                    {{-- Chi tiết giao dịch - Ẩn mặc định --}}
+                                    <div id="detail-{{ $loop->index }}" class="hidden bg-white">
+                                        <div class="px-4 py-3 border-t border-gray-200">
+                                            <table class="w-full text-sm">
+                                                <thead class="text-xs text-gray-500 uppercase border-b">
+                                                    <tr>
+                                                        <th class="py-2 text-left">Loại</th>
+                                                        <th class="py-2 text-left">Tên khoản</th>
+                                                        <th class="py-2 text-right">Số tiền</th>
+                                                        <th class="py-2 text-left">Phương thức</th>
+                                                        <th class="py-2 text-left">Ngày giờ</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-100">
+                                                    @foreach($group['transactions'] as $transaction)
+                                                    <tr class="hover:bg-gray-50 {{ $transaction->category == 'điều_chỉnh_lương' ? 'bg-blue-50' : '' }}">
+                                                        <td class="py-2">
+                                                            <span class="px-2 py-1 text-xs rounded-full {{ $transaction->type == 'thu' ? 'bg-green-100 text-green-800' : ($transaction->type == 'du_kien_chi' ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800') }}">
+                                                                {{ $transaction->type_label }}
+                                                            </span>
+                                                            @if($transaction->category == 'điều_chỉnh_lương')
+                                                                <span class="ml-1 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                                                                    ⚙️ Điều chỉnh
+                                                                </span>
+                                                            @endif
+                                                        </td>
+                                                        <td class="py-2">
+                                                            {{ $transaction->note ?? '-' }}
+                                                        </td>
+                                                        <td class="py-2 text-right font-semibold {{ $transaction->type == 'thu' ? 'text-green-600' : ($transaction->type == 'du_kien_chi' ? 'text-orange-600' : 'text-red-600') }}">
+                                                            {{ $transaction->type == 'thu' ? '+' : '-' }}{{ number_format($transaction->amount, 0, ',', '.') }}đ
+                                                        </td>
+                                                        <td class="py-2">{{ $transaction->method_label }}</td>
+                                                        <td class="py-2 text-xs text-gray-500">{{ $transaction->date->format('d/m/Y H:i') }}</td>
+                                                    </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
                                 @endforeach
@@ -357,4 +437,22 @@
             </div>
         </div>
     </div>
+
+    @push('scripts')
+    <script>
+        function toggleDetail(id) {
+            const detail = document.getElementById(id);
+            const iconId = id.replace('detail-', 'icon-');
+            const icon = document.getElementById(iconId);
+            
+            if (detail.classList.contains('hidden')) {
+                detail.classList.remove('hidden');
+                icon.style.transform = 'rotate(90deg)';
+            } else {
+                detail.classList.add('hidden');
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+    </script>
+    @endpush
 </x-app-layout>
