@@ -153,4 +153,18 @@ class Incident extends Model
     {
         return $this->total_revenue - $this->total_expense;
     }
+
+    public function getManagementFeeAttribute()
+    {
+        // 15% management fee only for vehicles with owners
+        if ($this->vehicle && $this->vehicle->hasOwner() && $this->net_amount > 0) {
+            return $this->net_amount * 0.15;
+        }
+        return 0;
+    }
+
+    public function getProfitAfterFeeAttribute()
+    {
+        return $this->net_amount - $this->management_fee;
+    }
 }

@@ -203,6 +203,18 @@
                                         {{ number_format($totals['net'], 0, ',', '.') }}đ
                                     </span>
                                 </div>
+                                @if($totals['has_owner'] && $totals['management_fee'] > 0)
+                                <div class="flex justify-between pt-2 border-t border-dashed">
+                                    <span class="text-sm text-gray-600">Phí quản lý (15%):</span>
+                                    <span class="font-semibold text-orange-600">{{ number_format($totals['management_fee'], 0, ',', '.') }}đ</span>
+                                </div>
+                                <div class="flex justify-between pt-2 border-t">
+                                    <span class="font-semibold text-blue-600">Lợi nhuận sau phí:</span>
+                                    <span class="text-lg font-bold {{ $totals['profit_after_fee'] >= 0 ? 'text-blue-600' : 'text-red-600' }}">
+                                        {{ number_format($totals['profit_after_fee'], 0, ',', '.') }}đ
+                                    </span>
+                                </div>
+                                @endif
                             </div>
                         </div>
                     </div>

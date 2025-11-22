@@ -116,6 +116,10 @@ class VehicleController extends Controller
             $totalPlannedExpense = $group->where('type', 'du_kien_chi')->sum('amount');
             $netAmount = $totalRevenue - $totalExpense - $totalPlannedExpense;
             
+            $hasOwner = $vehicle->hasOwner();
+            $managementFee = ($hasOwner && $netAmount > 0) ? $netAmount * 0.15 : 0;
+            $profitAfterFee = $netAmount - $managementFee;
+            
             return [
                 'incident' => $group->first()->incident,
                 'vehicle' => $vehicle,
@@ -125,6 +129,9 @@ class VehicleController extends Controller
                 'total_expense' => $totalExpense,
                 'total_planned_expense' => $totalPlannedExpense,
                 'net_amount' => $netAmount,
+                'has_owner' => $hasOwner,
+                'management_fee' => $managementFee,
+                'profit_after_fee' => $profitAfterFee,
             ];
         })->sortByDesc('date')->values();
 
@@ -166,6 +173,20 @@ class VehicleController extends Controller
 
         $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'] - $stats['total_planned_expense'];
         $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
+        
+        // For vehicles with owner, calculate profit after 15% management fee
+        $stats['has_owner'] = $vehicle->hasOwner();
+        if ($stats['has_owner']) {
+            // Total profit after fee (only count positive profits)
+            $totalManagementFee = $stats['total_net'] > 0 ? $stats['total_net'] * 0.15 : 0;
+            $stats['total_management_fee'] = $totalManagementFee;
+            $stats['total_profit_after_fee'] = $stats['total_net'] - $totalManagementFee;
+            
+            // Monthly profit after fee
+            $monthManagementFee = $stats['month_net'] > 0 ? $stats['month_net'] * 0.15 : 0;
+            $stats['month_management_fee'] = $monthManagementFee;
+            $stats['month_profit_after_fee'] = $stats['month_net'] - $monthManagementFee;
+        }
 
         return view('vehicles.show', compact('vehicle', 'stats', 'transactions'));
     }

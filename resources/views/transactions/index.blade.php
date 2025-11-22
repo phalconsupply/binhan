@@ -179,6 +179,20 @@
                                                 </div>
                                                 <div class="text-xs text-gray-500">Lợi nhuận</div>
                                             </div>
+                                            @if($group['has_owner'] && $group['management_fee'] > 0)
+                                            <div class="text-right min-w-[120px]">
+                                                <div class="text-base font-semibold text-orange-600">
+                                                    {{ number_format($group['management_fee'], 0, ',', '.') }}đ
+                                                </div>
+                                                <div class="text-xs text-gray-500">Phí 15%</div>
+                                            </div>
+                                            <div class="text-right min-w-[120px]">
+                                                <div class="text-lg font-bold text-blue-600">
+                                                    +{{ number_format($group['profit_after_fee'], 0, ',', '.') }}đ
+                                                </div>
+                                                <div class="text-xs text-gray-500">Cho chủ xe</div>
+                                            </div>
+                                            @endif
                                             
                                             {{-- Nút xóa hết --}}
                                             @if($group['incident'])

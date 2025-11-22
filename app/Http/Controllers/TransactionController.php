@@ -73,15 +73,23 @@ class TransactionController extends Controller
             $totalPlannedExpense = $group->where('type', 'du_kien_chi')->sum('amount');
             $netAmount = $totalRevenue - $totalExpense - $totalPlannedExpense;
             
+            $vehicle = $group->first()->vehicle;
+            $hasOwner = $vehicle && $vehicle->hasOwner();
+            $managementFee = ($hasOwner && $netAmount > 0) ? $netAmount * 0.15 : 0;
+            $profitAfterFee = $netAmount - $managementFee;
+            
             return [
                 'incident' => $group->first()->incident,
-                'vehicle' => $group->first()->vehicle,
+                'vehicle' => $vehicle,
                 'date' => $group->first()->date,
                 'transactions' => $group,
                 'total_revenue' => $totalRevenue,
                 'total_expense' => $totalExpense,
                 'total_planned_expense' => $totalPlannedExpense,
                 'net_amount' => $netAmount,
+                'has_owner' => $hasOwner,
+                'management_fee' => $managementFee,
+                'profit_after_fee' => $profitAfterFee,
             ];
         })->sortByDesc('date')->values();
 
@@ -117,9 +125,55 @@ class TransactionController extends Controller
             'company_month_expense' => Transaction::expense()->whereNull('incident_id')->thisMonth()->sum('amount'),
             'company_planned_expense' => Transaction::plannedExpense()->whereNull('incident_id')->sum('amount'),
         ];
-        $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'] - $stats['total_planned_expense'];
-        $stats['today_net'] = $stats['today_revenue'] - $stats['today_expense'] - $stats['today_planned_expense'];
-        $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
+        
+        // Calculate company profit: For vehicles with owners, only count 15% management fee
+        // For vehicles without owners, count full profit
+        $companyProfit = 0;
+        $companyTodayProfit = 0;
+        $companyMonthProfit = 0;
+        
+        // Get all incidents with vehicle relationship
+        $allIncidents = Incident::with('vehicle.owner')->get();
+        
+        foreach ($allIncidents as $incident) {
+            $incidentRevenue = $incident->transactions()->revenue()->sum('amount');
+            $incidentExpense = $incident->transactions()->expense()->sum('amount');
+            $incidentPlannedExpense = $incident->transactions()->plannedExpense()->sum('amount');
+            $incidentNet = $incidentRevenue - $incidentExpense - $incidentPlannedExpense;
+            
+            // Only count positive profits
+            if ($incidentNet > 0) {
+                if ($incident->vehicle && $incident->vehicle->hasOwner()) {
+                    // Vehicle with owner: only count 15% management fee
+                    $companyProfit += $incidentNet * 0.15;
+                    
+                    // Today
+                    if ($incident->date->isToday()) {
+                        $companyTodayProfit += $incidentNet * 0.15;
+                    }
+                    
+                    // This month
+                    if ($incident->date->isCurrentMonth()) {
+                        $companyMonthProfit += $incidentNet * 0.15;
+                    }
+                } else {
+                    // Vehicle without owner: count full profit
+                    $companyProfit += $incidentNet;
+                    
+                    if ($incident->date->isToday()) {
+                        $companyTodayProfit += $incidentNet;
+                    }
+                    
+                    if ($incident->date->isCurrentMonth()) {
+                        $companyMonthProfit += $incidentNet;
+                    }
+                }
+            }
+        }
+        
+        $stats['total_net'] = $companyProfit;
+        $stats['today_net'] = $companyTodayProfit;
+        $stats['month_net'] = $companyMonthProfit;
 
         return view('transactions.index', compact('transactions', 'vehicles', 'stats'));
     }

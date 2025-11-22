@@ -86,4 +86,10 @@ class Vehicle extends Model
             'maintenance' => 'Bảo trì',
         ][$this->status] ?? $this->status;
     }
+
+    // Helper methods
+    public function hasOwner()
+    {
+        return $this->owner()->exists();
+    }
 }

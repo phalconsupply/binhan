@@ -121,12 +121,24 @@
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <p class="text-sm text-gray-500">Lợi nhuận</p>
-                        <p class="text-xl font-bold {{ $stats['total_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                            {{ number_format($stats['total_net'], 0, ',', '.') }}đ
-                        </p>
-                        <p class="text-xs {{ $stats['month_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                            {{ number_format($stats['month_net'], 0, ',', '.') }}đ tháng này
-                        </p>
+                        @if($stats['has_owner'])
+                            <p class="text-xl font-bold {{ $stats['total_profit_after_fee'] >= 0 ? 'text-blue-600' : 'text-red-600' }}">
+                                {{ number_format($stats['total_profit_after_fee'], 0, ',', '.') }}đ
+                            </p>
+                            <p class="text-xs {{ $stats['month_profit_after_fee'] >= 0 ? 'text-blue-600' : 'text-red-600' }}">
+                                {{ number_format($stats['month_profit_after_fee'], 0, ',', '.') }}đ tháng này
+                            </p>
+                            <p class="text-xs text-orange-500 mt-1">
+                                (Sau phí 15%)
+                            </p>
+                        @else
+                            <p class="text-xl font-bold {{ $stats['total_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                {{ number_format($stats['total_net'], 0, ',', '.') }}đ
+                            </p>
+                            <p class="text-xs {{ $stats['month_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                {{ number_format($stats['month_net'], 0, ',', '.') }}đ tháng này
+                            </p>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -303,6 +315,20 @@
                                                     </div>
                                                     <div class="text-xs text-gray-500">Lợi nhuận</div>
                                                 </div>
+                                                @if($group['has_owner'] && $group['management_fee'] > 0)
+                                                <div class="text-right min-w-[100px]">
+                                                    <div class="text-base font-semibold text-orange-600">
+                                                        {{ number_format($group['management_fee'], 0, ',', '.') }}đ
+                                                    </div>
+                                                    <div class="text-xs text-gray-500">Phí 15%</div>
+                                                </div>
+                                                <div class="text-right min-w-[120px]">
+                                                    <div class="text-lg font-bold text-blue-600">
+                                                        +{{ number_format($group['profit_after_fee'], 0, ',', '.') }}đ
+                                                    </div>
+                                                    <div class="text-xs text-gray-500">Sau phí</div>
+                                                </div>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>

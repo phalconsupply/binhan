@@ -438,6 +438,16 @@ class IncidentController extends Controller
             'expense' => $incident->transactions()->where('type', 'chi')->sum('amount'),
         ];
         $totals['net'] = $totals['revenue'] - $totals['expense'];
+        
+        // Calculate management fee (15%) for vehicles with owners
+        $totals['has_owner'] = $incident->vehicle && $incident->vehicle->hasOwner();
+        if ($totals['has_owner'] && $totals['net'] > 0) {
+            $totals['management_fee'] = $totals['net'] * 0.15;
+            $totals['profit_after_fee'] = $totals['net'] - $totals['management_fee'];
+        } else {
+            $totals['management_fee'] = 0;
+            $totals['profit_after_fee'] = $totals['net'];
+        }
 
         return view('incidents.show', compact('incident', 'totals'));
     }
