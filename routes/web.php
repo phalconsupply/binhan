@@ -61,6 +61,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Transaction routes
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('transactions/incident/{incident}', [TransactionController::class, 'destroyByIncident'])->name('transactions.destroyByIncident');
+    Route::post('transactions/distribute-dividend', [TransactionController::class, 'distributeDividend'])->name('transactions.distribute-dividend')->middleware('permission:manage settings');
     Route::resource('transactions', TransactionController::class);
 });
 

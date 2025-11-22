@@ -237,6 +237,74 @@ class TransactionController extends Controller
         $count = Transaction::where('incident_id', $incidentId)->count();
         Transaction::where('incident_id', $incidentId)->delete();
 
+        return redirect()->back()
+            ->with('success', "Đã xóa {$count} giao dịch của chuyến đi này!");
+    }
+
+    /**
+     * Distribute dividends to investors
+     */
+    public function distributeDividend(Request $request)
+    {
+        $validated = $request->validate([
+            'distribution_percentage' => 'required|numeric|min:0|max:100',
+            'investors' => 'required|array',
+            'investors.*.staff_id' => 'required|exists:staff,id',
+            'investors.*.amount' => 'required|numeric|min:0',
+            'investors.*.equity_percentage' => 'required|numeric|min:0',
+            'note' => 'nullable|string',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $totalDistributed = 0;
+            $date = now();
+
+            // Create dividend transactions for each investor
+            foreach ($validated['investors'] as $investorData) {
+                $amount = $investorData['amount'];
+                
+                if ($amount <= 0) {
+                    continue;
+                }
+
+                $staff = \App\Models\Staff::find($investorData['staff_id']);
+                
+                // Create CHI transaction (company pays dividend)
+                Transaction::create([
+                    'incident_id' => null,
+                    'vehicle_id' => null,
+                    'staff_id' => $staff->id,
+                    'type' => 'chi',
+                    'category' => 'cổ_tức',
+                    'amount' => $amount,
+                    'method' => 'bank',
+                    'payment_method' => 'chuyển khoản',
+                    'date' => $date,
+                    'note' => "Chia cổ tức {$validated['distribution_percentage']}% - {$staff->full_name} (Vốn góp: {$investorData['equity_percentage']}%)" . 
+                             ($validated['note'] ? " - {$validated['note']}" : ""),
+                    'recorded_by' => auth()->id(),
+                ]);
+
+                $totalDistributed += $amount;
+            }
+
+            DB::commit();
+
+            return redirect()->route('transactions.index')
+                ->with('success', "Đã chia cổ tức thành công! Tổng số tiền: " . number_format($totalDistributed, 0, ',', '.') . "đ cho " . count($validated['investors']) . " cổ đông.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()->back()
+                ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+}
+
         return redirect()->route('transactions.index')
             ->with('success', "Đã xóa {$count} giao dịch của chuyến đi #{$incidentId} thành công!");
     }
