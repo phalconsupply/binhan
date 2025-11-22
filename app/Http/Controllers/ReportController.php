@@ -35,8 +35,9 @@ class ReportController extends Controller
             'total_incidents' => Incident::whereBetween('date', [$dateFrom, $dateTo])->count(),
             'total_revenue' => Transaction::revenue()->whereBetween('date', [$dateFrom, $dateTo])->sum('amount'),
             'total_expense' => Transaction::expense()->whereBetween('date', [$dateFrom, $dateTo])->sum('amount'),
+            'total_planned_expense' => Transaction::plannedExpense()->whereBetween('date', [$dateFrom, $dateTo])->sum('amount'),
         ];
-        $statistics['net_profit'] = $statistics['total_revenue'] - $statistics['total_expense'];
+        $statistics['net_profit'] = $statistics['total_revenue'] - $statistics['total_expense'] - $statistics['total_planned_expense'];
 
         // Vehicle performance
         $vehiclePerformance = Vehicle::withCount([
@@ -53,9 +54,14 @@ class ReportController extends Controller
                 $q->where('type', 'chi')->whereBetween('date', [$dateFrom, $dateTo]);
             }
         ], 'amount')
+        ->withSum([
+            'transactions as total_planned_expense' => function($q) use ($dateFrom, $dateTo) {
+                $q->where('type', 'du_kien_chi')->whereBetween('date', [$dateFrom, $dateTo]);
+            }
+        ], 'amount')
         ->get()
         ->map(function($vehicle) {
-            $vehicle->net_profit = ($vehicle->total_revenue ?? 0) - ($vehicle->total_expense ?? 0);
+            $vehicle->net_profit = ($vehicle->total_revenue ?? 0) - ($vehicle->total_expense ?? 0) - ($vehicle->total_planned_expense ?? 0);
             return $vehicle;
         })
         ->sortByDesc('incidents_count');
@@ -67,7 +73,8 @@ class ReportController extends Controller
                 DB::raw('COUNT(*) as count'),
                 DB::raw('SUM(CASE WHEN type = "thu" THEN amount ELSE 0 END) as revenue'),
                 DB::raw('SUM(CASE WHEN type = "chi" THEN amount ELSE 0 END) as expense'),
-                DB::raw('SUM(CASE WHEN type = "thu" THEN amount ELSE -amount END) as net')
+                DB::raw('SUM(CASE WHEN type = "du_kien_chi" THEN amount ELSE 0 END) as planned_expense'),
+                DB::raw('SUM(CASE WHEN type = "thu" THEN amount WHEN type = "chi" THEN -amount WHEN type = "du_kien_chi" THEN -amount ELSE 0 END) as net')
             )
             ->groupBy('date')
             ->orderBy('date')

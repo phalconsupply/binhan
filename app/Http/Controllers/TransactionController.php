@@ -69,7 +69,8 @@ class TransactionController extends Controller
         $groupedTransactions = $allTransactions->groupBy('incident_id')->map(function($group) {
             $totalRevenue = $group->where('type', 'thu')->sum('amount');
             $totalExpense = $group->where('type', 'chi')->sum('amount');
-            $netAmount = $totalRevenue - $totalExpense;
+            $totalPlannedExpense = $group->where('type', 'du_kien_chi')->sum('amount');
+            $netAmount = $totalRevenue - $totalExpense - $totalPlannedExpense;
             
             return [
                 'incident' => $group->first()->incident,
@@ -78,6 +79,7 @@ class TransactionController extends Controller
                 'transactions' => $group,
                 'total_revenue' => $totalRevenue,
                 'total_expense' => $totalExpense,
+                'total_planned_expense' => $totalPlannedExpense,
                 'net_amount' => $netAmount,
             ];
         })->sortByDesc('date')->values();
@@ -103,16 +105,20 @@ class TransactionController extends Controller
         $stats = [
             'total_revenue' => Transaction::revenue()->sum('amount'),
             'total_expense' => Transaction::expense()->sum('amount'),
+            'total_planned_expense' => Transaction::plannedExpense()->sum('amount'),
             'today_revenue' => Transaction::revenue()->today()->sum('amount'),
             'today_expense' => Transaction::expense()->today()->sum('amount'),
+            'today_planned_expense' => Transaction::plannedExpense()->today()->sum('amount'),
             'month_revenue' => Transaction::revenue()->thisMonth()->sum('amount'),
             'month_expense' => Transaction::expense()->thisMonth()->sum('amount'),
+            'month_planned_expense' => Transaction::plannedExpense()->thisMonth()->sum('amount'),
             'company_expense' => Transaction::expense()->whereNull('incident_id')->sum('amount'),
             'company_month_expense' => Transaction::expense()->whereNull('incident_id')->thisMonth()->sum('amount'),
+            'company_planned_expense' => Transaction::plannedExpense()->whereNull('incident_id')->sum('amount'),
         ];
-        $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'];
-        $stats['today_net'] = $stats['today_revenue'] - $stats['today_expense'];
-        $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'];
+        $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'] - $stats['total_planned_expense'];
+        $stats['today_net'] = $stats['today_revenue'] - $stats['today_expense'] - $stats['today_planned_expense'];
+        $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
 
         return view('transactions.index', compact('transactions', 'vehicles', 'stats'));
     }

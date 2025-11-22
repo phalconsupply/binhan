@@ -37,8 +37,14 @@
                     <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['month_expense'], 0, ',', '.') }}đ</p>
                 </div>
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                    <p class="text-sm text-gray-500">Dự kiến chi</p>
+                    <p class="text-2xl font-bold text-orange-600">{{ number_format($stats['total_planned_expense'], 0, ',', '.') }}đ</p>
+                    <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['month_planned_expense'], 0, ',', '.') }}đ</p>
+                    <p class="text-xs text-gray-500">Công ty: {{ number_format($stats['company_planned_expense'], 0, ',', '.') }}đ</p>
+                </div>
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                     <p class="text-sm text-gray-500">Chi từ công ty</p>
-                    <p class="text-2xl font-bold text-orange-600">{{ number_format($stats['company_expense'], 0, ',', '.') }}đ</p>
+                    <p class="text-2xl font-bold text-purple-600">{{ number_format($stats['company_expense'], 0, ',', '.') }}đ</p>
                     <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['company_month_expense'], 0, ',', '.') }}đ</p>
                 </div>
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
@@ -65,6 +71,7 @@
                                     <option value="">Tất cả loại</option>
                                     <option value="thu" {{ request('type') == 'thu' ? 'selected' : '' }}>Thu</option>
                                     <option value="chi" {{ request('type') == 'chi' ? 'selected' : '' }}>Chi</option>
+                                    <option value="du_kien_chi" {{ request('type') == 'du_kien_chi' ? 'selected' : '' }}>Dự kiến chi</option>
                                 </select>
                             </div>
                             <div>
