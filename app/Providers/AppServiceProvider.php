@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use App\Models\Transaction;
+use App\Models\SalaryAdvance;
 use App\Observers\TransactionObserver;
+use App\Observers\SalaryAdvanceObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,5 +24,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Transaction::observe(TransactionObserver::class);
+        SalaryAdvance::observe(SalaryAdvanceObserver::class);
     }
 }

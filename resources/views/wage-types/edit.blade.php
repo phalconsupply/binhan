@@ -15,6 +15,7 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
                     <form method="POST" action="{{ route('wage-types.update', $wageType) }}" class="space-y-4">
+                        
                         @csrf
                         @method('PUT')
 

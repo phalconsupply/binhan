@@ -292,8 +292,13 @@ class StaffController extends Controller
      */
     public function earnings(Request $request, Staff $staff)
     {
+        // Query earnings transactions, excluding salary advances
         $query = Transaction::where('staff_id', $staff->id)
             ->where('type', 'chi')
+            ->where(function($q) {
+                $q->where('category', '!=', 'ứng_lương')
+                  ->orWhereNull('category');
+            })
             ->with(['incident.patient', 'vehicle']);
 
         // Date filter
@@ -323,28 +328,60 @@ class StaffController extends Controller
         // Base salary total based on filtered period
         $baseSalaryTotal = $staff->base_salary ? ($staff->base_salary * $monthsWorked) : 0;
 
-        // Wage earnings from transactions
-        $wageEarningsTotal = Transaction::where('staff_id', $staff->id)
-            ->where('type', 'chi');
+        // Wage earnings from transactions (CHI - THU), excluding salary advances
+        $wageEarningsQueryBase = Transaction::where('staff_id', $staff->id);
         
         if ($request->filled('from_date')) {
-            $wageEarningsTotal->whereDate('date', '>=', $request->from_date);
+            $wageEarningsQueryBase->whereDate('date', '>=', $request->from_date);
         }
         if ($request->filled('to_date')) {
-            $wageEarningsTotal->whereDate('date', '<=', $request->to_date);
+            $wageEarningsQueryBase->whereDate('date', '<=', $request->to_date);
         }
         
-        $wageEarningsTotal = $wageEarningsTotal->sum('amount');
+        // Clone and add category filter for CHI (exclude salary advance categories)
+        $chiQuery = clone $wageEarningsQueryBase;
+        $chiTotal = $chiQuery->where('type', 'chi')
+            ->where(function($query) {
+                $query->whereNotIn('category', ['ứng_lương', 'ứng_lương_nợ'])
+                      ->orWhereNull('category');
+            })
+            ->sum('amount');
+        
+        // Clone and add category filter for THU (exclude salary advance categories)
+        $thuQuery = clone $wageEarningsQueryBase;
+        $thuTotal = $thuQuery->where('type', 'thu')
+            ->where(function($query) {
+                $query->whereNotIn('category', ['ứng_lương', 'ứng_lương_nợ'])
+                      ->orWhereNull('category');
+            })
+            ->sum('amount');
+        
+        $wageEarningsTotal = $chiTotal - $thuTotal;
 
-        // Month earnings
-        $monthWageEarnings = Transaction::where('staff_id', $staff->id)
+        // Month earnings (CHI - THU), excluding salary advances
+        $monthChi = Transaction::where('staff_id', $staff->id)
             ->where('type', 'chi')
+            ->where(function($query) {
+                $query->whereNotIn('category', ['ứng_lương', 'ứng_lương_nợ'])
+                      ->orWhereNull('category');
+            })
             ->thisMonth()
             ->sum('amount');
         
+        $monthThu = Transaction::where('staff_id', $staff->id)
+            ->where('type', 'thu')
+            ->where(function($query) {
+                $query->whereNotIn('category', ['ứng_lương', 'ứng_lương_nợ'])
+                      ->orWhereNull('category');
+            })
+            ->thisMonth()
+            ->sum('amount');
+        
+        $monthWageEarnings = $monthChi - $monthThu;
+        
         $monthBaseSalary = $staff->base_salary ?? 0;
 
-        // Get adjustments for current month
+        // Get adjustments for current month (for display purposes only, already in transactions)
         $currentMonth = now()->startOfMonth();
         $monthAdjustments = StaffAdjustment::where('staff_id', $staff->id)
             ->forMonth($currentMonth)
@@ -353,16 +390,22 @@ class StaffController extends Controller
         $monthAdjustmentAdditions = $monthAdjustments->where('type', 'addition')->where('status', 'applied')->sum('amount');
         $monthAdjustmentDeductions = $monthAdjustments->where('type', 'deduction')->where('status', 'applied')->sum('amount');
 
+        // Calculate salary advances for current month
+        $monthSalaryAdvances = \App\Models\SalaryAdvance::where('staff_id', $staff->id)
+            ->forMonth($currentMonth)
+            ->sum('from_earnings');
+
         // Statistics
         $stats = [
             'base_salary' => $staff->base_salary ?? 0,
             'base_salary_total' => $baseSalaryTotal,
             'wage_earnings_total' => $wageEarningsTotal,
-            'total_earnings' => $baseSalaryTotal + $wageEarningsTotal,
+            'total_earnings' => $baseSalaryTotal + $wageEarningsTotal, // wageEarningsTotal already includes adjustments via transactions
             'month_base_salary' => $monthBaseSalary,
             'month_wage_earnings' => $monthWageEarnings,
-            'month_adjustments' => $monthAdjustmentAdditions - $monthAdjustmentDeductions,
-            'month_total_earnings' => $monthBaseSalary + $monthWageEarnings + $monthAdjustmentAdditions - $monthAdjustmentDeductions,
+            'month_adjustments' => $monthAdjustmentAdditions - $monthAdjustmentDeductions, // For display only
+            'month_salary_advances' => $monthSalaryAdvances, // Total advanced this month
+            'month_total_earnings' => $monthBaseSalary + $monthWageEarnings - $monthSalaryAdvances, // Subtract advances
             'total_trips' => $staff->incidents()->count(),
             'months_worked' => $monthsWorked,
         ];
@@ -379,14 +422,23 @@ class StaffController extends Controller
         $adjustmentDeductions = $adjustments->where('type', 'deduction')->sum('amount');
         $adjustmentNet = $adjustmentAdditions - $adjustmentDeductions;
 
-        // Get pending debts
-        $pendingDebts = StaffAdjustment::where('staff_id', $staff->id)
+        // Get pending debts from adjustments
+        $pendingAdjustmentDebts = StaffAdjustment::where('staff_id', $staff->id)
             ->debt()
             ->with('creator')
             ->orderBy('created_at', 'asc')
             ->get();
 
-        $totalDebt = $pendingDebts->sum('debt_amount');
+        // Get pending debts from salary advances
+        $pendingSalaryAdvanceDebts = \App\Models\SalaryAdvance::where('staff_id', $staff->id)
+            ->where('debt_amount', '>', 0)
+            ->with('approvedBy')
+            ->orderBy('date', 'asc')
+            ->get();
+
+        // Merge all debts
+        $pendingDebts = $pendingAdjustmentDebts->merge($pendingSalaryAdvanceDebts)->sortBy('created_at');
+        $totalDebt = $pendingAdjustmentDebts->sum('debt_amount') + $pendingSalaryAdvanceDebts->sum('debt_amount');
 
         return view('staff.earnings', compact('staff', 'earnings', 'stats', 'adjustments', 'adjustmentAdditions', 'adjustmentDeductions', 'adjustmentNet', 'pendingDebts', 'totalDebt'));
     }
@@ -412,6 +464,13 @@ class StaffController extends Controller
             $amount = $validated['amount'];
             $incidentId = $validated['incident_id'] ?? null;
 
+            \Log::info('Creating adjustment', [
+                'staff_id' => $staff->id,
+                'type' => $validated['type'],
+                'amount' => $amount,
+                'incident_id' => $incidentId,
+            ]);
+
             // Create adjustment record
             $adjustment = StaffAdjustment::create([
                 'staff_id' => $staff->id,
@@ -425,6 +484,8 @@ class StaffController extends Controller
                 'status' => 'pending',
                 'debt_amount' => 0,
             ]);
+
+            \Log::info('Adjustment created', ['adjustment_id' => $adjustment->id]);
 
             // Create transactions based on type
             $transactionIds = [];
@@ -450,6 +511,7 @@ class StaffController extends Controller
                             'date' => now(),
                             'note' => "Điều chỉnh: {$validated['category']} - {$staff->full_name} (#{$incident->id})",
                             'payment_method' => 'chuyển khoản',
+                            'recorded_by' => auth()->id(),
                         ]);
                         $transactionIds[] = $transaction->id;
                         $adjustment->update([
@@ -469,6 +531,7 @@ class StaffController extends Controller
                                 'date' => now(),
                                 'note' => "Điều chỉnh: {$validated['category']} - {$staff->full_name} (#{$incident->id} - phần từ chuyến đi)",
                                 'payment_method' => 'chuyển khoản',
+                                'recorded_by' => auth()->id(),
                             ]);
                             $transactionIds[] = $transaction1->id;
                         }
@@ -484,6 +547,7 @@ class StaffController extends Controller
                             'date' => now(),
                             'note' => "Điều chỉnh: {$validated['category']} - {$staff->full_name} (từ quỹ công ty)",
                             'payment_method' => 'chuyển khoản',
+                            'recorded_by' => auth()->id(),
                         ]);
                         $transactionIds[] = $transaction2->id;
                         $adjustment->update([
@@ -503,13 +567,18 @@ class StaffController extends Controller
                         'date' => now(),
                         'note' => "Điều chỉnh: {$validated['category']} - {$staff->full_name} (từ quỹ công ty)",
                         'payment_method' => 'chuyển khoản',
+                        'recorded_by' => auth()->id(),
                     ]);
                     $transactionIds[] = $transaction->id;
+                    \Log::info('Transaction created from company', ['transaction_id' => $transaction->id]);
+                    
                     $adjustment->update([
                         'from_incident_amount' => 0,
                         'from_company_amount' => $amount,
                     ]);
                 }
+
+                \Log::info('Transactions created', ['ids' => $transactionIds]);
 
                 // Mark as applied
                 $adjustment->update([
@@ -518,11 +587,13 @@ class StaffController extends Controller
                     'transaction_ids' => $transactionIds,
                 ]);
 
+                \Log::info('Adjustment marked as applied');
+
                 // Try to pay off any pending debts
                 $this->processDebtPayment($staff);
                 
             } else {
-                // For deduction, check balance and create debt if needed
+                // For deduction, create transaction and check balance for debt
                 $baseSalary = $staff->base_salary ?? 0;
                 $wageEarnings = Transaction::where('staff_id', $staff->id)
                     ->where('type', 'chi')
@@ -540,29 +611,51 @@ class StaffController extends Controller
 
                 $availableBalance = $baseSalary + $wageEarnings + $otherAdditions - $otherDeductions;
 
+                // Always create transaction for deduction (company receives money back)
+                $transaction = Transaction::create([
+                    'incident_id' => $incidentId,
+                    'vehicle_id' => $incidentId ? \App\Models\Incident::find($incidentId)->vehicle_id : null,
+                    'staff_id' => $staff->id,
+                    'type' => 'thu',
+                    'category' => 'điều_chỉnh_lương',
+                    'amount' => $amount,
+                    'date' => now(),
+                    'note' => "Trừ tiền: {$validated['category']} - {$staff->full_name}" . ($incidentId ? " (Chuyến #{$incidentId})" : ""),
+                    'payment_method' => 'chuyển khoản',
+                    'recorded_by' => auth()->id(),
+                ]);
+                $transactionIds[] = $transaction->id;
+
                 if ($availableBalance < $amount) {
                     // Not enough balance, create debt
                     $debtAmount = $amount - max(0, $availableBalance);
                     $adjustment->update([
                         'status' => 'debt',
                         'debt_amount' => $debtAmount,
+                        'transaction_ids' => $transactionIds,
                     ]);
                 } else {
-                    // Enough balance, mark as applied (no transaction created for deduction)
+                    // Enough balance, mark as applied
                     $adjustment->update([
                         'status' => 'applied',
                         'applied_at' => now(),
+                        'transaction_ids' => $transactionIds,
                     ]);
                 }
             }
 
             DB::commit();
+            \Log::info('Transaction committed successfully');
 
             return redirect()->route('staff.earnings', $staff)
                 ->with('success', 'Đã thêm điều chỉnh thu nhập thành công!');
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Error creating adjustment', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             
             return redirect()->back()
                 ->withInput()
@@ -575,25 +668,52 @@ class StaffController extends Controller
      */
     private function processDebtPayment(Staff $staff)
     {
-        // Get all pending debts ordered by oldest first
-        $debts = StaffAdjustment::where('staff_id', $staff->id)
+        // Get all pending debts from adjustments ordered by oldest first
+        $adjustmentDebts = StaffAdjustment::where('staff_id', $staff->id)
             ->debt()
             ->orderBy('created_at', 'asc')
             ->get();
 
-        if ($debts->isEmpty()) {
+        // Get all pending debts from salary advances ordered by oldest first
+        $advanceDebts = \App\Models\SalaryAdvance::where('staff_id', $staff->id)
+            ->where('debt_amount', '>', 0)
+            ->orderBy('date', 'asc')
+            ->get();
+
+        // Merge all debts
+        $allDebts = $adjustmentDebts->merge($advanceDebts)->sortBy('created_at');
+
+        if ($allDebts->isEmpty()) {
             return;
         }
 
-        // Calculate available balance from additions not yet used for debt payment
+        // Calculate available balance
         $currentMonth = now()->startOfMonth();
         
         $baseSalary = $staff->base_salary ?? 0;
-        $wageEarnings = Transaction::where('staff_id', $staff->id)
+        
+        // Net transactions (CHI - THU), excluding salary advances
+        $monthChi = Transaction::where('staff_id', $staff->id)
             ->where('type', 'chi')
+            ->where(function($query) {
+                $query->whereNotIn('category', ['ứng_lương', 'ứng_lương_nợ'])
+                      ->orWhereNull('category');
+            })
             ->whereYear('date', $currentMonth->year)
             ->whereMonth('date', $currentMonth->month)
             ->sum('amount');
+        
+        $monthThu = Transaction::where('staff_id', $staff->id)
+            ->where('type', 'thu')
+            ->where(function($query) {
+                $query->whereNotIn('category', ['ứng_lương', 'ứng_lương_nợ'])
+                      ->orWhereNull('category');
+            })
+            ->whereYear('date', $currentMonth->year)
+            ->whereMonth('date', $currentMonth->month)
+            ->sum('amount');
+        
+        $wageEarnings = $monthChi - $monthThu;
 
         $additions = StaffAdjustment::where('staff_id', $staff->id)
             ->where('type', 'addition')
@@ -607,29 +727,321 @@ class StaffController extends Controller
             ->forMonth($currentMonth)
             ->sum('amount');
 
-        $availableBalance = $baseSalary + $wageEarnings + $additions - $appliedDeductions;
+        $availableBalance = $baseSalary + $wageEarnings;
 
         // Pay off debts with available balance
-        foreach ($debts as $debt) {
+        foreach ($allDebts as $debt) {
             if ($availableBalance <= 0) {
                 break;
             }
 
-            if ($availableBalance >= $debt->debt_amount) {
+            $debtAmount = $debt->debt_amount;
+
+            if ($availableBalance >= $debtAmount) {
                 // Can pay off entire debt
-                $availableBalance -= $debt->debt_amount;
+                $availableBalance -= $debtAmount;
                 $debt->update([
-                    'status' => 'applied',
                     'debt_amount' => 0,
-                    'applied_at' => now(),
                 ]);
+                
+                // Mark adjustment as applied if it's from adjustments
+                if ($debt instanceof StaffAdjustment) {
+                    $debt->update([
+                        'status' => 'applied',
+                        'applied_at' => now(),
+                    ]);
+                }
             } else {
                 // Partial payment
                 $debt->update([
-                    'debt_amount' => $debt->debt_amount - $availableBalance,
+                    'debt_amount' => $debtAmount - $availableBalance,
                 ]);
                 $availableBalance = 0;
             }
         }
     }
+
+    /**
+     * Store salary advance request
+     */
+    public function storeSalaryAdvance(Request $request, Staff $staff)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:1',
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $amount = $validated['amount'];
+            $currentMonth = now()->startOfMonth();
+
+            // Calculate available earnings
+            $baseSalary = $staff->base_salary ?? 0;
+            
+            // Calculate net transactions (CHI - THU), excluding salary advances
+            $monthChi = Transaction::where('staff_id', $staff->id)
+                ->where('type', 'chi')
+                ->where(function($query) {
+                    $query->whereNotIn('category', ['ứng_lương', 'ứng_lương_nợ'])
+                          ->orWhereNull('category');
+                })
+                ->thisMonth()
+                ->sum('amount');
+            
+            $monthThu = Transaction::where('staff_id', $staff->id)
+                ->where('type', 'thu')
+                ->where(function($query) {
+                    $query->whereNotIn('category', ['ứng_lương', 'ứng_lương_nợ'])
+                          ->orWhereNull('category');
+                })
+                ->thisMonth()
+                ->sum('amount');
+            
+            $wageEarnings = $monthChi - $monthThu;
+
+            // Get existing adjustments
+            $adjustments = StaffAdjustment::where('staff_id', $staff->id)
+                ->where('status', 'applied')
+                ->forMonth($currentMonth)
+                ->get();
+
+            $additions = $adjustments->where('type', 'addition')->sum('amount');
+            $deductions = $adjustments->where('type', 'deduction')->sum('amount');
+
+            // Calculate total available (already includes all transactions)
+            $totalAvailable = $baseSalary + $wageEarnings;
+
+            // Check existing advances and debts this month
+            $existingAdvances = \App\Models\SalaryAdvance::where('staff_id', $staff->id)
+                ->forMonth($currentMonth)
+                ->sum('from_earnings');
+
+            $existingDebts = StaffAdjustment::where('staff_id', $staff->id)
+                ->where('debt_amount', '>', 0)
+                ->sum('debt_amount');
+
+            $availableForAdvance = max(0, $totalAvailable - $existingAdvances - $existingDebts);
+
+            // Calculate how much comes from earnings vs company
+            $fromEarnings = min($amount, $availableForAdvance);
+            $fromCompany = $amount - $fromEarnings;
+
+            $transactionIds = [];
+
+            // If company needs to advance money (debt), create transaction to record it
+            if ($fromCompany > 0) {
+                $transaction = Transaction::create([
+                    'incident_id' => null,
+                    'vehicle_id' => null,
+                    'staff_id' => $staff->id,
+                    'type' => 'chi', // Company pays out (advance payment)
+                    'category' => 'ứng_lương_nợ', // Debt advance - different from regular advances
+                    'amount' => $fromCompany,
+                    'date' => now(),
+                    'note' => "Ứng lương (nợ công ty) - {$staff->full_name}",
+                    'payment_method' => 'chuyển khoản',
+                    'recorded_by' => auth()->id(),
+                ]);
+                $transactionIds[] = $transaction->id;
+            }
+
+            // Create advance record
+            $advance = \App\Models\SalaryAdvance::create([
+                'staff_id' => $staff->id,
+                'amount' => $amount,
+                'from_earnings' => $fromEarnings,
+                'from_company' => $fromCompany,
+                'debt_amount' => $fromCompany, // Company advance becomes debt
+                'status' => 'approved',
+                'note' => $validated['note'] ?? null,
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+                'date' => now(),
+                'transaction_ids' => $transactionIds,
+            ]);
+
+            DB::commit();
+
+            return redirect()->back()
+                ->with('success', 'Đã ứng lương thành công!' . 
+                    ($fromCompany > 0 ? " (Nợ công ty: " . number_format($fromCompany, 0, ',', '.') . "đ)" : ""));
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error processing salary advance', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->back()
+                ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Update salary advance
+     */
+    public function updateSalaryAdvance(Request $request, \App\Models\SalaryAdvance $salaryAdvance)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:1',
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $oldAmount = $salaryAdvance->amount;
+            $newAmount = $validated['amount'];
+            $staff = $salaryAdvance->staff;
+            $currentMonth = \Carbon\Carbon::parse($salaryAdvance->date)->startOfMonth();
+
+            // Recalculate available earnings (excluding this advance)
+            $baseSalary = $staff->base_salary ?? 0;
+            
+            $monthChi = Transaction::where('staff_id', $staff->id)
+                ->where('type', 'chi')
+                ->whereYear('date', $currentMonth->year)
+                ->whereMonth('date', $currentMonth->month)
+                ->sum('amount');
+            
+            $monthThu = Transaction::where('staff_id', $staff->id)
+                ->where('type', 'thu')
+                ->whereYear('date', $currentMonth->year)
+                ->whereMonth('date', $currentMonth->month)
+                ->sum('amount');
+            
+            $wageEarnings = $monthChi - $monthThu;
+            $totalAvailable = $baseSalary + $wageEarnings;
+
+            // Get other advances (excluding this one)
+            $otherAdvances = \App\Models\SalaryAdvance::where('staff_id', $staff->id)
+                ->where('id', '!=', $salaryAdvance->id)
+                ->whereYear('date', $currentMonth->year)
+                ->whereMonth('date', $currentMonth->month)
+                ->sum('from_earnings');
+
+            $existingDebts = StaffAdjustment::where('staff_id', $staff->id)
+                ->where('debt_amount', '>', 0)
+                ->sum('debt_amount');
+
+            $availableForAdvance = max(0, $totalAvailable - $otherAdvances - $existingDebts);
+
+            // Recalculate split
+            $fromEarnings = min($newAmount, $availableForAdvance);
+            $fromCompany = $newAmount - $fromEarnings;
+
+            // Handle transaction updates for company debt
+            $oldTransactionIds = $salaryAdvance->transaction_ids ?? [];
+            $newTransactionIds = [];
+
+            if ($fromCompany > 0) {
+                // Need company debt transaction
+                if (!empty($oldTransactionIds)) {
+                    // Update existing transaction
+                    $existingTransaction = Transaction::find($oldTransactionIds[0]);
+                    if ($existingTransaction) {
+                        $existingTransaction->update([
+                            'amount' => $fromCompany,
+                            'note' => "Ứng lương (nợ công ty) - {$staff->full_name}",
+                            'date' => now(),
+                        ]);
+                        $newTransactionIds[] = $existingTransaction->id;
+                    } else {
+                        // Old transaction deleted, create new one
+                        $transaction = Transaction::create([
+                            'incident_id' => null,
+                            'vehicle_id' => null,
+                            'staff_id' => $staff->id,
+                            'type' => 'chi',
+                            'category' => 'ứng_lương_nợ',
+                            'amount' => $fromCompany,
+                            'date' => now(),
+                            'note' => "Ứng lương (nợ công ty) - {$staff->full_name}",
+                            'payment_method' => 'chuyển khoản',
+                            'recorded_by' => auth()->id(),
+                        ]);
+                        $newTransactionIds[] = $transaction->id;
+                    }
+                } else {
+                    // No old transaction, create new one
+                    $transaction = Transaction::create([
+                        'incident_id' => null,
+                        'vehicle_id' => null,
+                        'staff_id' => $staff->id,
+                        'type' => 'chi',
+                        'category' => 'ứng_lương_nợ',
+                        'amount' => $fromCompany,
+                        'date' => now(),
+                        'note' => "Ứng lương (nợ công ty) - {$staff->full_name}",
+                        'payment_method' => 'chuyển khoản',
+                        'recorded_by' => auth()->id(),
+                    ]);
+                    $newTransactionIds[] = $transaction->id;
+                }
+            } else {
+                // No debt needed, delete old transaction if exists
+                if (!empty($oldTransactionIds)) {
+                    Transaction::whereIn('id', $oldTransactionIds)->delete();
+                }
+            }
+
+            $salaryAdvance->update([
+                'amount' => $newAmount,
+                'from_earnings' => $fromEarnings,
+                'from_company' => $fromCompany,
+                'debt_amount' => $fromCompany,
+                'note' => $validated['note'] ?? $salaryAdvance->note,
+                'transaction_ids' => $newTransactionIds,
+            ]);
+
+            DB::commit();
+
+            return redirect()->back()
+                ->with('success', 'Đã cập nhật ứng lương thành công!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()->back()
+                ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Delete salary advance
+     */
+    public function destroySalaryAdvance(\App\Models\SalaryAdvance $salaryAdvance)
+    {
+        try {
+            DB::beginTransaction();
+
+            $staff = $salaryAdvance->staff;
+            $amount = $salaryAdvance->amount;
+            
+            // Delete related transactions (company debt transactions)
+            if ($salaryAdvance->transaction_ids && !empty($salaryAdvance->transaction_ids)) {
+                Transaction::whereIn('id', $salaryAdvance->transaction_ids)->delete();
+            }
+            
+            $salaryAdvance->delete();
+
+            DB::commit();
+
+            return redirect()->back()
+                ->with('success', "Đã hủy ứng lương " . number_format($amount, 0, ',', '.') . "đ thành công!");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()->back()
+                ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
 }
+
+

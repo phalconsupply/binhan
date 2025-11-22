@@ -12,6 +12,29 @@
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            
+            @if (session('success'))
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+                    <span class="block sm:inline">{{ session('success') }}</span>
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <span class="block sm:inline">{{ session('error') }}</span>
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <ul class="list-disc list-inside">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+            
             {{-- Summary Cards --}}
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -39,6 +62,9 @@
                             + TC: {{ number_format($stats['month_wage_earnings'], 0, ',', '.') }}đ
                             @if($stats['month_adjustments'] != 0)
                                 {{ $stats['month_adjustments'] >= 0 ? '+' : '' }} ĐC: {{ number_format($stats['month_adjustments'], 0, ',', '.') }}đ
+                            @endif
+                            @if($stats['month_salary_advances'] > 0)
+                                - Ứng: {{ number_format($stats['month_salary_advances'], 0, ',', '.') }}đ
                             @endif
                         </p>
                         <p class="text-xs text-green-600 mt-1">
@@ -149,15 +175,78 @@
                                 @enderror
                             </div>
 
+                            <div class="p-3 bg-blue-50 border border-blue-200 rounded-md mb-3">
+                                <p class="text-xs text-blue-800">
+                                    ℹ️ <strong>Ghi nhận giao dịch:</strong><br>
+                                    • Cộng tiền: Tạo transaction CHI (công ty chi trả cho nhân viên)<br>
+                                    • Trừ tiền: Tạo transaction THU (công ty thu lại từ nhân viên)<br>
+                                    • Tất cả đều được ghi trong Quản lý Giao dịch với tag "Điều chỉnh"
+                                </p>
+                            </div>
+
                             <div class="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                                 <p class="text-xs text-yellow-800">
-                                    ⚠️ <strong>Lưu ý:</strong> Nếu trừ tiền mà số dư không đủ, hệ thống sẽ tự động tạo khoản nợ. 
+                                    ⚠️ <strong>Lưu ý về nợ:</strong> Nếu trừ tiền mà số dư không đủ, hệ thống sẽ tự động tạo khoản nợ. 
                                     Khoản nợ sẽ được trừ tự động khi nhân viên có thu nhập mới.
                                 </p>
                             </div>
 
                             <button type="submit" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
                                 Xác nhận điều chỉnh
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                @endcan
+
+                {{-- Salary Advance Form --}}
+                @can('manage settings')
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <h3 class="text-lg font-semibold mb-4">💰 Ứng lương</h3>
+                        
+                        <form method="POST" action="{{ route('staff.salary-advance.store', $staff) }}" class="space-y-4">
+                            @csrf
+                            
+                            <div>
+                                <label for="advance_amount" class="block text-sm font-medium text-gray-700">Số tiền ứng <span class="text-red-500">*</span></label>
+                                <input type="number" id="advance_amount" name="amount" value="{{ old('amount') }}" required step="1000" min="1000"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    placeholder="VD: 1000000">
+                                @error('amount')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label for="advance_note" class="block text-sm font-medium text-gray-700">Ghi chú</label>
+                                <textarea id="advance_note" name="note" rows="2"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    placeholder="Lý do ứng lương...">{{ old('note') }}</textarea>
+                                @error('note')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                <p class="text-xs text-blue-800">
+                                    ℹ️ <strong>Cách hoạt động:</strong><br>
+                                    • Hệ thống tự động tính số dư thu nhập hiện có<br>
+                                    • Nếu đủ: Trừ từ thu nhập tháng này<br>
+                                    • Nếu không đủ: Công ty bù phần thiếu (tạo nợ)<br>
+                                    • Nợ sẽ tự động khấu trừ khi có thu nhập mới
+                                </p>
+                            </div>
+
+                            <div class="p-3 bg-green-50 border border-green-200 rounded-md">
+                                <p class="text-xs text-green-800">
+                                    Thu nhập khả dụng tháng này: 
+                                    <strong>{{ number_format($stats['month_total_earnings'], 0, ',', '.') }}đ</strong>
+                                </p>
+                            </div>
+
+                            <button type="submit" class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                💰 Ứng lương
                             </button>
                         </form>
                     </div>
@@ -178,16 +267,29 @@
 
                             <div class="space-y-3">
                                 @foreach($pendingDebts as $debt)
-                                    <div class="p-3 border border-gray-200 rounded-md">
+                                    <div class="p-3 border border-gray-200 rounded-md {{ $debt instanceof \App\Models\SalaryAdvance ? 'bg-orange-50' : '' }}">
                                         <div class="flex justify-between items-start mb-2">
-                                            <span class="text-sm font-semibold text-red-600">{{ $debt->category }}</span>
-                                            <span class="text-sm font-bold text-red-600">-{{ number_format($debt->debt_amount, 0, ',', '.') }}đ</span>
+                                            @if($debt instanceof \App\Models\SalaryAdvance)
+                                                <span class="text-sm font-semibold text-orange-600">💰 Ứng lương</span>
+                                            @else
+                                                <span class="text-sm font-semibold text-red-600">{{ $debt->category }}</span>
+                                            @endif
+                                            <span class="text-sm font-bold text-red-600">{{ number_format($debt->debt_amount, 0, ',', '.') }}đ</span>
                                         </div>
-                                        <p class="text-xs text-gray-600 mb-1">{{ $debt->reason }}</p>
-                                        <div class="flex justify-between items-center text-xs text-gray-500">
-                                            <span>Tháng {{ $debt->month->format('m/Y') }}</span>
-                                            <span>Bởi: {{ $debt->creator->name }}</span>
-                                        </div>
+                                        
+                                        @if($debt instanceof \App\Models\SalaryAdvance)
+                                            <p class="text-xs text-gray-600 mb-1">{{ $debt->note ?? 'Ứng lương' }}</p>
+                                            <div class="flex justify-between items-center text-xs text-gray-500">
+                                                <span>Ngày {{ $debt->date->format('d/m/Y') }}</span>
+                                                <span>Duyệt: {{ $debt->approvedBy->name ?? '-' }}</span>
+                                            </div>
+                                        @else
+                                            <p class="text-xs text-gray-600 mb-1">{{ $debt->reason }}</p>
+                                            <div class="flex justify-between items-center text-xs text-gray-500">
+                                                <span>Tháng {{ $debt->month->format('m/Y') }}</span>
+                                                <span>Bởi: {{ $debt->creator->name }}</span>
+                                            </div>
+                                        @endif
                                     </div>
                                 @endforeach
                             </div>
@@ -249,22 +351,24 @@
                                         <td class="px-4 py-3 text-sm">{{ $adj->category }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-600">{{ Str::limit($adj->reason, 50) }}</td>
                                         <td class="px-4 py-3 text-xs">
-                                            @if($adj->type == 'addition')
-                                                @if($adj->incident_id)
-                                                    <a href="{{ route('incidents.show', $adj->incident_id) }}" class="text-blue-600 hover:text-blue-900">
-                                                        🚑 Chuyến #{{ $adj->incident_id }}
-                                                    </a>
+                                            @if($adj->incident_id)
+                                                <a href="{{ route('incidents.show', $adj->incident_id) }}" class="text-blue-600 hover:text-blue-900">
+                                                    🚑 Chuyến #{{ $adj->incident_id }}
+                                                </a>
+                                                @if($adj->type == 'addition')
                                                     @if($adj->from_incident_amount > 0)
                                                         <br><span class="text-green-600">↳ {{ number_format($adj->from_incident_amount, 0, ',', '.') }}đ</span>
                                                     @endif
                                                     @if($adj->from_company_amount > 0)
                                                         <br><span class="text-orange-600">↳ Công ty: {{ number_format($adj->from_company_amount, 0, ',', '.') }}đ</span>
                                                     @endif
-                                                @else
-                                                    <span class="text-orange-600">🏢 Quỹ công ty</span>
                                                 @endif
                                             @else
-                                                <span class="text-gray-400">N/A</span>
+                                                @if($adj->type == 'addition')
+                                                    <span class="text-orange-600">🏢 Quỹ công ty</span>
+                                                @else
+                                                    <span class="text-blue-600">💰 Thu về công ty</span>
+                                                @endif
                                             @endif
                                         </td>
                                         <td class="px-4 py-3 text-sm text-right font-semibold {{ $adj->type == 'addition' ? 'text-green-600' : 'text-red-600' }}">
@@ -283,6 +387,129 @@
                                             <br>
                                             <span class="text-xs text-gray-400">{{ $adj->created_at->format('d/m/Y H:i') }}</span>
                                         </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- Salary Advances History --}}
+            @php
+                $salaryAdvances = $staff->salaryAdvances()
+                    ->with('approvedBy')
+                    ->orderBy('date', 'desc')
+                    ->take(10)
+                    ->get();
+                $totalAdvances = $salaryAdvances->sum('amount');
+                $totalDebtFromAdvances = $salaryAdvances->sum('debt_amount');
+            @endphp
+
+            @if($salaryAdvances->isNotEmpty())
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6">
+                    <h3 class="text-lg font-semibold mb-4">💰 Lịch sử ứng lương (10 gần nhất)</h3>
+                    
+                    <div class="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                        <div class="grid grid-cols-2 gap-4 text-center">
+                            <div>
+                                <p class="text-xs text-gray-500">Tổng đã ứng</p>
+                                <p class="text-lg font-bold text-blue-600">{{ number_format($totalAdvances, 0, ',', '.') }}đ</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Nợ ứng lương</p>
+                                <p class="text-lg font-bold text-red-600">{{ number_format($totalDebtFromAdvances, 0, ',', '.') }}đ</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Số tiền ứng</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Từ thu nhập</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Công ty bù</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Nợ còn lại</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ghi chú</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Người duyệt</th>
+                                    @can('manage settings')
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
+                                    @endcan
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @foreach($salaryAdvances as $advance)
+                                    <tr class="hover:bg-gray-50" x-data="{ editing: false }">
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                            {{ $advance->date->format('d/m/Y H:i') }}
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
+                                            <span x-show="!editing" class="font-bold text-blue-600">
+                                                {{ number_format($advance->amount, 0, ',', '.') }}đ
+                                            </span>
+                                            <input x-show="editing" type="number" x-model="amount_{{ $advance->id }}" 
+                                                   class="w-32 px-2 py-1 text-sm border rounded" 
+                                                   value="{{ $advance->amount }}" step="1000">
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm text-green-600">
+                                            {{ number_format($advance->from_earnings, 0, ',', '.') }}đ
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm text-orange-600">
+                                            {{ number_format($advance->from_company, 0, ',', '.') }}đ
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
+                                            @if($advance->debt_amount > 0)
+                                                <span class="font-bold text-red-600">{{ number_format($advance->debt_amount, 0, ',', '.') }}đ</span>
+                                            @else
+                                                <span class="text-green-600">✓ Đã trả</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">
+                                            <span x-show="!editing">{{ $advance->note ? Str::limit($advance->note, 40) : '-' }}</span>
+                                            <input x-show="editing" type="text" x-model="note_{{ $advance->id }}" 
+                                                   class="w-full px-2 py-1 text-sm border rounded" 
+                                                   value="{{ $advance->note }}">
+                                        </td>
+                                        <td class="px-4 py-3 text-sm">
+                                            {{ $advance->approvedBy->name ?? '-' }}
+                                        </td>
+                                        @can('manage settings')
+                                        <td class="px-4 py-3 whitespace-nowrap text-center text-sm">
+                                            <div x-show="!editing" class="flex justify-center gap-2">
+                                                <button @click="editing = true; amount_{{ $advance->id }} = {{ $advance->amount }}; note_{{ $advance->id }} = '{{ $advance->note }}'" 
+                                                        class="text-blue-600 hover:text-blue-900" title="Sửa">
+                                                    ✏️
+                                                </button>
+                                                <form method="POST" action="{{ route('salary-advance.destroy', $advance) }}" 
+                                                      onsubmit="return confirm('Bạn có chắc muốn hủy khoản ứng lương này?');" 
+                                                      class="inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-red-600 hover:text-red-900" title="Hủy">
+                                                        🗑️
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            <div x-show="editing" class="flex justify-center gap-2">
+                                                <form method="POST" action="{{ route('salary-advance.update', $advance) }}" class="inline">
+                                                    @csrf
+                                                    @method('PUT')
+                                                    <input type="hidden" name="amount" :value="amount_{{ $advance->id }}">
+                                                    <input type="hidden" name="note" :value="note_{{ $advance->id }}">
+                                                    <button type="submit" class="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                                        Lưu
+                                                    </button>
+                                                </form>
+                                                <button @click="editing = false" class="px-2 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400">
+                                                    Hủy
+                                                </button>
+                                            </div>
+                                        </td>
+                                        @endcan
                                     </tr>
                                 @endforeach
                             </tbody>

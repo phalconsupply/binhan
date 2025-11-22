@@ -102,7 +102,18 @@ class TransactionObserver
      */
     public function deleted(Transaction $transaction): void
     {
-        //
+        // Only handle deletion of salary advance debt transactions if deleted outside of salary advance flow
+        // Category 'ứng_lương_nợ' transactions should not be deleted directly
+        // They are managed through salary advance CRUD operations
+        
+        if ($transaction->category === 'ứng_lương_nợ') {
+            \Log::warning('Salary advance debt transaction deleted directly', [
+                'transaction_id' => $transaction->id,
+                'staff_id' => $transaction->staff_id,
+                'amount' => $transaction->amount,
+            ]);
+            // Don't auto-delete salary advance as it's managed in controller
+        }
     }
 
     /**

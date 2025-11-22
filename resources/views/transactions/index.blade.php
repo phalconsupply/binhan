@@ -130,10 +130,15 @@
                                             {{-- Thông tin cơ bản --}}
                                             <div class="flex items-center space-x-3 text-sm text-gray-600">
                                                 <span>{{ $group['date']->format('d/m/Y') }}</span>
-                                                <span>•</span>
-                                                <a href="{{ route('vehicles.show', $group['vehicle']) }}" class="text-blue-600 hover:text-blue-800 font-medium" onclick="event.stopPropagation()">
-                                                    {{ $group['vehicle']->license_plate }}
-                                                </a>
+                                                @if($group['vehicle'])
+                                                    <span>•</span>
+                                                    <a href="{{ route('vehicles.show', $group['vehicle']) }}" class="text-blue-600 hover:text-blue-800 font-medium" onclick="event.stopPropagation()">
+                                                        {{ $group['vehicle']->license_plate }}
+                                                    </a>
+                                                @else
+                                                    <span>•</span>
+                                                    <span class="text-gray-500">🏢 Quỹ công ty</span>
+                                                @endif
                                                 @if($group['incident'] && $group['incident']->patient)
                                                     <span>•</span>
                                                     <span>{{ $group['incident']->patient->name }}</span>

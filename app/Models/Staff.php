@@ -64,6 +64,11 @@ class Staff extends Model
         return $this->hasMany(StaffAdjustment::class);
     }
 
+    public function salaryAdvances()
+    {
+        return $this->hasMany(SalaryAdvance::class);
+    }
+
     // Accessors
     public function getStaffTypeLabelAttribute()
     {
