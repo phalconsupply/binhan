@@ -614,6 +614,11 @@ class IncidentController extends Controller
             // Attach drivers with wages
             if (!empty($validated['drivers'])) {
                 foreach ($validated['drivers'] as $driver) {
+                    // Skip if staff_id is empty (unselected dropdown)
+                    if (empty($driver['staff_id'])) {
+                        continue;
+                    }
+                    
                     $wageAmount = !empty($driver['wage']) ? (float)$driver['wage'] : null;
                     
                     $incident->staff()->attach($driver['staff_id'], [
@@ -642,6 +647,11 @@ class IncidentController extends Controller
             // Attach medical staff with wages
             if (!empty($validated['medical_staff'])) {
                 foreach ($validated['medical_staff'] as $medicalStaff) {
+                    // Skip if staff_id is empty (unselected dropdown)
+                    if (empty($medicalStaff['staff_id'])) {
+                        continue;
+                    }
+                    
                     $wageAmount = !empty($medicalStaff['wage']) ? (float)$medicalStaff['wage'] : null;
                     
                     $incident->staff()->attach($medicalStaff['staff_id'], [
