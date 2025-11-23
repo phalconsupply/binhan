@@ -264,7 +264,7 @@ class TransactionController extends Controller
 
         $transaction->update($validated);
 
-        return redirect()->route('transactions.show', $transaction)
+        return redirect()->route('transactions.index')
             ->with('success', 'Đã cập nhật giao dịch thành công!');
     }
 
