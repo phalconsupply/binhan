@@ -495,7 +495,25 @@ class IncidentController extends Controller
      */
     public function edit(Incident $incident)
     {
-        $incident->load(['vehicle', 'patient', 'drivers', 'medicalStaff']);
+        $incident->load(['vehicle', 'patient', 'drivers', 'medicalStaff', 'transactions']);
+        
+        // Sync wage amounts from actual transactions for display accuracy
+        // This ensures edit form shows real wage data, not stale pivot table data
+        foreach ($incident->drivers as $driver) {
+            $actualWage = $incident->transactions()
+                ->where('staff_id', $driver->id)
+                ->where('type', 'chi')
+                ->sum('amount');
+            $driver->pivot->actual_wage = $actualWage;
+        }
+        
+        foreach ($incident->medicalStaff as $staff) {
+            $actualWage = $incident->transactions()
+                ->where('staff_id', $staff->id)
+                ->where('type', 'chi')
+                ->sum('amount');
+            $staff->pivot->actual_wage = $actualWage;
+        }
         
         $vehicles = Vehicle::orderBy('license_plate')->get();
         $patients = Patient::orderBy('name')->get();

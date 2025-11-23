@@ -111,11 +111,11 @@
                                                 <input type="hidden" name="drivers[{{ $driverIndex }}][staff_id]" value="{{ $driver->id }}">
                                                 <div class="flex-1">
                                                     <span class="text-sm font-medium">{{ $driver->employee_code }} - {{ $driver->full_name }}</span>
-                                                    @if($driver->pivot->wage_amount)
-                                                        <span class="text-xs text-green-600 ml-2">({{ number_format($driver->pivot->wage_amount, 0, ',', '.') }}đ)</span>
+                                                    @if($driver->pivot->actual_wage ?? 0 > 0)
+                                                        <span class="text-xs text-green-600 ml-2">({{ number_format($driver->pivot->actual_wage, 0, ',', '.') }}đ)</span>
                                                     @endif
                                                 </div>
-                                                <input type="number" name="drivers[{{ $driverIndex }}][wage]" value="{{ $driver->pivot->wage_amount }}" placeholder="Tiền công (đ)" min="0" step="1000" class="w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                <input type="number" name="drivers[{{ $driverIndex }}][wage]" value="{{ $driver->pivot->actual_wage ?? 0 }}" placeholder="Tiền công (đ)" min="0" step="1000" class="w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                             </div>
                                             @php $driverIndex++; @endphp
                                         @endforeach
@@ -140,11 +140,11 @@
                                                 <input type="hidden" name="medical_staff[{{ $medicalIndex }}][staff_id]" value="{{ $staff->id }}">
                                                 <div class="flex-1">
                                                     <span class="text-sm font-medium">{{ $staff->employee_code }} - {{ $staff->full_name }}</span>
-                                                    @if($staff->pivot->wage_amount)
-                                                        <span class="text-xs text-green-600 ml-2">({{ number_format($staff->pivot->wage_amount, 0, ',', '.') }}đ)</span>
+                                                    @if($staff->pivot->actual_wage ?? 0 > 0)
+                                                        <span class="text-xs text-green-600 ml-2">({{ number_format($staff->pivot->actual_wage, 0, ',', '.') }}đ)</span>
                                                     @endif
                                                 </div>
-                                                <input type="number" name="medical_staff[{{ $medicalIndex }}][wage]" value="{{ $staff->pivot->wage_amount }}" placeholder="Tiền công (đ)" min="0" step="1000" class="w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                <input type="number" name="medical_staff[{{ $medicalIndex }}][wage]" value="{{ $staff->pivot->actual_wage ?? 0 }}" placeholder="Tiền công (đ)" min="0" step="1000" class="w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                             </div>
                                             @php $medicalIndex++; @endphp
                                         @endforeach

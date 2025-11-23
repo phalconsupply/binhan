@@ -15,6 +15,11 @@ class TransactionObserver
         // Only process for wage payments (chi) with staff_id
         if ($transaction->type === 'chi' && $transaction->staff_id) {
             $this->processDebtPayment($transaction->staff_id);
+            
+            // Sync incident_staff.wage_amount if this is a wage transaction
+            if ($transaction->incident_id) {
+                $this->syncIncidentStaffWage($transaction->incident_id, $transaction->staff_id);
+            }
         }
     }
 
@@ -88,13 +93,38 @@ class TransactionObserver
             }
         }
     }
+    
+    /**
+     * Sync incident_staff.wage_amount with actual transaction total
+     * This keeps pivot table in sync when transactions are created/updated/deleted
+     */
+    private function syncIncidentStaffWage($incidentId, $staffId): void
+    {
+        // Calculate actual wage from all transactions for this staff in this incident
+        $actualWage = Transaction::where('incident_id', $incidentId)
+            ->where('staff_id', $staffId)
+            ->where('type', 'chi')
+            ->sum('amount');
+        
+        // Update incident_staff pivot table
+        \DB::table('incident_staff')
+            ->where('incident_id', $incidentId)
+            ->where('staff_id', $staffId)
+            ->update([
+                'wage_amount' => $actualWage,
+                'updated_at' => now()
+            ]);
+    }
 
     /**
      * Handle the Transaction "updated" event.
      */
     public function updated(Transaction $transaction): void
     {
-        //
+        // Sync incident_staff.wage_amount if this is a wage transaction
+        if ($transaction->type === 'chi' && $transaction->staff_id && $transaction->incident_id) {
+            $this->syncIncidentStaffWage($transaction->incident_id, $transaction->staff_id);
+        }
     }
 
     /**
@@ -102,6 +132,11 @@ class TransactionObserver
      */
     public function deleted(Transaction $transaction): void
     {
+        // Sync incident_staff.wage_amount if this is a wage transaction
+        if ($transaction->type === 'chi' && $transaction->staff_id && $transaction->incident_id) {
+            $this->syncIncidentStaffWage($transaction->incident_id, $transaction->staff_id);
+        }
+        
         // Handle deletion of salary advance debt transactions
         if ($transaction->category === 'ứng_lương_nợ') {
             \Log::warning('Salary advance debt transaction deleted directly', [
