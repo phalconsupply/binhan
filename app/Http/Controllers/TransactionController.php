@@ -66,8 +66,17 @@ class TransactionController extends Controller
         // Get all transactions
         $allTransactions = $query->orderBy('date', 'desc')->get();
 
-        // Group by incident_id
-        $groupedTransactions = $allTransactions->groupBy('incident_id')->map(function($group) {
+        // Separate dividend transactions
+        $dividendTransactions = $allTransactions->filter(function($transaction) {
+            return str_contains($transaction->note ?? '', 'Chia cổ tức');
+        });
+        
+        $regularTransactions = $allTransactions->reject(function($transaction) {
+            return str_contains($transaction->note ?? '', 'Chia cổ tức');
+        });
+
+        // Group regular transactions by incident_id
+        $groupedTransactions = $regularTransactions->groupBy('incident_id')->map(function($group) {
             $totalRevenue = $group->where('type', 'thu')->sum('amount');
             $totalExpense = $group->where('type', 'chi')->sum('amount');
             $totalPlannedExpense = $group->where('type', 'du_kien_chi')->sum('amount');
@@ -90,8 +99,30 @@ class TransactionController extends Controller
                 'has_owner' => $hasOwner,
                 'management_fee' => $managementFee,
                 'profit_after_fee' => $profitAfterFee,
+                'is_dividend' => false,
             ];
         })->sortByDesc('date')->values();
+
+        // Add dividend group if exists
+        if ($dividendTransactions->isNotEmpty()) {
+            $dividendGroup = [
+                'incident' => null,
+                'vehicle' => null,
+                'date' => $dividendTransactions->first()->date,
+                'transactions' => $dividendTransactions,
+                'total_revenue' => 0,
+                'total_expense' => $dividendTransactions->sum('amount'),
+                'total_planned_expense' => 0,
+                'net_amount' => -$dividendTransactions->sum('amount'),
+                'has_owner' => false,
+                'management_fee' => 0,
+                'profit_after_fee' => 0,
+                'is_dividend' => true,
+            ];
+            
+            // Add dividend group at the beginning
+            $groupedTransactions = collect([$dividendGroup])->merge($groupedTransactions)->values();
+        }
 
         // Manual pagination
         $perPage = 20;

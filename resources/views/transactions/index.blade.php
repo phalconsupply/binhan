@@ -123,9 +123,9 @@
                     @else
                         <div class="space-y-3">
                             @foreach($transactions as $group)
-                            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <div class="border border-gray-200 rounded-lg overflow-hidden {{ $group['is_dividend'] ?? false ? 'ring-2 ring-purple-300' : '' }}">
                                 {{-- Header - Click để mở rộng --}}
-                                <div class="bg-gray-50 px-4 py-3 cursor-pointer hover:bg-gray-100 transition" onclick="toggleDetail('detail-{{ $loop->index }}')">
+                                <div class="px-4 py-3 cursor-pointer hover:bg-gray-100 transition {{ ($group['is_dividend'] ?? false) ? 'bg-purple-50' : 'bg-gray-50' }}" onclick="toggleDetail('detail-{{ $loop->index }}')">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center space-x-4">
                                             {{-- Icon mở rộng --}}
@@ -135,7 +135,9 @@
                                             
                                             {{-- Mã chuyến đi --}}
                                             <div>
-                                                @if($group['incident'])
+                                                @if($group['is_dividend'] ?? false)
+                                                    <span class="text-base font-semibold text-purple-600">💰 Chia cổ tức</span>
+                                                @elseif($group['incident'])
                                                     <a href="{{ route('incidents.show', $group['incident']) }}" class="text-base font-semibold text-blue-600 hover:text-blue-800" onclick="event.stopPropagation()">
                                                         Chuyến #{{ $group['incident']->id }}
                                                     </a>
@@ -146,7 +148,9 @@
 
                                             {{-- Thông tin cơ bản --}}
                                             <div class="flex items-center space-x-3 text-sm text-gray-600">
-                                                @if($group['incident'])
+                                                @if($group['is_dividend'] ?? false)
+                                                    <span class="text-purple-600">({{ $group['transactions']->count() }} giao dịch)</span>
+                                                @elseif($group['incident'])
                                                     <span>{{ $group['date']->format('d/m/Y') }}</span>
                                                 @else
                                                     <span class="text-gray-500">({{ $group['transactions']->count() }} giao dịch)</span>
@@ -215,14 +219,18 @@
                                 </div>
 
                                 {{-- Chi tiết giao dịch --}}
-                                <div id="detail-{{ $loop->index }}" class="hidden bg-white">
+                                <div id="detail-{{ $loop->index }}" class="hidden {{ ($group['is_dividend'] ?? false) ? 'bg-purple-50' : 'bg-white' }}">
                                     <div class="px-4 py-3 border-t border-gray-200">
                                         <table class="w-full text-sm">
                                             <thead class="text-xs text-gray-500 uppercase border-b">
                                                 <tr>
-                                                    @if(!$group['incident'])
+                                                    @if(!$group['incident'] && !($group['is_dividend'] ?? false))
                                                         <th class="py-2 text-left">Ngày</th>
                                                         <th class="py-2 text-left">Nguồn</th>
+                                                    @endif
+                                                    @if($group['is_dividend'] ?? false)
+                                                        <th class="py-2 text-left">Ngày</th>
+                                                        <th class="py-2 text-left">Cổ đông</th>
                                                     @endif
                                                     <th class="py-2 text-left">Loại</th>
                                                     <th class="py-2 text-left">Tên khoản</th>
@@ -233,8 +241,21 @@
                                             </thead>
                                             <tbody class="divide-y divide-gray-100">
                                                 @foreach($group['transactions'] as $transaction)
-                                                <tr class="hover:bg-gray-50 {{ $transaction->category == 'điều_chỉnh_lương' ? 'bg-blue-50' : '' }}">
-                                                    @if(!$group['incident'])
+                                                <tr class="hover:bg-gray-50 {{ $transaction->category == 'điều_chỉnh_lương' ? 'bg-blue-50' : '' }} {{ ($group['is_dividend'] ?? false) ? 'bg-purple-50' : '' }}">
+                                                    @if($group['is_dividend'] ?? false)
+                                                        <td class="py-2 text-gray-600">
+                                                            {{ \Carbon\Carbon::parse($transaction->date)->format('d/m/Y') }}
+                                                        </td>
+                                                        <td class="py-2">
+                                                            @php
+                                                                // Extract shareholder name from note: "Chia cổ tức X% - Tên cổ đông (Vốn góp: Y%)"
+                                                                preg_match('/- ([^(]+) \(Vốn góp/', $transaction->note ?? '', $matches);
+                                                                $shareholderName = $matches[1] ?? 'N/A';
+                                                            @endphp
+                                                            <span class="text-purple-700 font-medium">{{ trim($shareholderName) }}</span>
+                                                        </td>
+                                                    @endif
+                                                    @if(!$group['incident'] && !($group['is_dividend'] ?? false))
                                                         <td class="py-2 text-gray-600">
                                                             {{ \Carbon\Carbon::parse($transaction->date)->format('d/m/Y') }}
                                                         </td>
