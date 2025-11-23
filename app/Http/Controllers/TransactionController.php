@@ -71,8 +71,18 @@ class TransactionController extends Controller
             return str_contains($transaction->note ?? '', 'Chia cổ tức');
         });
         
+        // Separate maintenance transactions
+        $maintenanceTransactions = $allTransactions->filter(function($transaction) {
+            return str_contains(strtolower($transaction->note ?? ''), 'bảo trì') || 
+                   str_contains(strtolower($transaction->note ?? ''), 'bảo dưỡng') ||
+                   str_contains(strtolower($transaction->note ?? ''), 'sửa chữa');
+        });
+        
         $regularTransactions = $allTransactions->reject(function($transaction) {
-            return str_contains($transaction->note ?? '', 'Chia cổ tức');
+            return str_contains($transaction->note ?? '', 'Chia cổ tức') ||
+                   str_contains(strtolower($transaction->note ?? ''), 'bảo trì') ||
+                   str_contains(strtolower($transaction->note ?? ''), 'bảo dưỡng') ||
+                   str_contains(strtolower($transaction->note ?? ''), 'sửa chữa');
         });
 
         // Group regular transactions by incident_id
@@ -100,6 +110,7 @@ class TransactionController extends Controller
                 'management_fee' => $managementFee,
                 'profit_after_fee' => $profitAfterFee,
                 'is_dividend' => false,
+                'is_maintenance' => false,
             ];
         })->sortByDesc('date')->values();
 
@@ -118,10 +129,33 @@ class TransactionController extends Controller
                 'management_fee' => 0,
                 'profit_after_fee' => 0,
                 'is_dividend' => true,
+                'is_maintenance' => false,
             ];
             
             // Add dividend group at the beginning
             $groupedTransactions = collect([$dividendGroup])->merge($groupedTransactions)->values();
+        }
+
+        // Add maintenance group if exists
+        if ($maintenanceTransactions->isNotEmpty()) {
+            $maintenanceGroup = [
+                'incident' => null,
+                'vehicle' => null,
+                'date' => $maintenanceTransactions->first()->date,
+                'transactions' => $maintenanceTransactions,
+                'total_revenue' => 0,
+                'total_expense' => $maintenanceTransactions->sum('amount'),
+                'total_planned_expense' => 0,
+                'net_amount' => -$maintenanceTransactions->sum('amount'),
+                'has_owner' => false,
+                'management_fee' => 0,
+                'profit_after_fee' => 0,
+                'is_dividend' => false,
+                'is_maintenance' => true,
+            ];
+            
+            // Add maintenance group after dividend group
+            $groupedTransactions = collect([$maintenanceGroup])->merge($groupedTransactions)->values();
         }
 
         // Manual pagination
