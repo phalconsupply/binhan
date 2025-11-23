@@ -107,10 +107,23 @@ class TransactionController extends Controller
                 'profit_after_fee' => $profitAfterFee,
                 'is_dividend' => false,
                 'is_maintenance' => false,
+                'is_other' => false,
             ];
-        })->sortByDesc('date')->values();
+        })->sortByDesc('date');
 
-        // Add dividend group if exists
+        // Separate incident groups and "other transactions" group
+        $incidentGroups = $groupedTransactions->filter(function($group) {
+            return $group['incident'] !== null;
+        })->values();
+
+        $otherGroup = $groupedTransactions->filter(function($group) {
+            return $group['incident'] === null;
+        })->first();
+
+        // Build final sorted groups
+        $finalGroups = collect();
+
+        // 1. Dividend group (if exists)
         if ($dividendTransactions->isNotEmpty()) {
             $dividendGroup = [
                 'incident' => null,
@@ -126,13 +139,12 @@ class TransactionController extends Controller
                 'profit_after_fee' => 0,
                 'is_dividend' => true,
                 'is_maintenance' => false,
+                'is_other' => false,
             ];
-            
-            // Add dividend group at the beginning
-            $groupedTransactions = collect([$dividendGroup])->merge($groupedTransactions)->values();
+            $finalGroups->push($dividendGroup);
         }
 
-        // Add maintenance group if exists
+        // 2. Maintenance group (if exists)
         if ($maintenanceTransactions->isNotEmpty()) {
             $maintenanceGroup = [
                 'incident' => null,
@@ -148,11 +160,21 @@ class TransactionController extends Controller
                 'profit_after_fee' => 0,
                 'is_dividend' => false,
                 'is_maintenance' => true,
+                'is_other' => false,
             ];
-            
-            // Add maintenance group after dividend group
-            $groupedTransactions = collect([$maintenanceGroup])->merge($groupedTransactions)->values();
+            $finalGroups->push($maintenanceGroup);
         }
+
+        // 3. Other transactions group (if exists)
+        if ($otherGroup) {
+            $otherGroup['is_other'] = true;
+            $finalGroups->push($otherGroup);
+        }
+
+        // 4. Incident groups (sorted by date desc)
+        $finalGroups = $finalGroups->merge($incidentGroups);
+
+        $groupedTransactions = $finalGroups->values();
 
         // Manual pagination
         $perPage = 20;
