@@ -146,13 +146,17 @@
 
                                             {{-- Thông tin cơ bản --}}
                                             <div class="flex items-center space-x-3 text-sm text-gray-600">
-                                                <span>{{ $group['date']->format('d/m/Y') }}</span>
+                                                @if($group['incident'])
+                                                    <span>{{ $group['date']->format('d/m/Y') }}</span>
+                                                @else
+                                                    <span class="text-gray-500">({{ $group['transactions']->count() }} giao dịch)</span>
+                                                @endif
                                                 @if($group['vehicle'])
                                                     <span>•</span>
                                                     <a href="{{ route('vehicles.show', $group['vehicle']) }}" class="text-blue-600 hover:text-blue-800 font-medium" onclick="event.stopPropagation()">
                                                         {{ $group['vehicle']->license_plate }}
                                                     </a>
-                                                @else
+                                                @elseif(!$group['incident'])
                                                     <span>•</span>
                                                     <span class="text-gray-500">🏢 Quỹ công ty</span>
                                                 @endif
@@ -216,6 +220,10 @@
                                         <table class="w-full text-sm">
                                             <thead class="text-xs text-gray-500 uppercase border-b">
                                                 <tr>
+                                                    @if(!$group['incident'])
+                                                        <th class="py-2 text-left">Ngày</th>
+                                                        <th class="py-2 text-left">Nguồn</th>
+                                                    @endif
                                                     <th class="py-2 text-left">Loại</th>
                                                     <th class="py-2 text-left">Tên khoản</th>
                                                     <th class="py-2 text-right">Số tiền</th>
@@ -226,6 +234,24 @@
                                             <tbody class="divide-y divide-gray-100">
                                                 @foreach($group['transactions'] as $transaction)
                                                 <tr class="hover:bg-gray-50 {{ $transaction->category == 'điều_chỉnh_lương' ? 'bg-blue-50' : '' }}">
+                                                    @if(!$group['incident'])
+                                                        <td class="py-2 text-gray-600">
+                                                            {{ \Carbon\Carbon::parse($transaction->date)->format('d/m/Y') }}
+                                                        </td>
+                                                        <td class="py-2">
+                                                            @if($transaction->incident_id)
+                                                                <a href="{{ route('incidents.show', $transaction->incident_id) }}" class="text-blue-600 hover:text-blue-800 text-xs">
+                                                                    🚑 Chuyến #{{ $transaction->incident_id }}
+                                                                </a>
+                                                            @elseif($transaction->vehicle_id)
+                                                                <a href="{{ route('vehicles.show', $transaction->vehicle_id) }}" class="text-blue-600 hover:text-blue-800 text-xs">
+                                                                    🚗 {{ $transaction->vehicle->license_plate ?? 'Xe #'.$transaction->vehicle_id }}
+                                                                </a>
+                                                            @else
+                                                                <span class="text-gray-500 text-xs">🏢 Quỹ công ty</span>
+                                                            @endif
+                                                        </td>
+                                                    @endif
                                                     <td class="py-2">
                                                         <span class="px-2 py-1 text-xs rounded-full {{ $transaction->type == 'thu' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
                                                             {{ $transaction->type_label }}
