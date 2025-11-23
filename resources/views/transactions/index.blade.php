@@ -215,7 +215,7 @@
                                 </div>
 
                                 {{-- Chi tiết giao dịch --}}
-                                <div id="detail-{{ $loop->index }}" class="bg-white">
+                                <div id="detail-{{ $loop->index }}" class="hidden bg-white">
                                     <div class="px-4 py-3 border-t border-gray-200">
                                         <table class="w-full text-sm">
                                             <thead class="text-xs text-gray-500 uppercase border-b">
@@ -305,13 +305,6 @@
 
     @push('scripts')
     <script>
-        // Initialize icons to show all groups are expanded by default
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('[id^="icon-"]').forEach(function(icon) {
-                icon.style.transform = 'rotate(90deg)';
-            });
-        });
-
         function toggleDetail(id) {
             const detail = document.getElementById(id);
             const iconId = id.replace('detail-', 'icon-');
