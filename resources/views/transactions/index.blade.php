@@ -210,8 +210,8 @@
                                     </div>
                                 </div>
 
-                                {{-- Chi tiết giao dịch - Ẩn mặc định --}}
-                                <div id="detail-{{ $loop->index }}" class="hidden bg-white">
+                                {{-- Chi tiết giao dịch - Hiển thị mặc định cho "Giao dịch khác", ẩn cho incidents --}}
+                                <div id="detail-{{ $loop->index }}" class="{{ $group['incident'] ? 'hidden' : '' }} bg-white">
                                     <div class="px-4 py-3 border-t border-gray-200">
                                         <table class="w-full text-sm">
                                             <thead class="text-xs text-gray-500 uppercase border-b">
@@ -292,6 +292,19 @@
                 icon.style.transform = 'rotate(0deg)';
             }
         }
+
+        // Initialize icons for expanded groups (e.g., "Giao dịch khác")
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('[id^="detail-"]').forEach(function(detail) {
+                if (!detail.classList.contains('hidden')) {
+                    const iconId = detail.id.replace('detail-', 'icon-');
+                    const icon = document.getElementById(iconId);
+                    if (icon) {
+                        icon.style.transform = 'rotate(90deg)';
+                    }
+                }
+            });
+        });
     </script>
     @endpush
 
