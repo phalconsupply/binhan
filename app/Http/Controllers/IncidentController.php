@@ -587,10 +587,10 @@ class IncidentController extends Controller
             // Remove all existing staff
             $incident->staff()->detach();
             
-            // Delete old wage transactions for this incident
+            // Delete ALL old wage transactions for this incident (by staff_id)
+            // This ensures we don't create duplicates regardless of note format
             Transaction::where('incident_id', $incident->id)
                 ->whereNotNull('staff_id')
-                ->where('note', 'LIKE', 'Tiền công:%')
                 ->delete();
             
             // Attach drivers with wages
@@ -615,7 +615,7 @@ class IncidentController extends Controller
                             'method' => 'cash',
                             'recorded_by' => auth()->id(),
                             'date' => $validated['date'],
-                            'note' => 'Tiền công: ' . ($staff ? $staff->name : 'Lái xe'),
+                            'note' => 'Tiền công lái xe: ' . ($staff ? $staff->full_name : 'Lái xe'),
                         ]);
                     }
                 }
@@ -643,7 +643,7 @@ class IncidentController extends Controller
                             'method' => 'cash',
                             'recorded_by' => auth()->id(),
                             'date' => $validated['date'],
-                            'note' => 'Tiền công: ' . ($staff ? $staff->name : 'Nhân viên y tế'),
+                            'note' => 'Tiền công nhân viên y tế: ' . ($staff ? $staff->full_name : 'Nhân viên y tế'),
                         ]);
                     }
                 }
