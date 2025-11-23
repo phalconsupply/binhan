@@ -139,6 +139,8 @@
                                                     <span class="text-base font-semibold text-purple-600">💰 Chia cổ tức</span>
                                                 @elseif($group['is_maintenance'] ?? false)
                                                     <span class="text-base font-semibold text-orange-600">🔧 Bảo trì xe</span>
+                                                @elseif($group['is_other'] ?? false)
+                                                    <span class="text-base font-semibold text-gray-600">📦 Giao dịch khác</span>
                                                 @elseif($group['incident'])
                                                     <a href="{{ route('incidents.show', $group['incident']) }}" class="text-base font-semibold text-blue-600 hover:text-blue-800" onclick="event.stopPropagation()">
                                                         Chuyến #{{ $group['incident']->id }}
