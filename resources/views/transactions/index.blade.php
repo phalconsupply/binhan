@@ -272,6 +272,9 @@
                                                                 <a href="{{ route('vehicles.show', $transaction->vehicle_id) }}" class="text-orange-600 hover:text-orange-800 font-medium">
                                                                     {{ $transaction->vehicle->license_plate ?? 'Xe #'.$transaction->vehicle_id }}
                                                                 </a>
+                                                                @if($transaction->vehicleMaintenance && $transaction->vehicleMaintenance->maintenanceService)
+                                                                    <span class="text-xs text-gray-500 ml-1">({{ $transaction->vehicleMaintenance->maintenanceService->name }})</span>
+                                                                @endif
                                                             @else
                                                                 <span class="text-gray-500 text-xs">N/A</span>
                                                             @endif

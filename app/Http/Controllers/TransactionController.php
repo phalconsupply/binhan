@@ -23,7 +23,7 @@ class TransactionController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Transaction::with(['vehicle', 'incident.patient', 'recorder']);
+        $query = Transaction::with(['vehicle', 'incident.patient', 'recorder', 'vehicleMaintenance.maintenanceService']);
 
         // Search
         if ($request->has('search')) {
@@ -71,18 +71,14 @@ class TransactionController extends Controller
             return str_contains($transaction->note ?? '', 'Chia cổ tức');
         });
         
-        // Separate maintenance transactions
+        // Separate maintenance transactions (by vehicle_maintenance_id relationship)
         $maintenanceTransactions = $allTransactions->filter(function($transaction) {
-            return str_contains(strtolower($transaction->note ?? ''), 'bảo trì') || 
-                   str_contains(strtolower($transaction->note ?? ''), 'bảo dưỡng') ||
-                   str_contains(strtolower($transaction->note ?? ''), 'sửa chữa');
+            return !empty($transaction->vehicle_maintenance_id);
         });
         
         $regularTransactions = $allTransactions->reject(function($transaction) {
             return str_contains($transaction->note ?? '', 'Chia cổ tức') ||
-                   str_contains(strtolower($transaction->note ?? ''), 'bảo trì') ||
-                   str_contains(strtolower($transaction->note ?? ''), 'bảo dưỡng') ||
-                   str_contains(strtolower($transaction->note ?? ''), 'sửa chữa');
+                   !empty($transaction->vehicle_maintenance_id);
         });
 
         // Group regular transactions by incident_id
