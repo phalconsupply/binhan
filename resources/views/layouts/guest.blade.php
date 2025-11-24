@@ -13,17 +13,40 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        
+        <style>
+            body {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+        </style>
     </head>
-    <body class="font-sans text-gray-900 antialiased">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
-            <div>
-                <a href="/">
-                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
-                </a>
-            </div>
+    <body class="font-sans antialiased">
+        <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-md w-full space-y-8">
+                <!-- Logo and Title -->
+                <div class="text-center">
+                    <img src="{{ asset('logo.png') }}" alt="Binhan Logo" class="mx-auto h-24 w-auto mb-4">
+                    <h2 class="text-3xl font-extrabold text-white">
+                        Hệ Thống Quản Lý Xe Cấp Cứu
+                    </h2>
+                    <p class="mt-2 text-sm text-indigo-100">
+                        Binhan Ambulance Management System
+                    </p>
+                </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg">
-                {{ $slot }}
+                <!-- Login Form Card -->
+                <div class="bg-white rounded-xl shadow-2xl overflow-hidden">
+                    <div class="px-8 py-10">
+                        {{ $slot }}
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="text-center">
+                    <p class="text-xs text-indigo-100">
+                        © {{ date('Y') }} Binhan. All rights reserved.
+                    </p>
+                </div>
             </div>
         </div>
     </body>
