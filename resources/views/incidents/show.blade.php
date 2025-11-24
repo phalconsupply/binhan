@@ -140,6 +140,50 @@
                     </div>
                     @endif
 
+                    {{-- Additional Services --}}
+                    @if($incident->additionalServices->count() > 0)
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="p-6">
+                            <h3 class="text-lg font-semibold mb-4">🛎️ Dịch vụ kèm theo</h3>
+                            <div class="space-y-2">
+                                @foreach($incident->additionalServices as $service)
+                                <div class="flex justify-between items-start p-3 bg-gray-50 rounded border border-gray-200">
+                                    <div class="flex-1">
+                                        <p class="font-semibold text-gray-800">{{ $service->service_name }}</p>
+                                        @if($service->note)
+                                        <p class="text-xs text-gray-500 mt-1">{{ $service->note }}</p>
+                                        @endif
+                                        @if($service->additionalService)
+                                        <p class="text-xs text-blue-600 mt-1">
+                                            <span class="inline-flex items-center">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                Dịch vụ có sẵn
+                                            </span>
+                                        </p>
+                                        @endif
+                                    </div>
+                                    <div class="text-right ml-4">
+                                        <p class="text-lg font-bold text-green-600">
+                                            {{ number_format($service->amount, 0, ',', '.') }}đ
+                                        </p>
+                                    </div>
+                                </div>
+                                @endforeach
+                                <div class="pt-2 border-t mt-3">
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-semibold text-gray-700">Tổng dịch vụ:</span>
+                                        <span class="text-xl font-bold text-green-600">
+                                            {{ number_format($incident->additionalServices->sum('amount'), 0, ',', '.') }}đ
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     {{-- Transactions --}}
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="p-6">

@@ -120,6 +120,10 @@ class IncidentController extends Controller
             'additional_services' => 'nullable|array',
             'additional_services.*.name' => 'required|string|max:255',
             'additional_services.*.amount' => 'required|numeric|min:0',
+            'incident_services' => 'nullable|array',
+            'incident_services.*.service_name' => 'required|string|max:255',
+            'incident_services.*.amount' => 'required|numeric|min:0',
+            'incident_services.*.note' => 'nullable|string',
             'additional_expenses' => 'nullable|array',
             'additional_expenses.*.name' => 'required|string|max:255',
             'additional_expenses.*.amount' => 'required|numeric|min:0',
@@ -331,7 +335,7 @@ class IncidentController extends Controller
                 ]);
             }
 
-            // Create additional services revenue
+            // Create additional services revenue (legacy support)
             if (!empty($validated['additional_services'])) {
                 foreach ($validated['additional_services'] as $service) {
                     if (!empty($service['name']) && !empty($service['amount'])) {
@@ -353,6 +357,35 @@ class IncidentController extends Controller
                             'recorded_by' => auth()->id(),
                             'date' => $validated['date'],
                             'note' => 'Thu dịch vụ: ' . $service['name'],
+                        ]);
+                    }
+                }
+            }
+
+            // Create incident services (new dedicated section)
+            if (!empty($validated['incident_services'])) {
+                foreach ($validated['incident_services'] as $service) {
+                    if (!empty($service['service_name']) && !empty($service['amount'])) {
+                        // Find matching additional service
+                        $additionalService = \App\Models\AdditionalService::where('name', $service['service_name'])->first();
+                        
+                        \App\Models\IncidentAdditionalService::create([
+                            'incident_id' => $incident->id,
+                            'additional_service_id' => $additionalService->id ?? null,
+                            'service_name' => $service['service_name'],
+                            'amount' => $service['amount'],
+                            'note' => $service['note'] ?? null,
+                        ]);
+
+                        Transaction::create([
+                            'incident_id' => $incident->id,
+                            'vehicle_id' => $validated['vehicle_id'],
+                            'type' => 'thu',
+                            'amount' => $service['amount'],
+                            'method' => $validated['payment_method'],
+                            'recorded_by' => auth()->id(),
+                            'date' => $validated['date'],
+                            'note' => 'Dịch vụ: ' . $service['service_name'],
                         ]);
                     }
                 }
@@ -540,6 +573,16 @@ class IncidentController extends Controller
             'to_location' => 'nullable|string|max:255',
             'partner_id' => 'nullable|exists:partners,id',
             'commission_amount' => 'nullable|numeric|min:0',
+            'existing_services' => 'nullable|array',
+            'existing_services.*.id' => 'required|exists:incident_additional_services,id',
+            'existing_services.*.service_name' => 'required|string|max:255',
+            'existing_services.*.amount' => 'required|numeric|min:0',
+            'existing_services.*.note' => 'nullable|string',
+            'new_services' => 'nullable|array',
+            'new_services.*.service_name' => 'required|string|max:255',
+            'new_services.*.amount' => 'required|numeric|min:0',
+            'new_services.*.note' => 'nullable|string',
+            'services_to_delete' => 'nullable|string',
             'summary' => 'nullable|string',
             'tags' => 'nullable|array',
         ]);
@@ -696,6 +739,93 @@ class IncidentController extends Controller
                     'date' => $validated['date'],
                     'note' => 'Hoa hồng: ' . ($partner ? $partner->name : 'Đối tác'),
                 ]);
+            }
+
+            // === UPDATE INCIDENT SERVICES ===
+            
+            // 1. Delete marked services and their transactions
+            if (!empty($validated['services_to_delete'])) {
+                $servicesToDelete = json_decode($validated['services_to_delete'], true);
+                if (is_array($servicesToDelete)) {
+                    foreach ($servicesToDelete as $serviceId) {
+                        $service = \App\Models\IncidentAdditionalService::find($serviceId);
+                        if ($service && $service->incident_id == $incident->id) {
+                            // Delete related transaction
+                            Transaction::where('incident_id', $incident->id)
+                                ->where('note', 'LIKE', '%Dịch vụ: ' . $service->service_name . '%')
+                                ->delete();
+                            
+                            // Delete service
+                            $service->delete();
+                        }
+                    }
+                }
+            }
+            
+            // 2. Update existing services
+            if (!empty($validated['existing_services'])) {
+                foreach ($validated['existing_services'] as $serviceData) {
+                    $service = \App\Models\IncidentAdditionalService::find($serviceData['id']);
+                    if ($service && $service->incident_id == $incident->id) {
+                        $oldName = $service->service_name;
+                        $oldAmount = $service->amount;
+                        
+                        // Update service
+                        $additionalService = \App\Models\AdditionalService::where('name', $serviceData['service_name'])->first();
+                        $service->update([
+                            'additional_service_id' => $additionalService->id ?? $service->additional_service_id,
+                            'service_name' => $serviceData['service_name'],
+                            'amount' => $serviceData['amount'],
+                            'note' => $serviceData['note'] ?? null,
+                        ]);
+                        
+                        // Update or recreate transaction if amount/name changed
+                        if ($oldAmount != $serviceData['amount'] || $oldName != $serviceData['service_name']) {
+                            Transaction::where('incident_id', $incident->id)
+                                ->where('note', 'LIKE', '%Dịch vụ: ' . $oldName . '%')
+                                ->delete();
+                            
+                            Transaction::create([
+                                'incident_id' => $incident->id,
+                                'vehicle_id' => $validated['vehicle_id'],
+                                'type' => 'thu',
+                                'amount' => $serviceData['amount'],
+                                'method' => 'cash',
+                                'recorded_by' => auth()->id(),
+                                'date' => $validated['date'],
+                                'note' => 'Dịch vụ: ' . $serviceData['service_name'],
+                            ]);
+                        }
+                    }
+                }
+            }
+            
+            // 3. Add new services
+            if (!empty($validated['new_services'])) {
+                foreach ($validated['new_services'] as $serviceData) {
+                    if (!empty($serviceData['service_name']) && !empty($serviceData['amount'])) {
+                        $additionalService = \App\Models\AdditionalService::where('name', $serviceData['service_name'])->first();
+                        
+                        \App\Models\IncidentAdditionalService::create([
+                            'incident_id' => $incident->id,
+                            'additional_service_id' => $additionalService->id ?? null,
+                            'service_name' => $serviceData['service_name'],
+                            'amount' => $serviceData['amount'],
+                            'note' => $serviceData['note'] ?? null,
+                        ]);
+                        
+                        Transaction::create([
+                            'incident_id' => $incident->id,
+                            'vehicle_id' => $validated['vehicle_id'],
+                            'type' => 'thu',
+                            'amount' => $serviceData['amount'],
+                            'method' => 'cash',
+                            'recorded_by' => auth()->id(),
+                            'date' => $validated['date'],
+                            'note' => 'Dịch vụ: ' . $serviceData['service_name'],
+                        ]);
+                    }
+                }
             }
 
             DB::commit();

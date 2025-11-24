@@ -89,6 +89,8 @@
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Chuyến</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bệnh nhân</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Liên hệ</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nơi đi</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nơi đến</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tuổi/Giới tính</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày chuyến</th>
                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
@@ -115,6 +117,16 @@
                                         <div class="text-sm text-gray-500">SOS: {{ $incident->patient->emergency_contact }}</div>
                                         @endif
                                     </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">
+                                            {{ $incident->fromLocation->name ?? '-' }}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">
+                                            {{ $incident->toLocation->name ?? '-' }}
+                                        </div>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {{ $incident->patient->age }} tuổi / {{ $incident->patient->gender_label }}
                                     </td>
@@ -133,7 +145,7 @@
                                 </tr>
                                 <!-- Chi tiết chuyến đi (collapsed by default) -->
                                 <tr id="detail-{{ $incident->id }}" class="hidden bg-gray-50">
-                                    <td colspan="6" class="px-6 py-4">
+                                    <td colspan="8" class="px-6 py-4">
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <!-- Thông tin chuyến đi -->
                                             <div class="bg-white p-4 rounded-lg shadow-sm">

@@ -172,6 +172,55 @@
                             </div>
                         </div>
 
+                        {{-- Additional Services --}}
+                        <div class="border-t pt-4">
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="text-sm font-medium text-gray-700">🛎️ Dịch vụ kèm theo</h3>
+                                <button type="button" id="add-edit-service-btn" class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">
+                                    + Thêm dịch vụ
+                                </button>
+                            </div>
+                            
+                            <div id="edit-services-container" class="space-y-2">
+                                @foreach($incident->additionalServices as $index => $service)
+                                <div class="flex gap-2 items-start p-3 bg-gray-50 rounded border border-gray-200">
+                                    <input type="hidden" name="existing_services[{{ $index }}][id]" value="{{ $service->id }}">
+                                    <div class="flex-1">
+                                        <input type="text" 
+                                            name="existing_services[{{ $index }}][service_name]" 
+                                            value="{{ $service->service_name }}"
+                                            list="edit_services_datalist"
+                                            placeholder="Tên dịch vụ..." 
+                                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                                    </div>
+                                    <div class="w-40">
+                                        <input type="text" 
+                                            name="existing_services[{{ $index }}][amount]" 
+                                            value="{{ $service->amount }}"
+                                            data-currency
+                                            placeholder="Số tiền" 
+                                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                                    </div>
+                                    <div class="flex-1">
+                                        <input type="text" 
+                                            name="existing_services[{{ $index }}][note]" 
+                                            value="{{ $service->note }}"
+                                            placeholder="Ghi chú" 
+                                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                                    </div>
+                                    <button type="button" onclick="markServiceForDeletion(this, {{ $service->id }})" class="text-red-500 hover:text-red-700">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                @endforeach
+                            </div>
+                            
+                            <!-- Hidden field for services to delete -->
+                            <input type="hidden" name="services_to_delete" id="services_to_delete" value="">
+                        </div>
+
                         {{-- Partner & Commission --}}
                         <div class="border-t pt-4">
                             <h3 class="text-sm font-medium text-gray-700 mb-3">🤝 Thông tin đối tác & Hoa hồng</h3>
@@ -274,5 +323,131 @@
                 staffItem.remove();
             }
         }
+
+        // === INCIDENT SERVICES MANAGEMENT ===
+        let editServiceIndex = {{ $incident->additionalServices->count() }};
+        const editServicesContainer = document.getElementById('edit-services-container');
+        const addEditServiceBtn = document.getElementById('add-edit-service-btn');
+        const servicesToDeleteInput = document.getElementById('services_to_delete');
+        let servicesToDelete = [];
+        
+        // Get available services
+        const availableServices = @json(\App\Models\AdditionalService::active()->get(['id', 'name', 'default_price']));
+        
+        // Create datalist for services
+        if (availableServices.length > 0) {
+            const datalist = document.createElement('datalist');
+            datalist.id = 'edit_services_datalist';
+            availableServices.forEach(service => {
+                const option = document.createElement('option');
+                option.value = service.name;
+                option.dataset.price = service.default_price;
+                datalist.appendChild(option);
+            });
+            document.body.appendChild(datalist);
+        }
+        
+        addEditServiceBtn.addEventListener('click', function() {
+            const serviceRow = document.createElement('div');
+            serviceRow.className = 'flex gap-2 items-start p-3 bg-gray-50 rounded border border-gray-200';
+            serviceRow.innerHTML = `
+                <div class="flex-1">
+                    <input type="text" 
+                        name="new_services[${editServiceIndex}][service_name]" 
+                        list="edit_services_datalist"
+                        placeholder="Tên dịch vụ..." 
+                        onchange="fillEditServicePrice(this, ${editServiceIndex})"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                </div>
+                <div class="w-40">
+                    <input type="text" 
+                        name="new_services[${editServiceIndex}][amount]" 
+                        data-currency
+                        placeholder="Số tiền" 
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                </div>
+                <div class="flex-1">
+                    <input type="text" 
+                        name="new_services[${editServiceIndex}][note]" 
+                        placeholder="Ghi chú" 
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                </div>
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+            editServicesContainer.appendChild(serviceRow);
+            
+            // Re-initialize currency formatter
+            if (window.initCurrencyInputs) {
+                window.initCurrencyInputs();
+            }
+            
+            editServiceIndex++;
+        });
+        
+        // Fill service price for new services
+        window.fillEditServicePrice = function(input, index) {
+            const serviceName = input.value;
+            const service = availableServices.find(s => s.name === serviceName);
+            if (service && service.default_price) {
+                const amountInput = document.querySelector(`input[name="new_services[${index}][amount]"]`);
+                if (amountInput) {
+                    const formatted = Math.round(service.default_price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                    amountInput.value = formatted;
+                    amountInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            }
+        };
+        
+        // Mark service for deletion
+        window.markServiceForDeletion = function(button, serviceId) {
+            if (confirm('Bạn có chắc muốn xóa dịch vụ này? Giao dịch liên quan cũng sẽ bị xóa.')) {
+                const serviceRow = button.closest('.flex');
+                serviceRow.style.opacity = '0.5';
+                serviceRow.style.textDecoration = 'line-through';
+                
+                // Add to delete list
+                servicesToDelete.push(serviceId);
+                servicesToDeleteInput.value = JSON.stringify(servicesToDelete);
+                
+                // Disable inputs
+                serviceRow.querySelectorAll('input').forEach(input => {
+                    input.disabled = true;
+                });
+                
+                // Change button to undo
+                button.innerHTML = '<span class="text-xs">↶ Hoàn tác</span>';
+                button.onclick = function() {
+                    undoServiceDeletion(button, serviceId, serviceRow);
+                };
+            }
+        };
+        
+        window.undoServiceDeletion = function(button, serviceId, serviceRow) {
+            serviceRow.style.opacity = '1';
+            serviceRow.style.textDecoration = 'none';
+            
+            // Remove from delete list
+            servicesToDelete = servicesToDelete.filter(id => id !== serviceId);
+            servicesToDeleteInput.value = JSON.stringify(servicesToDelete);
+            
+            // Enable inputs
+            serviceRow.querySelectorAll('input').forEach(input => {
+                input.disabled = false;
+            });
+            
+            // Restore delete button
+            button.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            `;
+            button.onclick = function() {
+                markServiceForDeletion(button, serviceId);
+            };
+        };
     </script>
 </x-app-layout>
