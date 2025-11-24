@@ -23,44 +23,52 @@ Hệ thống quản lý xe cấp cứu, ghi nhận thu/chi, và quản lý thôn
 ## 🚀 Quick Start
 
 ### Yêu cầu:
-- PHP 8.1+
+- PHP 8.2+
 - MySQL 5.7+ / MariaDB 10.3+
 - Composer
-- Node.js & NPM
+- Node.js 18+ & NPM
 
-### Cài đặt (Development):
+### ⚡ Cài đặt nhanh (1 lệnh):
+
+**Windows:**
+```bash
+deploy.bat
+```
+
+**Linux/Mac:**
+```bash
+chmod +x deploy.sh && ./deploy.sh
+```
+
+### 📝 Cài đặt thủ công:
 
 ```bash
 # 1. Clone repository
 git clone https://github.com/phalconsupply/binhan.git
 cd binhan
 
-# 2. Install dependencies
-composer install
-npm install
-
-# 3. Setup environment
+# 2. Copy environment file
 cp .env.example .env
-php artisan key:generate
 
-# 4. Configure database trong .env
+# 3. Configure database trong .env
 DB_DATABASE=binhan_db
 DB_USERNAME=root
 DB_PASSWORD=
 
-# 5. Run migrations & seeders
-php artisan migrate
-php artisan db:seed --class=RoleSeeder
-php artisan db:seed --class=UserSeeder
+# 4. Run deployment script (tự động install dependencies, migrate, seed)
+# Windows:
+deploy.bat
 
-# 6. Build assets
-npm run build
+# Linux/Mac:
+./deploy.sh
 
-# 7. Start server
+# 5. Start server
 php artisan serve
 ```
 
-### Login credentials (test users):
+**Truy cập:** http://127.0.0.1:8000
+
+### 🔐 Test Accounts:
 - **Admin:** admin@binhan.com / password
 - **Dispatcher:** dispatcher@binhan.com / password
 - **Accountant:** accountant@binhan.com / password
@@ -70,39 +78,74 @@ php artisan serve
 
 ## 📚 Documentation
 
-Đọc chi tiết trong các file sau:
+### 📚 Documentation:
 
-- **[DEPLOYMENT-PLAN.md](./DEPLOYMENT-PLAN.md)** - Phương án triển khai đầy đủ (4 giai đoạn)
-- **[QUICK-START.md](./QUICK-START.md)** - Hướng dẫn setup nhanh từ đầu
-- **[start-guide](./start-guide)** - Tài liệu kỹ thuật gốc
+- **[DEPLOYMENT-CHECKLIST.md](./DEPLOYMENT-CHECKLIST.md)** - Checklist triển khai đầy đủ
+- **[SETUP-NEW-MACHINE.md](./SETUP-NEW-MACHINE.md)** - Hướng dẫn setup máy mới
+- **[TROUBLESHOOTING-ANALYSIS.md](./TROUBLESHOOTING-ANALYSIS.md)** - Phân tích lỗi thường gặp
+- **[ROOT-CAUSE-SUMMARY.md](./ROOT-CAUSE-SUMMARY.md)** - Tóm tắt nguyên nhân lỗi
 
 ---
 
-## 🏗️ Kiến trúc
+## 🏗️ Tech Stack
 
 ```
-Laravel 10
-├── Auth: Laravel Breeze
-├── RBAC: Spatie Permission
+Laravel 10.49.1 (PHP 8.2+)
+├── Auth: Laravel Breeze (Blade + Tailwind)
+├── RBAC: Spatie Permission (8 roles, 28 permissions)
 ├── Export: Maatwebsite/Excel + DomPDF
 ├── Audit: Spatie Activity Log
 ├── UI: Tailwind CSS + Alpine.js
-└── Deploy: cPanel Shared Hosting
+└── Deploy: Compatible with cPanel/VPS/Docker
 ```
 
-### Database Schema:
-- `vehicles` - Thông tin xe
+### Database Schema (29 tables):
+- `vehicles` - Quản lý xe cấp cứu
 - `patients` - Thông tin bệnh nhân
-- `incidents` - Các chuyến xe/sự cố
-- `transactions` - Thu/chi
-- `notes` - Ghi chú phát sinh
+- `incidents` - Chuyến đi/sự cố
+- `transactions` - Thu/chi (với categories)
+- `staff` - Nhân sự (lái xe, y tá, bác sĩ)
+- `vehicle_maintenances` - Bảo trì xe
+- `salary_advances` - Tạm ứng lương
+- `notes` - Ghi chú
 - `activity_log` - Audit trail
+- `roles`, `permissions` - RBAC
 
 ---
 
-## 📦 Deployment (cPanel)
+## 🌐 Deployment Options
 
-### Bước 1: Upload code
+### Option 1: Development (Local)
+```bash
+php artisan serve
+# Access: http://127.0.0.1:8000
+```
+
+### Option 2: VPS/Cloud (Production)
+
+See **[DEPLOYMENT-CHECKLIST.md](./DEPLOYMENT-CHECKLIST.md)** for detailed steps.
+
+Quick summary:
+```bash
+# 1. Clone & configure
+git clone https://github.com/phalconsupply/binhan.git
+cd binhan
+cp .env.example .env
+# Edit .env với thông tin database
+
+# 2. Run deployment
+./deploy.sh  # Linux/Mac
+deploy.bat   # Windows
+
+# 3. Set permissions (Linux only)
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
+
+# 4. Configure Nginx/Apache (see DEPLOYMENT-CHECKLIST.md)
+```
+
+### Option 3: cPanel Shared Hosting
+
 ```bash
 # Nén project (loại bỏ node_modules, vendor)
 zip -r binhan.zip . -x "node_modules/*" "vendor/*" ".git/*"
