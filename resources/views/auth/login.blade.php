@@ -65,29 +65,5 @@
                 Đăng nhập
             </button>
         </div>
-        
-        <!-- Test Accounts Info -->
-        <div class="mt-6 pt-6 border-t border-gray-200">
-            <p class="text-xs text-gray-500 text-center mb-3">Tài khoản test:</p>
-            <div class="grid grid-cols-2 gap-2 text-xs">
-                <div class="bg-gray-50 rounded p-2">
-                    <p class="font-semibold text-gray-700">Admin</p>
-                    <p class="text-gray-500">admin@binhan.com</p>
-                </div>
-                <div class="bg-gray-50 rounded p-2">
-                    <p class="font-semibold text-gray-700">Dispatcher</p>
-                    <p class="text-gray-500">dispatcher@binhan.com</p>
-                </div>
-                <div class="bg-gray-50 rounded p-2">
-                    <p class="font-semibold text-gray-700">Accountant</p>
-                    <p class="text-gray-500">accountant@binhan.com</p>
-                </div>
-                <div class="bg-gray-50 rounded p-2">
-                    <p class="font-semibold text-gray-700">Driver</p>
-                    <p class="text-gray-500">driver@binhan.com</p>
-                </div>
-            </div>
-            <p class="text-xs text-gray-400 text-center mt-2">Password: <code class="bg-gray-100 px-1 rounded">password</code></p>
-        </div>
     </form>
 </x-guest-layout>
