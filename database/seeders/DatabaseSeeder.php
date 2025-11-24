@@ -15,8 +15,7 @@ class DatabaseSeeder extends Seeder
         // Chạy các seeders theo thứ tự: roles → master data → users → settings
         $this->call([
             RoleSeeder::class,        // Tạo 8 roles và 28 permissions
-            PositionSeeder::class,     // Tạo positions (lái xe, y tá, bác sĩ, etc.)
-            DepartmentSeeder::class,   // Tạo departments
+            PositionDepartmentSeeder::class,     // Tạo positions và departments
             UserSeeder::class,         // Tạo 4 test users với roles
             SystemSettingSeeder::class, // Tạo cấu hình hệ thống
         ]);
