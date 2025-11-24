@@ -45,18 +45,18 @@ class RoleSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            Permission::firstOrCreate(['name' => $permission]);
         }
 
         // Create roles and assign permissions
         
         // Admin - full access
-        $admin = Role::create(['name' => 'admin']);
-        $admin->givePermissionTo(Permission::all());
+        $admin = Role::firstOrCreate(['name' => 'admin']);
+        $admin->syncPermissions(Permission::all());
 
         // Dispatcher - create/edit incidents & view reports
-        $dispatcher = Role::create(['name' => 'dispatcher']);
-        $dispatcher->givePermissionTo([
+        $dispatcher = Role::firstOrCreate(['name' => 'dispatcher']);
+        $dispatcher->syncPermissions([
             'view vehicles',
             'view incidents',
             'create incidents',
@@ -71,8 +71,8 @@ class RoleSeeder extends Seeder
         ]);
 
         // Accountant - manage transactions & export reports
-        $accountant = Role::create(['name' => 'accountant']);
-        $accountant->givePermissionTo([
+        $accountant = Role::firstOrCreate(['name' => 'accountant']);
+        $accountant->syncPermissions([
             'view vehicles',
             'view incidents',
             'view transactions',
@@ -85,16 +85,16 @@ class RoleSeeder extends Seeder
         ]);
 
         // Driver - view only own vehicle
-        $driver = Role::create(['name' => 'driver']);
-        $driver->givePermissionTo([
+        $driver = Role::firstOrCreate(['name' => 'driver']);
+        $driver->syncPermissions([
             'view vehicles',
             'view incidents',
             'view transactions',
         ]);
 
         // Medical Staff - similar to driver
-        $medicalStaff = Role::create(['name' => 'medical_staff']);
-        $medicalStaff->givePermissionTo([
+        $medicalStaff = Role::firstOrCreate(['name' => 'medical_staff']);
+        $medicalStaff->syncPermissions([
             'view vehicles',
             'view incidents',
             'view transactions',
@@ -102,8 +102,8 @@ class RoleSeeder extends Seeder
         ]);
 
         // Manager - broader access
-        $manager = Role::create(['name' => 'manager']);
-        $manager->givePermissionTo([
+        $manager = Role::firstOrCreate(['name' => 'manager']);
+        $manager->syncPermissions([
             'view vehicles',
             'view incidents',
             'view transactions',
@@ -113,14 +113,14 @@ class RoleSeeder extends Seeder
         ]);
 
         // Investor - view reports only
-        $investor = Role::create(['name' => 'investor']);
-        $investor->givePermissionTo([
+        $investor = Role::firstOrCreate(['name' => 'investor']);
+        $investor->syncPermissions([
             'view reports',
         ]);
 
         // Vehicle Owner - view vehicle and earnings
-        $vehicleOwner = Role::create(['name' => 'vehicle_owner']);
-        $vehicleOwner->givePermissionTo([
+        $vehicleOwner = Role::firstOrCreate(['name' => 'vehicle_owner']);
+        $vehicleOwner->syncPermissions([
             'view vehicles',
             'view incidents',
             'view transactions',
