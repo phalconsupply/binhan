@@ -1367,7 +1367,7 @@ class StaffController extends Controller
                     'incidents.id as incident_id',
                     'patients.name as patient_name',
                     'incidents.date as incident_date',
-                    'incidents.destination'
+                    'incidents.destination',                    
                 )
                 ->orderBy('incidents.date', 'desc')
                 ->get();

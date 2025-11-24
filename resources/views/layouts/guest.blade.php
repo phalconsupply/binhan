@@ -42,9 +42,9 @@
                         $logoUrl = $logoPath ? asset('storage/' . $logoPath) : asset('logo.png');
                     @endphp
                     @if($logoPath && file_exists(public_path('storage/' . $logoPath)))
-                        <img src="{{ $logoUrl }}" alt="{{ setting('company_name', 'Binhan') }}" class="mx-auto h-24 w-auto mb-4">
+                        <img src="{{ $logoUrl }}" alt="{{ setting('company_name', 'Binhan') }}" class="mx-auto h-20 w-auto max-w-xs object-contain mb-4">
                     @elseif(file_exists(public_path('logo.png')))
-                        <img src="{{ asset('logo.png') }}" alt="Binhan Logo" class="mx-auto h-24 w-auto mb-4">
+                        <img src="{{ asset('logo.png') }}" alt="Binhan Logo" class="mx-auto h-20 w-auto max-w-xs object-contain mb-4">
                     @endif
                     <h2 class="text-3xl font-extrabold text-white">
                         {{ setting('site_name', 'Hệ Thống Quản Lý Xe Cấp Cứu') }}

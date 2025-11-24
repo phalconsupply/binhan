@@ -237,8 +237,8 @@
                                     <label for="base_salary" class="block text-sm font-medium text-gray-700">
                                         Lương cơ bản (tháng)
                                     </label>
-                                    <input type="number" id="base_salary" name="base_salary" value="{{ old('base_salary') }}" 
-                                        step="1000" min="0"
+                                    <input type="text" id="base_salary" name="base_salary" value="{{ old('base_salary') }}" 
+                                        data-currency
                                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                         placeholder="VD: 5000000">
                                     <p class="mt-1 text-xs text-gray-500">💡 Thu nhập cố định hàng tháng, tự động tính vào earnings</p>

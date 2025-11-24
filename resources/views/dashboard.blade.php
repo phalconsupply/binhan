@@ -197,7 +197,7 @@
                                                             <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
                                                         @endforeach
                                                     </select>
-                                                    <input type="number" name="drivers[0][wage]" placeholder="Tiền công" min="0" step="1000" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                    <input type="text" name="drivers[0][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                                     <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
                                                 </div>
                                             </div>
@@ -214,7 +214,7 @@
                                                             <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
                                                         @endforeach
                                                     </select>
-                                                    <input type="number" name="medical_staff[0][wage]" placeholder="Tiền công" min="0" step="1000" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                    <input type="text" name="medical_staff[0][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                                     <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
                                                 </div>
                                             </div>
@@ -235,7 +235,7 @@
                                                 </option>
                                             @endforeach
                                         </select>
-                                        <input type="number" id="commission_amount" name="commission_amount" value="{{ old('commission_amount') }}" min="0" step="1000" placeholder="Số tiền hoa hồng" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                        <input type="text" id="commission_amount" name="commission_amount" value="{{ old('commission_amount') }}" data-currency placeholder="Số tiền hoa hồng" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                     </div>
                                 </details>
 
@@ -249,12 +249,11 @@
                                                 <label class="block text-xs font-medium text-green-600">Thu</label>
                                                 <button type="button" id="add-service-btn" class="text-xs text-green-600 hover:text-green-700">+</button>
                                             </div>
-                                            <input type="number" 
+                                            <input type="text" 
                                                 id="amount_thu" 
                                                 name="amount_thu" 
                                                 value="{{ old('amount_thu') }}" 
-                                                min="0" 
-                                                step="1000" 
+                                                data-currency 
                                                 placeholder="Số tiền thu" 
                                                 class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm">
                                             <input type="text" 
@@ -271,12 +270,11 @@
                                                 <label class="block text-xs font-medium text-red-600">Chi</label>
                                                 <button type="button" id="add-expense-btn" class="text-xs text-red-600 hover:text-red-700">+</button>
                                             </div>
-                                            <input type="number" 
+                                            <input type="text" 
                                                 id="amount_chi" 
                                                 name="amount_chi" 
                                                 value="{{ old('amount_chi') }}" 
-                                                min="0" 
-                                                step="1000" 
+                                                data-currency 
                                                 placeholder="Số tiền chi" 
                                                 class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-sm">
                                             <input type="text" 
@@ -306,7 +304,7 @@
                                             @endforeach
                                         </datalist>
                                         <div class="grid grid-cols-2 gap-2">
-                                            <input type="number" name="maintenance_cost" min="0" step="1000" placeholder="Chi phí" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm">
+                                            <input type="text" name="maintenance_cost" data-currency placeholder="Chi phí" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm">
                                             <input type="number" name="maintenance_mileage" min="0" placeholder="Số km" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm">
                                         </div>
                                         <textarea name="maintenance_note" rows="2" placeholder="Ghi chú" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm"></textarea>
@@ -455,10 +453,9 @@
                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm">
                 </div>
                 <div class="w-28">
-                    <input type="number" 
+                    <input type="text" 
                         name="additional_services[${serviceCount}][amount]" 
-                        min="0" 
-                        step="1000" 
+                        data-currency 
                         placeholder="Số tiền" 
                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm">
                 </div>
@@ -488,10 +485,9 @@
                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-sm">
                 </div>
                 <div class="w-28">
-                    <input type="number" 
+                    <input type="text" 
                         name="additional_expenses[${expenseCount}][amount]" 
-                        min="0" 
-                        step="1000" 
+                        data-currency 
                         placeholder="Số tiền" 
                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-sm">
                 </div>
@@ -531,7 +527,7 @@
                         <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
                     @endforeach
                 </select>
-                <input type="number" name="drivers[${driverIndex}][wage]" placeholder="Tiền công" min="0" step="1000" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <input type="text" name="drivers[${driverIndex}][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                 <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
             `;
             container.appendChild(newRow);
@@ -549,7 +545,7 @@
                         <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
                     @endforeach
                 </select>
-                <input type="number" name="medical_staff[${medicalStaffIndex}][wage]" placeholder="Tiền công" min="0" step="1000" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <input type="text" name="medical_staff[${medicalStaffIndex}][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                 <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
             `;
             container.appendChild(newRow);

@@ -1,4 +1,5 @@
 import './bootstrap';
+import './currency-formatter';
 
 import Alpine from 'alpinejs';
 

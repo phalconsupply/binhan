@@ -15,36 +15,34 @@ class PatientController extends Controller
 
     public function index(Request $request)
     {
-        $query = Patient::with(['incidents' => function($q) {
-            $q->latest()->limit(5);
-        }]);
+        // List theo chuyến đi (incidents) có bệnh nhân
+        $query = \App\Models\Incident::whereNotNull('patient_id')
+            ->with(['patient', 'vehicle']);
 
-        // Tìm kiếm
+        // Tìm kiếm theo thông tin bệnh nhân
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->whereHas('patient', function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('phone', 'like', "%{$search}%")
                   ->orWhere('address', 'like', "%{$search}%");
             });
         }
 
-        // Lọc theo giới tính
+        // Lọc theo giới tính bệnh nhân
         if ($request->filled('gender')) {
-            $query->where('gender', $request->gender);
+            $query->whereHas('patient', function($q) use ($request) {
+                $q->where('gender', $request->gender);
+            });
         }
 
         // Sắp xếp
-        $sort = $request->get('sort', 'name');
-        $direction = $request->get('direction', 'asc');
+        $sort = $request->get('sort', 'id');
+        $direction = $request->get('direction', 'desc');
         
-        if ($sort === 'incidents_count') {
-            $query->withCount('incidents')->orderBy('incidents_count', $direction);
-        } else {
-            $query->orderBy($sort, $direction);
-        }
+        $query->orderBy($sort, $direction);
 
-        $patients = $query->paginate(15);
+        $incidents = $query->paginate(15);
 
         // Thống kê
         $statistics = [
@@ -54,7 +52,7 @@ class PatientController extends Controller
             'with_incidents' => Patient::has('incidents')->count(),
         ];
 
-        return view('patients.index', compact('patients', 'statistics'));
+        return view('patients.index', compact('incidents', 'statistics'));
     }
 
     public function create()

@@ -108,7 +108,7 @@
 
                             <div>
                                 <label for="amount" class="block text-sm font-medium text-gray-700">Số tiền <span class="text-red-500">*</span></label>
-                                <input type="number" id="amount" name="amount" value="{{ old('amount') }}" required step="1000" min="0"
+                                <input type="text" id="amount" name="amount" value="{{ old('amount') }}" required data-currency
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     placeholder="VD: 500000">
                                 @error('amount')
@@ -229,7 +229,7 @@
                             
                             <div>
                                 <label for="advance_amount" class="block text-sm font-medium text-gray-700">Số tiền ứng <span class="text-red-500">*</span></label>
-                                <input type="number" id="advance_amount" name="amount" value="{{ old('amount') }}" required step="1000" min="1000"
+                                <input type="text" id="advance_amount" name="amount" value="{{ old('amount') }}" required data-currency
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     placeholder="VD: 1000000">
                                 @error('amount')
@@ -405,7 +405,7 @@
                                                 {{ $adj->type == 'addition' ? '+' : '-' }}{{ number_format($adj->amount, 0, ',', '.') }}đ
                                             </div>
                                             <div x-show="editing" x-cloak>
-                                                <input type="number" x-model="amount" step="1000" class="w-32 px-2 py-1 border rounded text-sm text-right" value="{{ $adj->amount }}">
+                                                <input type="text" x-model="amount" data-currency class="w-32 px-2 py-1 border rounded text-sm text-right" value="{{ $adj->amount }}">
                                             </div>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-center">
@@ -517,9 +517,9 @@
                                             <span x-show="!editing" class="font-bold text-blue-600">
                                                 {{ number_format($advance->amount, 0, ',', '.') }}đ
                                             </span>
-                                            <input x-show="editing" type="number" x-model="amount_{{ $advance->id }}" 
+                                            <input x-show="editing" type="text" x-model="amount_{{ $advance->id }}" 
                                                    class="w-32 px-2 py-1 text-sm border rounded" 
-                                                   value="{{ $advance->amount }}" step="1000">
+                                                   value="{{ $advance->amount }}" data-currency>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-right text-sm text-green-600">
                                             {{ number_format($advance->from_earnings, 0, ',', '.') }}đ

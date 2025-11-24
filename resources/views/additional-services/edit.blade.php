@@ -44,7 +44,7 @@
                             <label for="default_price" class="block text-sm font-medium text-gray-700">
                                 Giá mặc định (đ)
                             </label>
-                            <input type="number" id="default_price" name="default_price" value="{{ old('default_price', $additionalService->default_price) }}" step="1000" min="0" 
+                            <input type="text" id="default_price" name="default_price" value="{{ old('default_price', $additionalService->default_price) }}" data-currency 
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                             @error('default_price')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>

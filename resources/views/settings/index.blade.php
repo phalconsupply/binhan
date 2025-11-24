@@ -121,7 +121,14 @@
                                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                                                 >
                                                     @php
-                                                        $options = is_array($setting->options) ? $setting->options : [];
+                                                        // Decode options nếu là string JSON
+                                                        if (is_string($setting->options)) {
+                                                            $options = json_decode($setting->options, true) ?: [];
+                                                        } elseif (is_array($setting->options)) {
+                                                            $options = $setting->options;
+                                                        } else {
+                                                            $options = [];
+                                                        }
                                                     @endphp
                                                     @foreach($options as $optKey => $optValue)
                                                         <option
