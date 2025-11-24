@@ -5,7 +5,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ setting('site_name', config('app.name', 'Laravel')) }}</title>
+
+        <!-- Favicon -->
+        @php
+            $faviconPath = setting('site_favicon');
+            $faviconUrl = $faviconPath ? asset('storage/' . $faviconPath) : asset('favicon.ico');
+        @endphp
+        @if($faviconPath && file_exists(public_path('storage/' . $faviconPath)))
+            <link rel="icon" type="image/png" href="{{ $faviconUrl }}">
+        @elseif(file_exists(public_path('favicon.ico')))
+            <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+        @endif
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">

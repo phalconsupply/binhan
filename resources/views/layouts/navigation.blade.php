@@ -64,6 +64,13 @@
 
                     <x-slot name="content">
                         @can('manage settings')
+                        <x-dropdown-link :href="route('settings.index')">
+                            ⚙️ Cấu hình hệ thống
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('media.index')">
+                            📁 Quản lý File & Media
+                        </x-dropdown-link>
+                        <div class="border-t border-gray-100"></div>
                         <x-dropdown-link :href="route('locations.index')">
                             📍 Địa điểm
                         </x-dropdown-link>
@@ -190,6 +197,12 @@
             @can('manage settings')
             <div class="pt-2 pb-2 border-t border-gray-200">
                 <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">Cài đặt</div>
+                <x-responsive-nav-link :href="route('settings.index')" :active="request()->routeIs('settings.*')">
+                    ⚙️ Cấu hình hệ thống
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('media.index')" :active="request()->routeIs('media.*')">
+                    📁 Quản lý File & Media
+                </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('locations.index')" :active="request()->routeIs('locations.*')">
                     📍 Địa điểm
                 </x-responsive-nav-link>

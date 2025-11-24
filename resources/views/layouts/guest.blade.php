@@ -5,7 +5,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ setting('site_name', config('app.name', 'Laravel')) }}</title>
+
+        <!-- Favicon -->
+        @php
+            $faviconPath = setting('site_favicon');
+            $faviconUrl = $faviconPath ? asset('storage/' . $faviconPath) : asset('favicon.ico');
+        @endphp
+        @if($faviconPath && file_exists(public_path('storage/' . $faviconPath)))
+            <link rel="icon" type="image/png" href="{{ $faviconUrl }}">
+        @elseif(file_exists(public_path('favicon.ico')))
+            <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+        @endif
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,12 +37,20 @@
             <div class="max-w-md w-full space-y-8">
                 <!-- Logo and Title -->
                 <div class="text-center">
-                    <img src="{{ asset('logo.png') }}" alt="Binhan Logo" class="mx-auto h-24 w-auto mb-4">
+                    @php
+                        $logoPath = setting('site_logo');
+                        $logoUrl = $logoPath ? asset('storage/' . $logoPath) : asset('logo.png');
+                    @endphp
+                    @if($logoPath && file_exists(public_path('storage/' . $logoPath)))
+                        <img src="{{ $logoUrl }}" alt="{{ setting('company_name', 'Binhan') }}" class="mx-auto h-24 w-auto mb-4">
+                    @elseif(file_exists(public_path('logo.png')))
+                        <img src="{{ asset('logo.png') }}" alt="Binhan Logo" class="mx-auto h-24 w-auto mb-4">
+                    @endif
                     <h2 class="text-3xl font-extrabold text-white">
-                        Hệ Thống Quản Lý Xe Cấp Cứu
+                        {{ setting('site_name', 'Hệ Thống Quản Lý Xe Cấp Cứu') }}
                     </h2>
                     <p class="mt-2 text-sm text-indigo-100">
-                        Binhan Ambulance Management System
+                        {{ setting('company_name', 'Binhan Ambulance Management System') }}
                     </p>
                 </div>
 

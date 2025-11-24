@@ -190,14 +190,14 @@
                                         <div>
                                             <label class="block text-xs text-gray-600 mb-1">Lái xe</label>
                                             <div id="drivers-container" class="space-y-2">
-                                                <div class="driver-item grid grid-cols-[1fr_auto_auto] gap-2">
-                                                    <select name="drivers[0][staff_id]" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                <div class="driver-item flex gap-2">
+                                                    <select name="drivers[0][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                                         <option value="">-- Chọn lái xe --</option>
                                                         @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
                                                             <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
                                                         @endforeach
                                                     </select>
-                                                    <input type="number" name="drivers[0][wage]" placeholder="Tiền công" min="0" step="1000" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                    <input type="number" name="drivers[0][wage]" placeholder="Tiền công" min="0" step="1000" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                                     <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
                                                 </div>
                                             </div>
@@ -207,14 +207,14 @@
                                         <div>
                                             <label class="block text-xs text-gray-600 mb-1">Nhân viên y tế</label>
                                             <div id="medical-staff-container" class="space-y-2">
-                                                <div class="medical-staff-item grid grid-cols-[1fr_auto_auto] gap-2">
-                                                    <select name="medical_staff[0][staff_id]" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                <div class="medical-staff-item flex gap-2">
+                                                    <select name="medical_staff[0][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                                         <option value="">-- Chọn NVYT --</option>
                                                         @foreach(\App\Models\Staff::active()->where('staff_type', 'medical_staff')->orderBy('full_name')->get() as $staff)
                                                             <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
                                                         @endforeach
                                                     </select>
-                                                    <input type="number" name="medical_staff[0][wage]" placeholder="Tiền công" min="0" step="1000" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                    <input type="number" name="medical_staff[0][wage]" placeholder="Tiền công" min="0" step="1000" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                                     <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
                                                 </div>
                                             </div>
@@ -523,15 +523,15 @@
         function addDriverRow() {
             const container = document.getElementById('drivers-container');
             const newRow = document.createElement('div');
-            newRow.className = 'driver-item grid grid-cols-[1fr_auto_auto] gap-2';
+            newRow.className = 'driver-item flex gap-2';
             newRow.innerHTML = `
-                <select name="drivers[${driverIndex}][staff_id]" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <select name="drivers[${driverIndex}][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                     <option value="">-- Chọn lái xe --</option>
                     @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
                         <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
                     @endforeach
                 </select>
-                <input type="number" name="drivers[${driverIndex}][wage]" placeholder="Tiền công" min="0" step="1000" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <input type="number" name="drivers[${driverIndex}][wage]" placeholder="Tiền công" min="0" step="1000" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                 <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
             `;
             container.appendChild(newRow);
@@ -541,15 +541,15 @@
         function addMedicalStaffRow() {
             const container = document.getElementById('medical-staff-container');
             const newRow = document.createElement('div');
-            newRow.className = 'medical-staff-item grid grid-cols-[1fr_auto_auto] gap-2';
+            newRow.className = 'medical-staff-item flex gap-2';
             newRow.innerHTML = `
-                <select name="medical_staff[${medicalStaffIndex}][staff_id]" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <select name="medical_staff[${medicalStaffIndex}][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                     <option value="">-- Chọn NVYT --</option>
                     @foreach(\App\Models\Staff::active()->where('staff_type', 'medical_staff')->orderBy('full_name')->get() as $staff)
                         <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
                     @endforeach
                 </select>
-                <input type="number" name="medical_staff[${medicalStaffIndex}][wage]" placeholder="Tiền công" min="0" step="1000" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <input type="number" name="medical_staff[${medicalStaffIndex}][wage]" placeholder="Tiền công" min="0" step="1000" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                 <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
             `;
             container.appendChild(newRow);

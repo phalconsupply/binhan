@@ -17,6 +17,8 @@ use App\Http\Controllers\MaintenanceServiceController;
 use App\Http\Controllers\VehicleMaintenanceController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\WageTypeController;
+use App\Http\Controllers\SystemSettingController;
+use App\Http\Controllers\MediaController;
 use App\Http\Controllers\API\QuickEntryController;
 use Illuminate\Support\Facades\Route;
 
@@ -169,6 +171,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Wage Type routes
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('wage-types', WageTypeController::class);
+});
+
+// System Settings routes
+Route::middleware(['auth', 'verified', 'permission:manage settings'])->group(function () {
+    Route::get('/settings', [SystemSettingController::class, 'index'])->name('settings.index');
+    Route::put('/settings', [SystemSettingController::class, 'update'])->name('settings.update');
+    Route::post('/settings/upload', [SystemSettingController::class, 'uploadFile'])->name('settings.upload');
+    Route::post('/settings/delete-file', [SystemSettingController::class, 'deleteFile'])->name('settings.delete-file');
+    Route::get('/settings/get-value', [SystemSettingController::class, 'getValue'])->name('settings.get-value');
+});
+
+// Media Library routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/media', [MediaController::class, 'index'])->name('media.index');
+    Route::post('/media/upload', [MediaController::class, 'upload'])->name('media.upload');
+    Route::get('/media/{id}', [MediaController::class, 'show'])->name('media.show');
+    Route::delete('/media/{id}', [MediaController::class, 'destroy'])->name('media.destroy');
+    Route::get('/media/{id}/download', [MediaController::class, 'download'])->name('media.download');
 });
 
 // API routes for AJAX
