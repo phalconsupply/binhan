@@ -314,9 +314,11 @@ class LoanController extends Controller
 
             // Get all schedules due today or overdue that are NOT yet paid
             $dueSchedules = $loan->schedules()
-                ->where('status', 'pending')
-                ->orWhere('status', 'overdue')
-                ->where('due_date', '<=', $today)
+                ->where(function($query) {
+                    $query->where('status', 'pending')
+                          ->orWhere('status', 'overdue');
+                })
+                ->where('due_date', '<=', now()->startOfDay())
                 ->whereNull('paid_date')
                 ->orderBy('due_date')
                 ->get();
