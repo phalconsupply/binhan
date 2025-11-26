@@ -66,6 +66,16 @@ class Vehicle extends Model
         return $this->hasMany(VehicleMaintenance::class);
     }
 
+    public function loanProfile()
+    {
+        return $this->hasOne(LoanProfile::class)->where('status', 'active');
+    }
+
+    public function loanProfiles()
+    {
+        return $this->hasMany(LoanProfile::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {
