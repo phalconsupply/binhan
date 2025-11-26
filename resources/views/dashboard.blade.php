@@ -257,7 +257,19 @@
                                     </div>
                                 </details>
 
-                                {{-- 5. Thông tin thu chi --}}
+                                {{-- 5. Dịch vụ kèm theo --}}
+                                <details class="border-t pt-3">
+                                    <summary class="text-sm font-semibold text-gray-800 cursor-pointer hover:text-gray-900">🛎️ Dịch vụ kèm theo (tùy chọn)</summary>
+                                    <div class="mt-3 space-y-2">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <p class="text-xs text-gray-600">Thêm các dịch vụ phát sinh trong chuyến đi</p>
+                                            <button type="button" id="add-incident-service-btn" class="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200">+ Thêm dịch vụ</button>
+                                        </div>
+                                        <div id="incident-services-container" class="space-y-2"></div>
+                                    </div>
+                                </details>
+
+                                {{-- 6. Thông tin thu chi --}}
                                 <div class="border-t pt-3">
                                     <h4 class="text-sm font-semibold text-gray-800 mb-2">💰 Thông tin thu - chi</h4>
                                     <div class="grid grid-cols-2 gap-3">
@@ -305,7 +317,7 @@
                                     </div>
                                 </div>
 
-                                {{-- 6. Thông tin bảo trì --}}
+                                {{-- 7. Thông tin bảo trì --}}
                                 <details class="border-t pt-3">
                                     <summary class="text-sm font-semibold text-gray-800 cursor-pointer hover:text-gray-900">🔧 Thông tin bảo trì (tùy chọn)</summary>
                                     <div class="mt-2 space-y-2">
@@ -329,7 +341,7 @@
                                     </div>
                                 </details>
 
-                                {{-- 7. Ghi chú --}}
+                                {{-- 8. Ghi chú --}}
                                 <div class="border-t pt-3">
                                     <h4 class="text-sm font-semibold text-gray-800 mb-2">📝 Ghi chú</h4>
                                     <div class="space-y-2">
@@ -450,6 +462,81 @@
     {{-- JavaScript for dynamic fields --}}
     @push('scripts')
     <script>
+        // Incident Services (Dịch vụ kèm theo)
+        let incidentServiceCount = 0;
+        const incidentServicesContainer = document.getElementById('incident-services-container');
+        const addIncidentServiceBtn = document.getElementById('add-incident-service-btn');
+        
+        // Get additional services for autocomplete
+        const incidentServices = @json(\App\Models\AdditionalService::active()->orderBy('name')->get(['id', 'name', 'default_price']));
+        
+        addIncidentServiceBtn.addEventListener('click', function() {
+            incidentServiceCount++;
+            const serviceRow = document.createElement('div');
+            serviceRow.className = 'grid grid-cols-12 gap-2 items-start bg-gray-50 p-2 rounded';
+            serviceRow.innerHTML = `
+                <div class="col-span-6">
+                    <input type="text" 
+                        name="incident_services[${incidentServiceCount}][service_name]" 
+                        list="incident_services_datalist"
+                        placeholder="Tên dịch vụ..." 
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                        onchange="autoFillIncidentServicePrice(this, ${incidentServiceCount})">
+                </div>
+                <div class="col-span-3">
+                    <input type="text" 
+                        name="incident_services[${incidentServiceCount}][amount]" 
+                        data-currency 
+                        placeholder="Số tiền" 
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                </div>
+                <div class="col-span-2">
+                    <input type="text" 
+                        name="incident_services[${incidentServiceCount}][note]" 
+                        placeholder="Ghi chú" 
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                </div>
+                <div class="col-span-1 flex justify-center">
+                    <button type="button" onclick="this.closest('.grid').remove()" class="text-red-500 hover:text-red-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            incidentServicesContainer.appendChild(serviceRow);
+            
+            // Reinitialize currency inputs for the new row
+            if (window.initCurrencyInputs) {
+                window.initCurrencyInputs();
+            }
+        });
+        
+        // Create datalist for incident services
+        if (incidentServices.length > 0) {
+            const datalist = document.createElement('datalist');
+            datalist.id = 'incident_services_datalist';
+            incidentServices.forEach(service => {
+                const option = document.createElement('option');
+                option.value = service.name;
+                option.dataset.price = service.default_price || '';
+                datalist.appendChild(option);
+            });
+            document.body.appendChild(datalist);
+        }
+        
+        // Auto-fill price when service is selected
+        window.autoFillIncidentServicePrice = function(input, index) {
+            const serviceName = input.value;
+            const service = incidentServices.find(s => s.name === serviceName);
+            if (service && service.default_price) {
+                const amountInput = document.querySelector(`input[name="incident_services[${index}][amount]"]`);
+                if (amountInput && !amountInput.value) {
+                    amountInput.value = window.formatCurrency ? window.formatCurrency(service.default_price) : service.default_price;
+                }
+            }
+        };
+
         // Additional Services
         let serviceCount = 0;
         const servicesContainer = document.getElementById('additional-services-container');

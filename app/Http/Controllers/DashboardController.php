@@ -78,6 +78,10 @@ class DashboardController extends Controller
             'additional_services' => 'nullable|array',
             'additional_services.*.name' => 'required_with:additional_services.*|string|max:255',
             'additional_services.*.amount' => 'required_with:additional_services.*|numeric|min:0',
+            'incident_services' => 'nullable|array',
+            'incident_services.*.service_name' => 'required_with:incident_services.*|string|max:255',
+            'incident_services.*.amount' => 'required_with:incident_services.*|numeric|min:0',
+            'incident_services.*.note' => 'nullable|string',
             'additional_expenses' => 'nullable|array',
             'additional_expenses.*.name' => 'required_with:additional_expenses.*|string|max:255',
             'additional_expenses.*.amount' => 'required_with:additional_expenses.*|numeric|min:0',
@@ -236,6 +240,37 @@ class DashboardController extends Controller
                             'recorded_by' => auth()->id(),
                             'date' => $validated['date'],
                             'note' => 'Thu dịch vụ: ' . $service['name'],
+                        ]);
+                    }
+                }
+            }
+
+            // Create incident services (Dịch vụ kèm theo)
+            if (!empty($validated['incident_services'])) {
+                foreach ($validated['incident_services'] as $service) {
+                    if (!empty($service['service_name']) && !empty($service['amount'])) {
+                        // Try to find matching service
+                        $additionalService = \App\Models\AdditionalService::where('name', $service['service_name'])->first();
+                        
+                        // Save to incident_services
+                        \App\Models\IncidentService::create([
+                            'incident_id' => $incident->id,
+                            'service_id' => $additionalService->id ?? null,
+                            'service_name' => $service['service_name'],
+                            'amount' => $service['amount'],
+                            'note' => $service['note'] ?? null,
+                        ]);
+
+                        // Create transaction for this service
+                        Transaction::create([
+                            'incident_id' => $incident->id,
+                            'vehicle_id' => $validated['vehicle_id'],
+                            'type' => 'thu',
+                            'amount' => $service['amount'],
+                            'method' => $validated['payment_method'],
+                            'recorded_by' => auth()->id(),
+                            'date' => $validated['date'],
+                            'note' => 'Dịch vụ kèm theo: ' . $service['service_name'] . ($service['note'] ? ' (' . $service['note'] . ')' : ''),
                         ]);
                     }
                 }
