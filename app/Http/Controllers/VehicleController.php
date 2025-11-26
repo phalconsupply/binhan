@@ -230,7 +230,14 @@ class VehicleController extends Controller
             $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
         }
 
-        return view('vehicles.show', compact('vehicle', 'stats', 'transactions', 'maintenances', 'totalMaintenanceCost'));
+        // Get recent incidents (4 most recent)
+        $recentIncidents = $vehicle->incidents()
+            ->with(['patient', 'dispatcher', 'transactions'])
+            ->latest('date')
+            ->take(4)
+            ->get();
+
+        return view('vehicles.show', compact('vehicle', 'stats', 'transactions', 'maintenances', 'totalMaintenanceCost', 'recentIncidents'));
     }
 
     /**

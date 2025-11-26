@@ -422,9 +422,9 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="space-y-6">
                 {{-- Maintenance History --}}
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg lg:col-span-2">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-semibold">🔧 Lịch sử bảo trì xe</h3>
@@ -559,11 +559,11 @@
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <h3 class="text-lg font-semibold mb-4">Chuyến đi gần đây</h3>
-                        @if($vehicle->incidents->isEmpty())
+                        @if($recentIncidents->isEmpty())
                             <p class="text-gray-500 text-sm">Chưa có chuyến đi nào.</p>
                         @else
                             <div class="space-y-3">
-                                @foreach($vehicle->incidents as $incident)
+                                @foreach($recentIncidents as $incident)
                                 <div class="border-l-4 {{ $incident->transactions->count() > 0 ? 'border-green-500' : 'border-gray-300' }} pl-4 py-2">
                                     <div class="flex justify-between items-start">
                                         <div class="flex-1">
