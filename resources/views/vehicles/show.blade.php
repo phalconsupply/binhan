@@ -1016,9 +1016,9 @@
                         <textarea name="note" rows="2" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                     </div>
                 </div>
-                <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" onclick="closeAdjustInterestModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">Hủy</button>
-                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">Điều chỉnh</button>
+                <div class="flex justify-end gap-2 mt-4" style="display: flex !important; visibility: visible !important;">
+                    <button type="button" onclick="closeAdjustInterestModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400" style="display: inline-block !important;">Hủy</button>
+                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700" style="display: inline-block !important;">Điều chỉnh</button>
                 </div>
             </form>
         </div>
