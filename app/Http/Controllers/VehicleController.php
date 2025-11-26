@@ -92,6 +92,8 @@ class VehicleController extends Controller
             'incidents' => function($q) {
                 $q->with(['patient', 'dispatcher'])->orderBy('date', 'desc')->limit(20);
             },
+            'loanProfile.schedules',
+            'loanProfile.interestAdjustments.creator',
         ]);
 
         // Get maintenance history with total cost

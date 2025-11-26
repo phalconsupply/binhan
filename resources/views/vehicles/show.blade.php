@@ -148,6 +148,192 @@
                 </div>
             </div>
 
+            {{-- Loan Management Section --}}
+            @can('manage vehicles')
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold">💰 Quản lý khoản vay</h3>
+                        @if(!$vehicle->loanProfile)
+                        <button onclick="openLoanModal()" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            + Thêm khoản vay
+                        </button>
+                        @endif
+                    </div>
+
+                    @if($vehicle->loanProfile)
+                        @php
+                            $loan = $vehicle->loanProfile;
+                            $progress = $loan->getProgressPercentage();
+                            $totalPaid = $loan->getTotalPaidAmount();
+                            $overdueCount = $loan->getOverdueCount();
+                        @endphp
+
+                        {{-- Loan Overview --}}
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-600">Số dư còn lại</p>
+                                <p class="text-2xl font-bold text-blue-600">{{ number_format($loan->remaining_balance, 0, ',', '.') }}đ</p>
+                                <p class="text-xs text-gray-500 mt-1">/ {{ number_format($loan->principal_amount, 0, ',', '.') }}đ</p>
+                            </div>
+                            <div class="bg-green-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-600">Đã thanh toán</p>
+                                <p class="text-2xl font-bold text-green-600">{{ number_format($totalPaid, 0, ',', '.') }}đ</p>
+                                <p class="text-xs text-gray-500 mt-1">{{ number_format($progress, 1) }}% hoàn thành</p>
+                            </div>
+                            <div class="bg-purple-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-600">Lãi suất hiện tại</p>
+                                <p class="text-2xl font-bold text-purple-600">{{ number_format($loan->getCurrentInterestRate(), 2) }}%</p>
+                                <p class="text-xs text-gray-500 mt-1">{{ $loan->term_months }} tháng</p>
+                            </div>
+                            <div class="bg-orange-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-600">Trạng thái</p>
+                                <p class="text-lg font-bold {{ $loan->status == 'active' ? 'text-orange-600' : 'text-gray-600' }}">
+                                    {{ $loan->status == 'active' ? 'Đang hoạt động' : 'Đã đóng' }}
+                                </p>
+                                @if($overdueCount > 0)
+                                <p class="text-xs text-red-600 mt-1">⚠ {{ $overdueCount }} kỳ quá hạn</p>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Loan Details --}}
+                        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                    <p class="text-xs text-gray-500">Ngân hàng</p>
+                                    <p class="font-semibold">{{ $loan->bank_name }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Số hợp đồng</p>
+                                    <p class="font-semibold">{{ $loan->contract_number }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">CIF</p>
+                                    <p class="font-semibold">{{ $loan->cif ?? '-' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Ngày giải ngân</p>
+                                    <p class="font-semibold">{{ $loan->disbursement_date->format('d/m/Y') }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Ngày trả hàng tháng</p>
+                                    <p class="font-semibold">Ngày {{ $loan->payment_day }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Gốc hàng tháng</p>
+                                    <p class="font-semibold text-blue-600">{{ number_format($loan->getMonthlyPrincipal(), 0, ',', '.') }}đ</p>
+                                </div>
+                                <div class="col-span-2">
+                                    <p class="text-xs text-gray-500">Ghi chú</p>
+                                    <p class="text-sm">{{ $loan->note ?? '-' }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Action Buttons --}}
+                        <div class="flex gap-2 mb-6">
+                            <button onclick="openEditLoanModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                ✏️ Sửa thông tin
+                            </button>
+                            <button onclick="openAdjustInterestModal()" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
+                                📊 Điều chỉnh lãi suất
+                            </button>
+                            @if($loan->status == 'active')
+                            <button onclick="openPayOffModal()" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                ✅ Trả nợ sớm
+                            </button>
+                            @endif
+                            @if($loan->schedules()->where('status', 'paid')->count() == 0)
+                            <button onclick="deleteLoan()" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                                🗑️ Xóa khoản vay
+                            </button>
+                            @endif
+                        </div>
+
+                        {{-- Repayment Schedule Table --}}
+                        <div class="overflow-x-auto">
+                            <h4 class="font-semibold mb-3">📅 Lịch trả nợ</h4>
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Kỳ</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ngày đến hạn</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Gốc</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lãi</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tổng</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lãi suất</th>
+                                        <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ngày thanh toán</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($loan->schedules()->orderBy('period_no')->get() as $schedule)
+                                    <tr class="{{ $schedule->status == 'overdue' ? 'bg-red-50' : '' }}">
+                                        <td class="px-4 py-2 text-sm">{{ $schedule->period_no }}/{{ $loan->total_periods }}</td>
+                                        <td class="px-4 py-2 text-sm">{{ \Carbon\Carbon::parse($schedule->due_date)->format('d/m/Y') }}</td>
+                                        <td class="px-4 py-2 text-sm text-right">{{ number_format($schedule->principal, 0, ',', '.') }}đ</td>
+                                        <td class="px-4 py-2 text-sm text-right">{{ number_format($schedule->interest, 0, ',', '.') }}đ</td>
+                                        <td class="px-4 py-2 text-sm text-right font-semibold">{{ number_format($schedule->total, 0, ',', '.') }}đ</td>
+                                        <td class="px-4 py-2 text-sm text-right">{{ number_format($schedule->interest_rate, 2) }}%</td>
+                                        <td class="px-4 py-2 text-center">
+                                            @if($schedule->status == 'paid')
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Đã trả</span>
+                                            @elseif($schedule->status == 'overdue')
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                                    Quá hạn ({{ $schedule->overdue_days }} ngày)
+                                                </span>
+                                            @else
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Chờ</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-2 text-sm">
+                                            {{ $schedule->paid_date ? \Carbon\Carbon::parse($schedule->paid_date)->format('d/m/Y') : '-' }}
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {{-- Interest Adjustment History --}}
+                        @if($loan->interestAdjustments()->count() > 0)
+                        <div class="mt-6">
+                            <h4 class="font-semibold mb-3">📈 Lịch sử điều chỉnh lãi suất</h4>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ngày hiệu lực</th>
+                                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lãi suất cũ</th>
+                                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lãi suất mới</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ghi chú</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Người tạo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        @foreach($loan->interestAdjustments()->orderBy('effective_date', 'desc')->get() as $adjustment)
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">{{ \Carbon\Carbon::parse($adjustment->effective_date)->format('d/m/Y') }}</td>
+                                            <td class="px-4 py-2 text-sm text-right">{{ number_format($adjustment->old_interest_rate, 2) }}%</td>
+                                            <td class="px-4 py-2 text-sm text-right font-semibold text-purple-600">{{ number_format($adjustment->new_interest_rate, 2) }}%</td>
+                                            <td class="px-4 py-2 text-sm">{{ $adjustment->note ?? '-' }}</td>
+                                            <td class="px-4 py-2 text-sm">{{ $adjustment->creator->name ?? '-' }}</td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        @endif
+
+                    @else
+                        <p class="text-gray-500 text-center py-8">Chưa có khoản vay nào cho xe này</p>
+                    @endif
+                </div>
+            </div>
+            @endcan
+
             {{-- Filter Section --}}
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
@@ -633,6 +819,231 @@
                 icon.style.transform = 'rotate(0deg)';
             }
         }
+
+        // Loan Management Functions
+        function openLoanModal() {
+            document.getElementById('loanModal').classList.remove('hidden');
+        }
+
+        function closeLoanModal() {
+            document.getElementById('loanModal').classList.add('hidden');
+        }
+
+        function openEditLoanModal() {
+            // Populate form with existing data
+            @if($vehicle->loanProfile)
+            document.getElementById('edit_cif').value = '{{ $vehicle->loanProfile->cif ?? '' }}';
+            document.getElementById('edit_contract_number').value = '{{ $vehicle->loanProfile->contract_number }}';
+            document.getElementById('edit_bank_name').value = '{{ $vehicle->loanProfile->bank_name }}';
+            document.getElementById('edit_payment_day').value = '{{ $vehicle->loanProfile->payment_day }}';
+            document.getElementById('edit_note').value = '{{ $vehicle->loanProfile->note ?? '' }}';
+            @endif
+            document.getElementById('editLoanModal').classList.remove('hidden');
+        }
+
+        function closeEditLoanModal() {
+            document.getElementById('editLoanModal').classList.add('hidden');
+        }
+
+        function openAdjustInterestModal() {
+            document.getElementById('adjustInterestModal').classList.remove('hidden');
+        }
+
+        function closeAdjustInterestModal() {
+            document.getElementById('adjustInterestModal').classList.add('hidden');
+        }
+
+        function openPayOffModal() {
+            @if($vehicle->loanProfile)
+            const remaining = {{ $vehicle->loanProfile->schedules()->where('status', 'pending')->sum('total') }};
+            document.getElementById('payoff_amount_display').textContent = new Intl.NumberFormat('vi-VN').format(remaining) + 'đ';
+            @endif
+            document.getElementById('payOffModal').classList.remove('hidden');
+        }
+
+        function closePayOffModal() {
+            document.getElementById('payOffModal').classList.add('hidden');
+        }
+
+        function deleteLoan() {
+            if (confirm('Bạn có chắc chắn muốn xóa khoản vay này?\n\nLưu ý: Chỉ có thể xóa khoản vay chưa có lịch sử thanh toán.')) {
+                document.getElementById('deleteLoanForm').submit();
+            }
+        }
     </script>
     @endpush
+
+    {{-- Create Loan Modal --}}
+    <div id="loanModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Thêm khoản vay mới</h3>
+                <button onclick="closeLoanModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <form method="POST" action="{{ route('loans.store', $vehicle) }}">
+                @csrf
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">CIF</label>
+                        <input type="text" name="cif" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Số hợp đồng <span class="text-red-500">*</span></label>
+                        <input type="text" name="contract_number" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ngân hàng <span class="text-red-500">*</span></label>
+                        <input type="text" name="bank_name" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Số tiền gốc <span class="text-red-500">*</span></label>
+                        <input type="number" name="principal_amount" required min="0" step="1000" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Số tháng <span class="text-red-500">*</span></label>
+                        <input type="number" name="term_months" required min="1" max="360" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ngày giải ngân <span class="text-red-500">*</span></label>
+                        <input type="date" name="disbursement_date" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Lãi suất (%/năm) <span class="text-red-500">*</span></label>
+                        <input type="number" name="base_interest_rate" required min="0" max="100" step="0.01" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ngày trả hàng tháng <span class="text-red-500">*</span></label>
+                        <input type="number" name="payment_day" required min="1" max="28" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                        <textarea name="note" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeLoanModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">Hủy</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Tạo khoản vay</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Edit Loan Modal --}}
+    @if($vehicle->loanProfile)
+    <div id="editLoanModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Sửa thông tin khoản vay</h3>
+                <button onclick="closeEditLoanModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <form method="POST" action="{{ route('loans.update', $vehicle->loanProfile) }}">
+                @csrf
+                @method('PUT')
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">CIF</label>
+                        <input type="text" name="cif" id="edit_cif" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Số hợp đồng <span class="text-red-500">*</span></label>
+                        <input type="text" name="contract_number" id="edit_contract_number" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ngân hàng <span class="text-red-500">*</span></label>
+                        <input type="text" name="bank_name" id="edit_bank_name" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ngày trả hàng tháng <span class="text-red-500">*</span></label>
+                        <input type="number" name="payment_day" id="edit_payment_day" required min="1" max="28" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                        <textarea name="note" id="edit_note" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeEditLoanModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">Hủy</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Cập nhật</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Adjust Interest Modal --}}
+    <div id="adjustInterestModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Điều chỉnh lãi suất</h3>
+                <button onclick="closeAdjustInterestModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <form method="POST" action="{{ route('loans.adjust-interest', $vehicle->loanProfile) }}">
+                @csrf
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Lãi suất hiện tại</label>
+                        <input type="text" value="{{ number_format($vehicle->loanProfile->getCurrentInterestRate(), 2) }}%" readonly class="w-full rounded-md border-gray-300 bg-gray-100 shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Lãi suất mới (%/năm) <span class="text-red-500">*</span></label>
+                        <input type="number" name="new_interest_rate" required min="0" max="100" step="0.01" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ngày hiệu lực <span class="text-red-500">*</span></label>
+                        <input type="date" name="effective_date" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                        <textarea name="note" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeAdjustInterestModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">Hủy</button>
+                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">Điều chỉnh</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Pay Off Modal --}}
+    <div id="payOffModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Trả nợ sớm</h3>
+                <button onclick="closePayOffModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <form method="POST" action="{{ route('loans.pay-off', $vehicle->loanProfile) }}">
+                @csrf
+                <div class="space-y-4">
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p class="text-sm text-yellow-800 mb-2">⚠️ <strong>Lưu ý:</strong></p>
+                        <ul class="text-sm text-yellow-700 list-disc list-inside space-y-1">
+                            <li>Tất cả các kỳ chưa trả sẽ được đóng</li>
+                            <li>Một giao dịch chi sẽ được tạo</li>
+                            <li>Hành động này không thể hoàn tác</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tổng số tiền cần trả</label>
+                        <div class="text-2xl font-bold text-green-600" id="payoff_amount_display"></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                        <textarea name="note" rows="3" placeholder="Lý do trả nợ sớm..." class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closePayOffModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">Hủy</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Xác nhận trả nợ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Delete Loan Form (hidden) --}}
+    <form id="deleteLoanForm" method="POST" action="{{ route('loans.destroy', $vehicle->loanProfile) }}" class="hidden">
+        @csrf
+        @method('DELETE')
+    </form>
+    @endif
+
 </x-app-layout>
