@@ -883,10 +883,29 @@
         function openPayOffModal() {
             @if($vehicle->loanProfile)
             const schedules = @json($vehicle->loanProfile->schedules->where('status', 'pending')->values());
-            const remaining = schedules.reduce((sum, schedule) => sum + parseFloat(schedule.total), 0);
-            document.getElementById('payoff_amount_display').textContent = new Intl.NumberFormat('vi-VN').format(remaining) + 'đ';
+            const totalRemaining = schedules.reduce((sum, schedule) => sum + parseFloat(schedule.total), 0);
+            const principalRemaining = parseFloat('{{ $vehicle->loanProfile->remaining_balance }}');
+            
+            document.getElementById('remaining_principal_display').textContent = new Intl.NumberFormat('vi-VN').format(principalRemaining) + 'đ';
+            document.getElementById('total_remaining_display').textContent = new Intl.NumberFormat('vi-VN').format(totalRemaining) + 'đ';
+            document.getElementById('partial_amount').max = principalRemaining;
             @endif
             document.getElementById('payOffModal').classList.remove('hidden');
+        }
+
+        function togglePaymentType() {
+            const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
+            const partialSection = document.getElementById('partial_payment_section');
+            const partialAmount = document.getElementById('partial_amount');
+            
+            if (paymentType === 'partial') {
+                partialSection.classList.remove('hidden');
+                partialAmount.required = true;
+            } else {
+                partialSection.classList.add('hidden');
+                partialAmount.required = false;
+                partialAmount.value = '';
+            }
         }
 
         function closePayOffModal() {
@@ -1049,21 +1068,37 @@
             <form method="POST" action="{{ route('loans.pay-off', $vehicle->loanProfile) }}">
                 @csrf
                 <div class="space-y-4">
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <p class="text-sm text-yellow-800 mb-2">⚠️ <strong>Lưu ý:</strong></p>
-                        <ul class="text-sm text-yellow-700 list-disc list-inside space-y-1">
-                            <li>Tất cả các kỳ chưa trả sẽ được đóng</li>
-                            <li>Một giao dịch chi sẽ được tạo</li>
-                            <li>Hành động này không thể hoàn tác</li>
-                        </ul>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p class="text-sm text-blue-800 mb-2">💰 <strong>Thông tin khoản vay:</strong></p>
+                        <div class="text-sm text-blue-700 space-y-1">
+                            <div>Số dư gốc còn lại: <span class="font-semibold" id="remaining_principal_display"></span></div>
+                            <div>Tổng tiền cần trả (bao gồm lãi): <span class="font-semibold" id="total_remaining_display"></span></div>
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tổng số tiền cần trả</label>
-                        <div class="text-2xl font-bold text-green-600" id="payoff_amount_display"></div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Hình thức trả nợ</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="radio" name="payment_type" value="full" checked onchange="togglePaymentType()" class="mr-2">
+                                <span>Trả hết (đóng khoản vay)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="payment_type" value="partial" onchange="togglePaymentType()" class="mr-2">
+                                <span>Trả một phần tiền gốc</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="partial_payment_section" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Số tiền gốc muốn trả <span class="text-red-500">*</span></label>
+                        <input type="number" name="partial_amount" id="partial_amount" min="0" step="1000" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Nhập số tiền...">
+                        <p class="text-xs text-gray-500 mt-1">Số tiền này sẽ được trừ vào tiền gốc còn lại</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
                         <textarea name="note" rows="3" placeholder="Lý do trả nợ sớm..." class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                    </div>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <p class="text-xs text-yellow-700">⚠️ Trả hết: Đóng toàn bộ khoản vay, xóa các kỳ chưa trả<br>⚠️ Trả một phần: Giảm tiền gốc, tái tính lịch trả nợ cho các kỳ chưa trả</p>
                     </div>
                 </div>
                 <div class="flex justify-end gap-2 mt-6">

@@ -171,6 +171,8 @@ class LoanController extends Controller
     public function payOff(Request $request, LoanProfile $loan)
     {
         $validated = $request->validate([
+            'payment_type' => 'required|in:full,partial',
+            'partial_amount' => 'required_if:payment_type,partial|nullable|numeric|min:0',
             'note' => 'nullable|string',
         ]);
 
@@ -178,43 +180,103 @@ class LoanController extends Controller
             DB::beginTransaction();
 
             $vehicle = $loan->vehicle;
+            $paymentType = $validated['payment_type'];
 
-            // Calculate total remaining amount
-            $remainingAmount = $loan->schedules()
-                ->where('status', 'pending')
-                ->sum('total');
+            if ($paymentType === 'full') {
+                // Full payment - close the loan
+                $remainingAmount = $loan->schedules()
+                    ->where('status', 'pending')
+                    ->sum('total');
 
-            // Create transaction for early payment
-            $transaction = Transaction::create([
-                'vehicle_id' => $loan->vehicle_id,
-                'type' => 'chi',
-                'category' => 'trả_nợ_sớm',
-                'amount' => $remainingAmount,
-                'method' => 'bank',
-                'recorded_by' => auth()->id(),
-                'date' => now(),
-                'note' => 'Trả nợ sớm xe ' . $vehicle->license_plate . ' - ' . $loan->bank_name . ($validated['note'] ? ' - ' . $validated['note'] : ''),
-            ]);
+                // Create transaction for full payment
+                Transaction::create([
+                    'vehicle_id' => $loan->vehicle_id,
+                    'type' => 'chi',
+                    'category' => 'trả_nợ_sớm',
+                    'amount' => $remainingAmount,
+                    'method' => 'bank',
+                    'recorded_by' => auth()->id(),
+                    'date' => now(),
+                    'note' => 'Trả nợ sớm (đóng khoản vay) xe ' . $vehicle->license_plate . ' - ' . $loan->bank_name . ($validated['note'] ? ' - ' . $validated['note'] : ''),
+                ]);
 
-            // Mark loan as paid off
-            $loan->markAsPaidOff();
+                // Mark loan as paid off
+                $loan->markAsPaidOff();
 
-            Log::info('Loan paid off early', [
-                'loan_id' => $loan->id,
-                'vehicle_id' => $loan->vehicle_id,
-                'remaining_amount' => $remainingAmount,
-                'transaction_id' => $transaction->id,
-                'user_id' => auth()->id(),
-            ]);
+                Log::info('Loan paid off early (full)', [
+                    'loan_id' => $loan->id,
+                    'vehicle_id' => $loan->vehicle_id,
+                    'remaining_amount' => $remainingAmount,
+                    'user_id' => auth()->id(),
+                ]);
 
-            DB::commit();
+                DB::commit();
 
-            return redirect()->route('vehicles.show', $loan->vehicle_id)
-                ->with('success', 'Đã đóng khoản vay trước hạn! Tổng số tiền: ' . number_format($remainingAmount, 0, ',', '.') . 'đ');
+                return redirect()->route('vehicles.show', $loan->vehicle_id)
+                    ->with('success', 'Đã đóng khoản vay hoàn toàn! Tổng số tiền: ' . number_format($remainingAmount, 0, ',', '.') . 'đ');
+
+            } else {
+                // Partial payment - reduce principal and recalculate schedule
+                $partialAmount = $validated['partial_amount'];
+
+                if ($partialAmount > $loan->remaining_balance) {
+                    return redirect()->back()
+                        ->with('error', 'Số tiền trả vượt quá số dư gốc còn lại!');
+                }
+
+                // Create transaction for partial payment
+                Transaction::create([
+                    'vehicle_id' => $loan->vehicle_id,
+                    'type' => 'chi',
+                    'category' => 'trả_nợ_gốc',
+                    'amount' => $partialAmount,
+                    'method' => 'bank',
+                    'recorded_by' => auth()->id(),
+                    'date' => now(),
+                    'note' => 'Trả nợ gốc sớm (một phần) xe ' . $vehicle->license_plate . ' - ' . $loan->bank_name . ($validated['note'] ? ' - ' . $validated['note'] : ''),
+                ]);
+
+                // Update remaining balance
+                $loan->remaining_balance -= $partialAmount;
+                $loan->save();
+
+                // Recalculate monthly principal for remaining periods
+                $pendingSchedules = $loan->schedules()
+                    ->where('status', 'pending')
+                    ->orderBy('period_no')
+                    ->get();
+
+                $remainingPeriods = $pendingSchedules->count();
+                $newMonthlyPrincipal = $loan->remaining_balance / $remainingPeriods;
+
+                // Update each pending schedule
+                foreach ($pendingSchedules as $schedule) {
+                    $newPrincipal = $newMonthlyPrincipal;
+                    $newTotal = $newPrincipal + $schedule->interest;
+
+                    $schedule->update([
+                        'principal' => $newPrincipal,
+                        'total' => $newTotal,
+                    ]);
+                }
+
+                Log::info('Loan partial payment', [
+                    'loan_id' => $loan->id,
+                    'vehicle_id' => $loan->vehicle_id,
+                    'partial_amount' => $partialAmount,
+                    'new_remaining_balance' => $loan->remaining_balance,
+                    'user_id' => auth()->id(),
+                ]);
+
+                DB::commit();
+
+                return redirect()->route('vehicles.show', $loan->vehicle_id)
+                    ->with('success', 'Đã trả nợ gốc ' . number_format($partialAmount, 0, ',', '.') . 'đ. Lịch trả nợ đã được cập nhật!');
+            }
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Failed to pay off loan', [
+            Log::error('Failed to process payment', [
                 'loan_id' => $loan->id,
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
