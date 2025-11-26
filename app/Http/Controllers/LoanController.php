@@ -301,4 +301,98 @@ class LoanController extends Controller
             ]);
         }
     }
+
+    /**
+     * Process repayments for a specific loan
+     */
+    public function processRepayments(Request $request, LoanProfile $loan)
+    {
+        try {
+            $today = now()->startOfDay();
+            $processedCount = 0;
+            $insufficientFundsCount = 0;
+
+            // Get all schedules due today or overdue
+            $dueSchedules = $loan->schedules()
+                ->whereIn('status', ['pending', 'overdue'])
+                ->where('due_date', '<=', $today)
+                ->orderBy('due_date')
+                ->get();
+
+            if ($dueSchedules->isEmpty()) {
+                return redirect()->back()->with('info', 'Không có kỳ nào đến hạn cần xử lý.');
+            }
+
+            DB::beginTransaction();
+
+            foreach ($dueSchedules as $schedule) {
+                $vehicle = $loan->vehicle;
+
+                // Calculate available balance
+                $vehicleProfit = $vehicle->transactions()
+                    ->where('type', 'thu')
+                    ->sum('amount');
+
+                $vehicleExpenses = $vehicle->transactions()
+                    ->where('type', 'chi')
+                    ->sum('amount');
+
+                $currentBalance = $vehicleProfit - $vehicleExpenses;
+
+                // Create principal transaction if amount > 0
+                if ($schedule->principal > 0) {
+                    Transaction::create([
+                        'vehicle_id' => $vehicle->id,
+                        'type' => 'chi',
+                        'category' => 'trả_nợ_gốc',
+                        'amount' => $schedule->principal,
+                        'method' => 'other',
+                        'recorded_by' => auth()->id(),
+                        'date' => $today,
+                        'note' => "Trả nợ gốc kỳ {$schedule->period_no}/{$loan->total_periods} - {$loan->bank_name}",
+                    ]);
+                }
+
+                // Create interest transaction
+                Transaction::create([
+                    'vehicle_id' => $vehicle->id,
+                    'type' => 'chi',
+                    'category' => 'trả_nợ_lãi',
+                    'amount' => $schedule->interest,
+                    'method' => 'other',
+                    'recorded_by' => auth()->id(),
+                    'date' => $today,
+                    'note' => "Trả lãi kỳ {$schedule->period_no}/{$loan->total_periods} - {$loan->bank_name} (lãi suất {$schedule->interest_rate}%)",
+                ]);
+
+                // Mark schedule as paid
+                $schedule->markAsPaid();
+
+                // Update remaining balance
+                $loan->remaining_balance -= $schedule->principal;
+                $loan->save();
+
+                $processedCount++;
+
+                // Check if insufficient funds
+                if ($currentBalance < $schedule->total) {
+                    $insufficientFundsCount++;
+                }
+            }
+
+            DB::commit();
+
+            $message = "Đã xử lý {$processedCount} kỳ thanh toán.";
+            if ($insufficientFundsCount > 0) {
+                $message .= " Cảnh báo: {$insufficientFundsCount} kỳ không đủ số dư.";
+            }
+
+            return redirect()->back()->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Process repayments error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Có lỗi xảy ra khi xử lý thanh toán: ' . $e->getMessage());
+        }
+    }
 }

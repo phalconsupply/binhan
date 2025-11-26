@@ -272,7 +272,15 @@
 
                         {{-- Repayment Schedule Table --}}
                         <div class="overflow-x-auto">
-                            <h4 class="font-semibold mb-3">📅 Lịch trả nợ</h4>
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="font-semibold">📅 Lịch trả nợ</h4>
+                                <form method="POST" action="{{ route('loans.process-repayments', $vehicle->loanProfile) }}" class="inline">
+                                    @csrf
+                                    <button type="submit" class="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+                                        🔄 Cập nhật trạng thái
+                                    </button>
+                                </form>
+                            </div>
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
