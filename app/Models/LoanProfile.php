@@ -191,15 +191,11 @@ class LoanProfile extends Model
             $remainingBalance -= $principal;
             $previousDueDate = $dueDate;
         }
-        }
 
         // Update remaining balance
         $this->update(['remaining_balance' => $this->principal_amount]);
     }
 
-    /**
-     * Get interest rate applicable for a specific date
-     */
     /**
      * Get interest rate applicable for a specific date
      */
