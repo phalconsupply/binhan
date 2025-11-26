@@ -20,10 +20,9 @@ class LoanController extends Controller
     /**
      * Store a newly created loan profile
      */
-    public function store(Request $request)
+    public function store(Request $request, Vehicle $vehicle)
     {
         $validated = $request->validate([
-            'vehicle_id' => 'required|exists:vehicles,id',
             'cif' => 'nullable|string|max:50',
             'contract_number' => 'required|string|max:100',
             'bank_name' => 'required|string|max:100',
@@ -36,7 +35,7 @@ class LoanController extends Controller
         ]);
 
         // Check if vehicle already has an active loan
-        $existingLoan = LoanProfile::where('vehicle_id', $validated['vehicle_id'])
+        $existingLoan = LoanProfile::where('vehicle_id', $vehicle->id)
             ->where('status', 'active')
             ->first();
 
@@ -49,7 +48,8 @@ class LoanController extends Controller
         try {
             DB::beginTransaction();
 
-            // Calculate total periods (term_months / 1 month per period = term_months)
+            // Add vehicle_id and calculate total periods
+            $validated['vehicle_id'] = $vehicle->id;
             $validated['total_periods'] = $validated['term_months'];
             $validated['created_by'] = auth()->id();
 
