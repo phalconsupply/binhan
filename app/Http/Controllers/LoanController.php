@@ -515,4 +515,99 @@ class LoanController extends Controller
             return redirect()->back()->with('error', 'Có lỗi xảy ra khi xử lý thanh toán: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Delete interest adjustment and restore previous rate
+     */
+    public function deleteAdjustment(LoanInterestAdjustment $adjustment)
+    {
+        try {
+            DB::beginTransaction();
+
+            $loan = $adjustment->loan;
+            $effectiveDate = $adjustment->effective_date;
+            $oldRate = $adjustment->old_interest_rate;
+
+            // Get the previous adjustment (if any) before this one
+            $previousAdjustment = $loan->interestAdjustments()
+                ->where('effective_date', '<', $effectiveDate)
+                ->orderBy('effective_date', 'desc')
+                ->first();
+
+            // Determine the rate to restore to
+            $restoreRate = $previousAdjustment ? $previousAdjustment->new_interest_rate : $loan->base_interest_rate;
+
+            // Delete the adjustment
+            $adjustment->delete();
+
+            // Get all schedules from effective date onwards that are still pending
+            $affectedSchedules = $loan->schedules()
+                ->where('due_date', '>=', $effectiveDate)
+                ->where('status', 'pending')
+                ->orderBy('period_no')
+                ->get();
+
+            // Recalculate interest for affected schedules
+            foreach ($affectedSchedules as $schedule) {
+                // Get the applicable rate for this schedule's date after deletion
+                $applicableRate = $loan->getInterestRateForDate($schedule->due_date);
+                
+                // Recalculate interest with the restored rate
+                // Get previous schedule to calculate days
+                $previousSchedule = $loan->schedules()
+                    ->where('period_no', '<', $schedule->period_no)
+                    ->orderBy('period_no', 'desc')
+                    ->first();
+
+                if ($previousSchedule) {
+                    $daysInPeriod = \Carbon\Carbon::parse($previousSchedule->due_date)->diffInDays($schedule->due_date);
+                } else {
+                    // First period
+                    $daysInPeriod = \Carbon\Carbon::parse($loan->disbursement_date)->diffInDays($schedule->due_date);
+                }
+
+                // Calculate remaining balance at this period
+                $paidPrincipal = $loan->schedules()
+                    ->where('period_no', '<', $schedule->period_no)
+                    ->where('status', 'paid')
+                    ->sum('principal');
+                $remainingBalance = $loan->principal_amount - $paidPrincipal;
+
+                // Recalculate interest using actual/365
+                $interest = $remainingBalance * ($applicableRate / 100) * ($daysInPeriod / 365);
+                $total = $schedule->principal + $interest;
+
+                $schedule->update([
+                    'interest' => $interest,
+                    'total' => $total,
+                    'interest_rate' => $applicableRate,
+                ]);
+            }
+
+            Log::info('Interest adjustment deleted and schedules restored', [
+                'adjustment_id' => $adjustment->id,
+                'loan_id' => $loan->id,
+                'effective_date' => $effectiveDate,
+                'restored_rate' => $restoreRate,
+                'affected_schedules' => $affectedSchedules->count(),
+                'user_id' => auth()->id(),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('vehicles.show', $loan->vehicle_id)
+                ->with('success', 'Đã xóa điều chỉnh lãi suất và khôi phục lịch trả nợ!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to delete interest adjustment', [
+                'adjustment_id' => $adjustment->id ?? null,
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
 }

@@ -83,6 +83,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('vehicles/{vehicle}/loans', [LoanController::class, 'store'])->name('loans.store');
     Route::put('loans/{loan}', [LoanController::class, 'update'])->name('loans.update');
     Route::post('loans/{loan}/adjust-interest', [LoanController::class, 'adjustInterest'])->name('loans.adjust-interest');
+    Route::delete('loans/adjustments/{adjustment}', [LoanController::class, 'deleteAdjustment'])->name('loans.delete-adjustment');
     Route::post('loans/{loan}/pay-off', [LoanController::class, 'payOff'])->name('loans.pay-off');
     Route::post('loans/{loan}/process-repayments', [LoanController::class, 'processRepayments'])->name('loans.process-repayments');
     Route::delete('loans/{loan}', [LoanController::class, 'destroy'])->name('loans.destroy');

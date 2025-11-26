@@ -336,6 +336,7 @@
                                             <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lãi suất mới</th>
                                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ghi chú</th>
                                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Người tạo</th>
+                                            <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
@@ -346,6 +347,13 @@
                                             <td class="px-4 py-2 text-sm text-right font-semibold text-purple-600">{{ number_format($adjustment->new_interest_rate, 2) }}%</td>
                                             <td class="px-4 py-2 text-sm">{{ $adjustment->note ?? '-' }}</td>
                                             <td class="px-4 py-2 text-sm">{{ $adjustment->creator->name ?? '-' }}</td>
+                                            <td class="px-4 py-2 text-center">
+                                                <form method="POST" action="{{ route('loans.delete-adjustment', $adjustment) }}" class="inline" onsubmit="return confirm('Xóa điều chỉnh lãi suất này? Lịch trả nợ sẽ được khôi phục về lãi suất cũ.');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-red-600 hover:text-red-800 text-sm">🗑️ Xóa</button>
+                                                </form>
+                                            </td>
                                         </tr>
                                         @endforeach
                                     </tbody>
