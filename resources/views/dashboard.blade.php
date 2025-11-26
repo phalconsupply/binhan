@@ -103,6 +103,10 @@
             </div>
 
             {{-- Quick Entry Form - Full Width --}}
+            @php
+                $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())->where('staff_type', 'vehicle_owner')->exists();
+            @endphp
+            @if(!$isVehicleOwner)
             <div class="mb-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
@@ -367,6 +371,7 @@
                         </div>
                     </div>
                 </div>
+            @endif
 
             {{-- Recent Activities - Two Columns --}}
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

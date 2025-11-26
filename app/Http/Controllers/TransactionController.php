@@ -12,10 +12,10 @@ class TransactionController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'permission:view transactions'])->only(['index', 'show']);
-        $this->middleware(['auth', 'permission:create transactions'])->only(['create', 'store']);
-        $this->middleware(['auth', 'permission:edit transactions'])->only(['edit', 'update']);
-        $this->middleware(['auth', 'permission:delete transactions'])->only(['destroy']);
+        $this->middleware(['auth', 'owner_or_permission:view transactions'])->only(['index', 'show']);
+        $this->middleware(['auth', 'owner_or_permission:create transactions'])->only(['create', 'store']);
+        $this->middleware(['auth', 'owner_or_permission:edit transactions'])->only(['edit', 'update']);
+        $this->middleware(['auth', 'owner_or_permission:delete transactions'])->only(['destroy']);
     }
 
     /**
@@ -23,7 +23,26 @@ class TransactionController extends Controller
      */
     public function index(Request $request)
     {
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        $ownedVehicleIds = [];
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+        }
+
         $query = Transaction::with(['vehicle', 'incident.patient', 'recorder', 'vehicleMaintenance.maintenanceService']);
+
+        // Scope to owner's vehicles if owner
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $query->whereIn('vehicle_id', $ownedVehicleIds);
+        }
 
         // Search
         if ($request->has('search')) {
@@ -190,65 +209,100 @@ class TransactionController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        // Get vehicles for filter dropdown
-        $vehicles = Vehicle::orderBy('license_plate')->get();
+        // Get vehicles for filter dropdown (scoped to owner's vehicles if owner)
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $vehicles = Vehicle::whereIn('id', $ownedVehicleIds)->orderBy('license_plate')->get();
+        } else {
+            $vehicles = Vehicle::orderBy('license_plate')->get();
+        }
 
-        // Statistics
+        // Statistics (scoped to owner's vehicles if owner)
+        $statsQuery = Transaction::query();
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $statsQuery->whereIn('vehicle_id', $ownedVehicleIds);
+        }
+
+        $totalRevenue = (clone $statsQuery)->revenue()->sum('amount');
+        $totalExpense = (clone $statsQuery)->expense()->sum('amount');
+        $totalPlannedExpense = (clone $statsQuery)->plannedExpense()->sum('amount');
+        $monthRevenue = (clone $statsQuery)->revenue()->thisMonth()->sum('amount');
+        $monthExpense = (clone $statsQuery)->expense()->thisMonth()->sum('amount');
+        $monthPlannedExpense = (clone $statsQuery)->plannedExpense()->thisMonth()->sum('amount');
+        
+        // Calculate "Chi từ công ty" = amount company had to cover when owner didn't have enough
+        // This is the amount owner owes back to company
+        if ($isVehicleOwner) {
+            $companyExpense = max(0, $totalExpense - $totalRevenue);
+            $companyMonthExpense = max(0, $monthExpense - $monthRevenue);
+            $companyPlannedExpense = (clone $statsQuery)->plannedExpense()->whereNull('incident_id')->sum('amount');
+        } else {
+            // For admin: show expenses without incident_id (company's own expenses)
+            $companyExpense = (clone $statsQuery)->expense()->whereNull('incident_id')->sum('amount');
+            $companyMonthExpense = (clone $statsQuery)->expense()->whereNull('incident_id')->thisMonth()->sum('amount');
+            $companyPlannedExpense = (clone $statsQuery)->plannedExpense()->whereNull('incident_id')->sum('amount');
+        }
+        
         $stats = [
-            'total_revenue' => Transaction::revenue()->sum('amount'),
-            'total_expense' => Transaction::expense()->sum('amount'),
-            'total_planned_expense' => Transaction::plannedExpense()->sum('amount'),
-            'today_revenue' => Transaction::revenue()->today()->sum('amount'),
-            'today_expense' => Transaction::expense()->today()->sum('amount'),
-            'today_planned_expense' => Transaction::plannedExpense()->today()->sum('amount'),
-            'month_revenue' => Transaction::revenue()->thisMonth()->sum('amount'),
-            'month_expense' => Transaction::expense()->thisMonth()->sum('amount'),
-            'month_planned_expense' => Transaction::plannedExpense()->thisMonth()->sum('amount'),
-            'company_expense' => Transaction::expense()->whereNull('incident_id')->sum('amount'),
-            'company_month_expense' => Transaction::expense()->whereNull('incident_id')->thisMonth()->sum('amount'),
-            'company_planned_expense' => Transaction::plannedExpense()->whereNull('incident_id')->sum('amount'),
+            'total_revenue' => $totalRevenue,
+            'total_expense' => $totalExpense,
+            'total_planned_expense' => $totalPlannedExpense,
+            'today_revenue' => (clone $statsQuery)->revenue()->today()->sum('amount'),
+            'today_expense' => (clone $statsQuery)->expense()->today()->sum('amount'),
+            'today_planned_expense' => (clone $statsQuery)->plannedExpense()->today()->sum('amount'),
+            'month_revenue' => $monthRevenue,
+            'month_expense' => $monthExpense,
+            'month_planned_expense' => $monthPlannedExpense,
+            'company_expense' => $companyExpense,
+            'company_month_expense' => $companyMonthExpense,
+            'company_planned_expense' => $companyPlannedExpense,
         ];
         
-        // Calculate company profit: For vehicles with owners, only count 15% management fee
-        // For vehicles without owners, count full profit
-        $companyProfit = 0;
-        $companyTodayProfit = 0;
-        $companyMonthProfit = 0;
-        
-        // Get all incidents with vehicle relationship
-        $allIncidents = Incident::with('vehicle.owner')->get();
-        
-        foreach ($allIncidents as $incident) {
-            $incidentRevenue = $incident->transactions()->revenue()->sum('amount');
-            $incidentExpense = $incident->transactions()->expense()->sum('amount');
-            $incidentPlannedExpense = $incident->transactions()->plannedExpense()->sum('amount');
-            $incidentNet = $incidentRevenue - $incidentExpense - $incidentPlannedExpense;
+        // Calculate profit (different for owner vs company)
+        if ($isVehicleOwner) {
+            // For vehicle owner: simple calculation
+            // Owner's profit = Total Revenue - Total Expense - Total Planned Expense
+            // (No need to separate by incident or apply 85% because owner sees their vehicle's full P&L)
+            $companyProfit = $stats['total_revenue'] - $stats['total_expense'] - $stats['total_planned_expense'];
+            $companyTodayProfit = $stats['today_revenue'] - $stats['today_expense'] - $stats['today_planned_expense'];
+            $companyMonthProfit = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
+        } else {
+            // For company/admin: calculate based on incidents
+            $companyProfit = 0;
+            $companyTodayProfit = 0;
+            $companyMonthProfit = 0;
             
-            // Only count positive profits
-            if ($incidentNet > 0) {
-                if ($incident->vehicle && $incident->vehicle->hasOwner()) {
-                    // Vehicle with owner: only count 15% management fee
-                    $companyProfit += $incidentNet * 0.15;
-                    
-                    // Today
-                    if ($incident->date->isToday()) {
-                        $companyTodayProfit += $incidentNet * 0.15;
-                    }
-                    
-                    // This month
-                    if ($incident->date->isCurrentMonth()) {
-                        $companyMonthProfit += $incidentNet * 0.15;
-                    }
-                } else {
-                    // Vehicle without owner: count full profit
-                    $companyProfit += $incidentNet;
-                    
-                    if ($incident->date->isToday()) {
-                        $companyTodayProfit += $incidentNet;
-                    }
-                    
-                    if ($incident->date->isCurrentMonth()) {
-                        $companyMonthProfit += $incidentNet;
+            $allIncidents = Incident::with('vehicle.owner')->get();
+            
+            foreach ($allIncidents as $incident) {
+                $incidentRevenue = $incident->transactions()->revenue()->sum('amount');
+                $incidentExpense = $incident->transactions()->expense()->sum('amount');
+                $incidentPlannedExpense = $incident->transactions()->plannedExpense()->sum('amount');
+                $incidentNet = $incidentRevenue - $incidentExpense - $incidentPlannedExpense;
+                
+                // Only count positive profits
+                if ($incidentNet > 0) {
+                    if ($incident->vehicle && $incident->vehicle->hasOwner()) {
+                        // Vehicle with owner: only count 15% management fee
+                        $companyProfit += $incidentNet * 0.15;
+                        
+                        if ($incident->date->isToday()) {
+                            $companyTodayProfit += $incidentNet * 0.15;
+                        }
+                        
+                        if ($incident->date->isCurrentMonth()) {
+                            $companyMonthProfit += $incidentNet * 0.15;
+                        }
+                    } else {
+                        // Vehicle without owner: count full profit
+                        $companyProfit += $incidentNet;
+                        
+                        if ($incident->date->isToday()) {
+                            $companyTodayProfit += $incidentNet;
+                        }
+                        
+                        if ($incident->date->isCurrentMonth()) {
+                            $companyMonthProfit += $incidentNet;
+                        }
                     }
                 }
             }
@@ -309,6 +363,23 @@ class TransactionController extends Controller
      */
     public function show(Transaction $transaction)
     {
+        // Check if user is vehicle owner and has access to this transaction
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($transaction->vehicle_id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xem giao dịch này.');
+            }
+        }
+
         $transaction->load(['vehicle', 'incident.patient', 'recorder']);
 
         return view('transactions.show', compact('transaction'));
@@ -319,6 +390,23 @@ class TransactionController extends Controller
      */
     public function edit(Transaction $transaction)
     {
+        // Check if user is vehicle owner and has access to this transaction
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($transaction->vehicle_id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền chỉnh sửa giao dịch này.');
+            }
+        }
+
         $transaction->load(['vehicle', 'incident']);
         
         $vehicles = Vehicle::orderBy('license_plate')->get();
@@ -335,6 +423,23 @@ class TransactionController extends Controller
      */
     public function update(Request $request, Transaction $transaction)
     {
+        // Check if user is vehicle owner and has access to this transaction
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($transaction->vehicle_id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền cập nhật giao dịch này.');
+            }
+        }
+
         $validated = $request->validate([
             'incident_id' => 'nullable|exists:incidents,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
@@ -356,6 +461,23 @@ class TransactionController extends Controller
      */
     public function destroy(Transaction $transaction)
     {
+        // Check if user is vehicle owner and has access to this transaction
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($transaction->vehicle_id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xóa giao dịch này.');
+            }
+        }
+
         $transaction->delete();
 
         return redirect()->route('transactions.index')

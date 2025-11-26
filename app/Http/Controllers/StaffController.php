@@ -15,10 +15,10 @@ class StaffController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:view staff')->only(['index', 'show']);
-        $this->middleware('permission:create staff')->only(['create', 'store']);
-        $this->middleware('permission:edit staff')->only(['edit', 'update']);
-        $this->middleware('permission:delete staff')->only('destroy');
+        $this->middleware('owner_or_permission:view staff')->only(['index', 'show']);
+        $this->middleware('owner_or_permission:create staff')->only(['create', 'store']);
+        $this->middleware('owner_or_permission:edit staff')->only(['edit', 'update']);
+        $this->middleware('owner_or_permission:delete staff')->only('destroy');
     }
 
     /**

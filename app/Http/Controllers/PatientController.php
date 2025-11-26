@@ -9,15 +9,34 @@ class PatientController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:manage patients')->except(['index', 'show']);
-        $this->middleware('permission:view patients')->only(['index', 'show']);
+        $this->middleware('owner_or_permission:manage patients')->except(['index', 'show']);
+        $this->middleware('owner_or_permission:view patients')->only(['index', 'show']);
     }
 
     public function index(Request $request)
     {
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        $ownedVehicleIds = [];
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+        }
+
         // List theo chuyến đi (incidents) có bệnh nhân
         $query = \App\Models\Incident::whereNotNull('patient_id')
             ->with(['patient', 'vehicle']);
+
+        // Scope to owner's vehicles if owner
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $query->whereIn('vehicle_id', $ownedVehicleIds);
+        }
 
         // Tìm kiếm theo thông tin bệnh nhân
         if ($request->filled('search')) {
@@ -44,13 +63,28 @@ class PatientController extends Controller
 
         $incidents = $query->paginate(15);
 
-        // Thống kê
-        $statistics = [
-            'total' => Patient::count(),
-            'male' => Patient::where('gender', 'male')->count(),
-            'female' => Patient::where('gender', 'female')->count(),
-            'with_incidents' => Patient::has('incidents')->count(),
-        ];
+        // Thống kê (scoped to owner's vehicles if owner)
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            // Get unique patient IDs from owner's vehicle incidents
+            $patientIds = \App\Models\Incident::whereNotNull('patient_id')
+                ->whereIn('vehicle_id', $ownedVehicleIds)
+                ->pluck('patient_id')
+                ->unique();
+            
+            $statistics = [
+                'total' => Patient::whereIn('id', $patientIds)->count(),
+                'male' => Patient::whereIn('id', $patientIds)->where('gender', 'male')->count(),
+                'female' => Patient::whereIn('id', $patientIds)->where('gender', 'female')->count(),
+                'with_incidents' => Patient::whereIn('id', $patientIds)->has('incidents')->count(),
+            ];
+        } else {
+            $statistics = [
+                'total' => Patient::count(),
+                'male' => Patient::where('gender', 'male')->count(),
+                'female' => Patient::where('gender', 'female')->count(),
+                'with_incidents' => Patient::has('incidents')->count(),
+            ];
+        }
 
         return view('patients.index', compact('incidents', 'statistics'));
     }
@@ -85,11 +119,42 @@ class PatientController extends Controller
 
     public function show(Patient $patient)
     {
-        $patient->load([
-            'incidents' => function($q) {
-                $q->with(['vehicle', 'dispatcher'])->latest();
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            // Check if this patient has any incidents with owner's vehicles
+            $hasAccess = \App\Models\Incident::where('patient_id', $patient->id)
+                ->whereIn('vehicle_id', $ownedVehicleIds)
+                ->exists();
+            
+            if (!$hasAccess) {
+                abort(403, 'Bạn không có quyền xem bệnh nhân này.');
             }
-        ]);
+            
+            // Load only incidents with owner's vehicles
+            $patient->load([
+                'incidents' => function($q) use ($ownedVehicleIds) {
+                    $q->whereIn('vehicle_id', $ownedVehicleIds)
+                      ->with(['vehicle', 'dispatcher'])
+                      ->latest();
+                }
+            ]);
+        } else {
+            $patient->load([
+                'incidents' => function($q) {
+                    $q->with(['vehicle', 'dispatcher'])->latest();
+                }
+            ]);
+        }
 
         // Thống kê cho bệnh nhân
         $statistics = [

@@ -108,10 +108,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // Report routes
-Route::middleware(['auth', 'verified', 'permission:view reports'])->group(function () {
+Route::middleware(['auth', 'verified', 'owner_or_permission:view reports'])->group(function () {
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     
-    Route::middleware('permission:export reports')->group(function () {
+    Route::middleware('owner_or_permission:export reports')->group(function () {
         Route::get('/reports/export/incidents/excel', [ReportController::class, 'exportIncidentsExcel'])->name('reports.export.incidents.excel');
         Route::get('/reports/export/incidents/pdf', [ReportController::class, 'exportIncidentsPdf'])->name('reports.export.incidents.pdf');
         Route::get('/reports/export/transactions/excel', [ReportController::class, 'exportTransactionsExcel'])->name('reports.export.transactions.excel');
@@ -129,7 +129,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // Activity Log routes
-Route::middleware(['auth', 'verified', 'permission:view audits'])->group(function () {
+Route::middleware(['auth', 'verified', 'owner_or_permission:view audits'])->group(function () {
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
 });
 
@@ -170,8 +170,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Staff routes
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('staff/payroll', [StaffController::class, 'payroll'])->name('staff.payroll')->middleware('permission:view staff');
-    Route::get('staff/payroll/{year}/{month}', [StaffController::class, 'payrollDetail'])->name('staff.payroll.detail')->middleware('permission:view staff');
+    Route::get('staff/payroll', [StaffController::class, 'payroll'])->name('staff.payroll')->middleware('owner_or_permission:view staff');
+    Route::get('staff/payroll/{year}/{month}', [StaffController::class, 'payrollDetail'])->name('staff.payroll.detail')->middleware('owner_or_permission:view staff');
     Route::get('staff/{staff}/earnings', [StaffController::class, 'earnings'])->name('staff.earnings');
     Route::post('staff/{staff}/adjustments', [StaffController::class, 'storeAdjustment'])->name('staff.adjustments.store')->middleware('permission:manage settings');
     Route::put('adjustment/{adjustment}', [StaffController::class, 'updateAdjustment'])->name('adjustment.update')->middleware('permission:manage settings');

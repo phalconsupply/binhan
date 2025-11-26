@@ -14,7 +14,22 @@ class LoanController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'permission:manage vehicles']);
+        $this->middleware(['auth', 'owner_or_permission:manage vehicles']);
+    }
+
+    /**
+     * Check if vehicle owner has access to the vehicle
+     */
+    private function checkVehicleOwnerAccess($vehicleId)
+    {
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            // Vehicle owners can only view, not edit
+            abort(403, 'Chủ xe chỉ có quyền xem thông tin khoản vay, không được chỉnh sửa.');
+        }
     }
 
     /**
@@ -22,6 +37,8 @@ class LoanController extends Controller
      */
     public function store(Request $request, Vehicle $vehicle)
     {
+        $this->checkVehicleOwnerAccess($vehicle->id);
+
         $validated = $request->validate([
             'cif' => 'nullable|string|max:50',
             'contract_number' => 'required|string|max:100',
@@ -91,6 +108,8 @@ class LoanController extends Controller
      */
     public function update(Request $request, LoanProfile $loan)
     {
+        $this->checkVehicleOwnerAccess($loan->vehicle_id);
+
         $validated = $request->validate([
             'cif' => 'nullable|string|max:50',
             'contract_number' => 'required|string|max:100',
@@ -117,6 +136,8 @@ class LoanController extends Controller
      */
     public function adjustInterest(Request $request, LoanProfile $loan)
     {
+        $this->checkVehicleOwnerAccess($loan->vehicle_id);
+
         $validated = $request->validate([
             'new_interest_rate' => 'required|numeric|min:0|max:100',
             'effective_date' => 'required|date|after:' . $loan->disbursement_date,
@@ -170,6 +191,8 @@ class LoanController extends Controller
      */
     public function payOff(Request $request, LoanProfile $loan)
     {
+        $this->checkVehicleOwnerAccess($loan->vehicle_id);
+
         $validated = $request->validate([
             'payment_type' => 'required|in:full,partial',
             'partial_amount' => 'required_if:payment_type,partial|nullable|numeric|min:0',
@@ -334,6 +357,8 @@ class LoanController extends Controller
      */
     public function destroy(LoanProfile $loan)
     {
+        $this->checkVehicleOwnerAccess($loan->vehicle_id);
+
         try {
             DB::beginTransaction();
 
@@ -454,6 +479,8 @@ class LoanController extends Controller
      */
     public function processRepayments(Request $request, LoanProfile $loan)
     {
+        $this->checkVehicleOwnerAccess($loan->vehicle_id);
+
         try {
             $today = now()->startOfDay();
             $processedCount = 0;
@@ -564,6 +591,8 @@ class LoanController extends Controller
      */
     public function deleteAdjustment(LoanInterestAdjustment $adjustment)
     {
+        $this->checkVehicleOwnerAccess($adjustment->loan->vehicle_id);
+
         try {
             DB::beginTransaction();
 

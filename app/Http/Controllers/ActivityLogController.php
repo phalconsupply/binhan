@@ -9,7 +9,7 @@ class ActivityLogController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:view audits');
+        $this->middleware('owner_or_permission:view audits');
     }
 
     public function index(Request $request)

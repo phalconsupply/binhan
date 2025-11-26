@@ -18,7 +18,7 @@ class ReportController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'permission:view reports']);
+        $this->middleware(['auth', 'owner_or_permission:view reports']);
     }
 
     /**
@@ -26,21 +26,48 @@ class ReportController extends Controller
      */
     public function index()
     {
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        $ownedVehicleIds = [];
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+        }
+
         // Date range default: this month
         $dateFrom = request('date_from', now()->startOfMonth()->format('Y-m-d'));
         $dateTo = request('date_to', now()->endOfMonth()->format('Y-m-d'));
 
-        // Overall statistics
+        // Overall statistics (scoped to owner's vehicles if owner)
+        $incidentsQuery = Incident::whereBetween('date', [$dateFrom, $dateTo]);
+        $transactionsQuery = Transaction::whereBetween('date', [$dateFrom, $dateTo]);
+        
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $incidentsQuery->whereIn('vehicle_id', $ownedVehicleIds);
+            $transactionsQuery->whereIn('vehicle_id', $ownedVehicleIds);
+        }
+
         $statistics = [
-            'total_incidents' => Incident::whereBetween('date', [$dateFrom, $dateTo])->count(),
-            'total_revenue' => Transaction::revenue()->whereBetween('date', [$dateFrom, $dateTo])->sum('amount'),
-            'total_expense' => Transaction::expense()->whereBetween('date', [$dateFrom, $dateTo])->sum('amount'),
-            'total_planned_expense' => Transaction::plannedExpense()->whereBetween('date', [$dateFrom, $dateTo])->sum('amount'),
+            'total_incidents' => (clone $incidentsQuery)->count(),
+            'total_revenue' => (clone $transactionsQuery)->revenue()->sum('amount'),
+            'total_expense' => (clone $transactionsQuery)->expense()->sum('amount'),
+            'total_planned_expense' => (clone $transactionsQuery)->plannedExpense()->sum('amount'),
         ];
         $statistics['net_profit'] = $statistics['total_revenue'] - $statistics['total_expense'] - $statistics['total_planned_expense'];
 
-        // Vehicle performance
-        $vehiclePerformance = Vehicle::withCount([
+        // Vehicle performance (scoped to owner's vehicles if owner)
+        $vehicleQuery = Vehicle::query();
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $vehicleQuery->whereIn('id', $ownedVehicleIds);
+        }
+        
+        $vehiclePerformance = $vehicleQuery->withCount([
             'incidents' => function($q) use ($dateFrom, $dateTo) {
                 $q->whereBetween('date', [$dateFrom, $dateTo]);
             }
@@ -66,9 +93,13 @@ class ReportController extends Controller
         })
         ->sortByDesc('incidents_count');
 
-        // Daily revenue/expense chart data
-        $dailyRevenue = Transaction::whereBetween('date', [$dateFrom, $dateTo])
-            ->select(
+        // Daily revenue/expense chart data (scoped to owner's vehicles if owner)
+        $dailyRevenueQuery = Transaction::whereBetween('date', [$dateFrom, $dateTo]);
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $dailyRevenueQuery->whereIn('vehicle_id', $ownedVehicleIds);
+        }
+        
+        $dailyRevenue = $dailyRevenueQuery->select(
                 DB::raw('DATE(date) as date'),
                 DB::raw('COUNT(*) as count'),
                 DB::raw('SUM(CASE WHEN type = "thu" THEN amount ELSE 0 END) as revenue'),
@@ -80,14 +111,29 @@ class ReportController extends Controller
             ->orderBy('date')
             ->get();
 
-        // Top patients by incidents
-        $topPatients = Patient::withCount([
-            'incidents' => function($q) use ($dateFrom, $dateTo) {
+        // Top patients by incidents (scoped to owner's vehicles if owner)
+        $topPatientsQuery = Patient::query();
+        
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $topPatientsQuery->whereHas('incidents', function($q) use ($ownedVehicleIds, $dateFrom, $dateTo) {
+                $q->whereIn('vehicle_id', $ownedVehicleIds)
+                  ->whereBetween('date', [$dateFrom, $dateTo]);
+            });
+        }
+        
+        $topPatients = $topPatientsQuery->withCount([
+            'incidents' => function($q) use ($dateFrom, $dateTo, $isVehicleOwner, $ownedVehicleIds) {
                 $q->whereBetween('date', [$dateFrom, $dateTo]);
+                if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+                    $q->whereIn('vehicle_id', $ownedVehicleIds);
+                }
             }
         ])
-        ->with(['incidents' => function($q) use ($dateFrom, $dateTo) {
+        ->with(['incidents' => function($q) use ($dateFrom, $dateTo, $isVehicleOwner, $ownedVehicleIds) {
             $q->whereBetween('date', [$dateFrom, $dateTo]);
+            if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+                $q->whereIn('vehicle_id', $ownedVehicleIds);
+            }
         }])
         ->having('incidents_count', '>', 0)
         ->orderBy('incidents_count', 'desc')
@@ -115,14 +161,35 @@ class ReportController extends Controller
     {
         $this->authorize('export reports');
 
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        $ownedVehicleIds = [];
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+        }
+
         $dateFrom = $request->input('date_from', now()->startOfMonth()->format('Y-m-d'));
         $dateTo = $request->input('date_to', now()->endOfMonth()->format('Y-m-d'));
         $vehicleId = $request->input('vehicle_id');
+        
+        // Restrict vehicle_id for owners
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            if ($vehicleId && !in_array($vehicleId, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xuất báo cáo xe này.');
+            }
+        }
 
         $filename = 'incidents_' . $dateFrom . '_to_' . $dateTo . '.xlsx';
 
         return Excel::download(
-            new IncidentsExport($dateFrom, $dateTo, $vehicleId),
+            new IncidentsExport($dateFrom, $dateTo, $vehicleId, $ownedVehicleIds),
             $filename
         );
     }
@@ -134,15 +201,36 @@ class ReportController extends Controller
     {
         $this->authorize('export reports');
 
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        $ownedVehicleIds = [];
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+        }
+
         $dateFrom = $request->input('date_from', now()->startOfMonth()->format('Y-m-d'));
         $dateTo = $request->input('date_to', now()->endOfMonth()->format('Y-m-d'));
         $vehicleId = $request->input('vehicle_id');
         $type = $request->input('type');
+        
+        // Restrict vehicle_id for owners
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            if ($vehicleId && !in_array($vehicleId, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xuất báo cáo xe này.');
+            }
+        }
 
         $filename = 'transactions_' . $dateFrom . '_to_' . $dateTo . '.xlsx';
 
         return Excel::download(
-            new TransactionsExport($dateFrom, $dateTo, $vehicleId, $type),
+            new TransactionsExport($dateFrom, $dateTo, $vehicleId, $type, $ownedVehicleIds),
             $filename
         );
     }
@@ -154,13 +242,27 @@ class ReportController extends Controller
     {
         $this->authorize('export reports');
 
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        $ownedVehicleIds = [];
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+        }
+
         $dateFrom = $request->input('date_from', now()->startOfMonth()->format('Y-m-d'));
         $dateTo = $request->input('date_to', now()->endOfMonth()->format('Y-m-d'));
 
         $filename = 'vehicles_report_' . $dateFrom . '_to_' . $dateTo . '.xlsx';
 
         return Excel::download(
-            new VehiclesReportExport($dateFrom, $dateTo),
+            new VehiclesReportExport($dateFrom, $dateTo, $ownedVehicleIds),
             $filename
         );
     }
@@ -172,6 +274,20 @@ class ReportController extends Controller
     {
         $this->authorize('export reports');
 
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        $ownedVehicleIds = [];
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+        }
+
         $dateFrom = $request->input('date_from', now()->startOfMonth()->format('Y-m-d'));
         $dateTo = $request->input('date_to', now()->endOfMonth()->format('Y-m-d'));
         $vehicleId = $request->input('vehicle_id');
@@ -179,7 +295,16 @@ class ReportController extends Controller
         $query = Incident::with(['vehicle', 'patient', 'dispatcher'])
             ->whereBetween('date', [$dateFrom, $dateTo]);
 
+        // Scope to owner's vehicles if owner
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $query->whereIn('vehicle_id', $ownedVehicleIds);
+        }
+
         if ($vehicleId) {
+            // Check access for owner
+            if ($isVehicleOwner && !in_array($vehicleId, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xuất báo cáo xe này.');
+            }
             $query->where('vehicle_id', $vehicleId);
         }
 
@@ -204,6 +329,20 @@ class ReportController extends Controller
     {
         $this->authorize('export reports');
 
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        $ownedVehicleIds = [];
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+        }
+
         $dateFrom = $request->input('date_from', now()->startOfMonth()->format('Y-m-d'));
         $dateTo = $request->input('date_to', now()->endOfMonth()->format('Y-m-d'));
         $vehicleId = $request->input('vehicle_id');
@@ -212,7 +351,16 @@ class ReportController extends Controller
         $query = Transaction::with(['vehicle', 'incident.patient'])
             ->whereBetween('date', [$dateFrom, $dateTo]);
 
+        // Scope to owner's vehicles if owner
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $query->whereIn('vehicle_id', $ownedVehicleIds);
+        }
+
         if ($vehicleId) {
+            // Check access for owner
+            if ($isVehicleOwner && !in_array($vehicleId, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xuất báo cáo xe này.');
+            }
             $query->where('vehicle_id', $vehicleId);
         }
 

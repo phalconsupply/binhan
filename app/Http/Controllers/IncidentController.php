@@ -13,10 +13,10 @@ class IncidentController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'permission:view incidents'])->only(['index', 'show']);
-        $this->middleware(['auth', 'permission:create incidents'])->only(['create', 'store']);
-        $this->middleware(['auth', 'permission:edit incidents'])->only(['edit', 'update']);
-        $this->middleware(['auth', 'permission:delete incidents'])->only(['destroy']);
+        $this->middleware(['auth', 'owner_or_permission:view incidents'])->only(['index', 'show']);
+        $this->middleware(['auth', 'owner_or_permission:create incidents'])->only(['create', 'store']);
+        $this->middleware(['auth', 'owner_or_permission:edit incidents'])->only(['edit', 'update']);
+        $this->middleware(['auth', 'owner_or_permission:delete incidents'])->only(['destroy']);
     }
 
     /**
@@ -25,6 +25,21 @@ class IncidentController extends Controller
     public function index(Request $request)
     {
         $query = Incident::with(['vehicle', 'patient', 'dispatcher']);
+
+        // Check if user is vehicle owner and limit to their vehicles
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            $query->whereIn('vehicle_id', $ownedVehicleIds);
+        }
 
         // Search
         if ($request->has('search')) {
@@ -488,6 +503,23 @@ class IncidentController extends Controller
      */
     public function show(Incident $incident)
     {
+        // Check if user is vehicle owner and has access to this incident
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($incident->vehicle_id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xem chuyến đi này.');
+            }
+        }
+
         $incident->load([
             'vehicle',
             'patient',
@@ -528,6 +560,23 @@ class IncidentController extends Controller
      */
     public function edit(Incident $incident)
     {
+        // Check if user is vehicle owner and has access to this incident
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($incident->vehicle_id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền chỉnh sửa chuyến đi này.');
+            }
+        }
+
         $incident->load(['vehicle', 'patient', 'drivers', 'medicalStaff', 'transactions']);
         
         // Sync wage amounts from actual transactions for display accuracy
@@ -559,6 +608,23 @@ class IncidentController extends Controller
      */
     public function update(Request $request, Incident $incident)
     {
+        // Check if user is vehicle owner and has access to this incident
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($incident->vehicle_id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền cập nhật chuyến đi này.');
+            }
+        }
+
         $validated = $request->validate([
             'vehicle_id' => 'required|exists:vehicles,id',
             'drivers' => 'nullable|array',
@@ -847,6 +913,23 @@ class IncidentController extends Controller
      */
     public function destroy(Incident $incident)
     {
+        // Check if user is vehicle owner and has access to this incident
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($incident->vehicle_id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xóa chuyến đi này.');
+            }
+        }
+
         // Check if incident has transactions
         if ($incident->transactions()->count() > 0) {
             return redirect()->route('incidents.index')

@@ -12,10 +12,10 @@ class VehicleController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'permission:view vehicles'])->only(['index', 'show']);
-        $this->middleware(['auth', 'permission:create vehicles'])->only(['create', 'store']);
-        $this->middleware(['auth', 'permission:edit vehicles'])->only(['edit', 'update']);
-        $this->middleware(['auth', 'permission:delete vehicles'])->only(['destroy']);
+        $this->middleware(['auth', 'owner_or_permission:view vehicles'])->only(['index', 'show']);
+        $this->middleware(['auth', 'owner_or_permission:create vehicles'])->only(['create', 'store']);
+        $this->middleware(['auth', 'owner_or_permission:edit vehicles'])->only(['edit', 'update']);
+        $this->middleware(['auth', 'owner_or_permission:delete vehicles'])->only(['destroy']);
     }
 
     /**
@@ -24,6 +24,21 @@ class VehicleController extends Controller
     public function index(Request $request)
     {
         $query = Vehicle::query();
+
+        // Check if user is vehicle owner and limit to their vehicles
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            $query->whereIn('id', $ownedVehicleIds);
+        }
 
         // Search
         if ($request->has('search')) {
@@ -80,6 +95,23 @@ class VehicleController extends Controller
      */
     public function show(Request $request, Vehicle $vehicle)
     {
+        // Check if user is vehicle owner and has access to this vehicle
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($vehicle->id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền truy cập xe này.');
+            }
+        }
+
         // Get filter parameters
         $type = $request->input('type');
         $startDate = $request->input('start_date');
@@ -245,6 +277,23 @@ class VehicleController extends Controller
      */
     public function edit(Vehicle $vehicle)
     {
+        // Check if user is vehicle owner and has access to this vehicle
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($vehicle->id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền chỉnh sửa xe này.');
+            }
+        }
+
         return view('vehicles.edit', compact('vehicle'));
     }
 
@@ -253,6 +302,23 @@ class VehicleController extends Controller
      */
     public function update(Request $request, Vehicle $vehicle)
     {
+        // Check if user is vehicle owner and has access to this vehicle
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($vehicle->id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền cập nhật xe này.');
+            }
+        }
+
         $validated = $request->validate([
             'license_plate' => 'required|string|max:20|unique:vehicles,license_plate,' . $vehicle->id,
             'model' => 'nullable|string|max:100',
@@ -274,6 +340,23 @@ class VehicleController extends Controller
      */
     public function destroy(Vehicle $vehicle)
     {
+        // Check if user is vehicle owner and has access to this vehicle
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($vehicle->id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xóa xe này.');
+            }
+        }
+
         $licensePlate = $vehicle->license_plate;
         
         // Check if vehicle has incidents
@@ -293,6 +376,23 @@ class VehicleController extends Controller
      */
     public function exportMaintenancesExcel(Vehicle $vehicle)
     {
+        // Check if user is vehicle owner and has access to this vehicle
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($vehicle->id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xuất dữ liệu xe này.');
+            }
+        }
+
         $maintenances = $vehicle->vehicleMaintenances()
             ->with(['vehicle', 'maintenanceService', 'partner', 'user'])
             ->orderBy('date', 'desc')
@@ -311,6 +411,23 @@ class VehicleController extends Controller
      */
     public function exportMaintenancesPdf(Vehicle $vehicle)
     {
+        // Check if user is vehicle owner and has access to this vehicle
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($vehicle->id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xuất dữ liệu xe này.');
+            }
+        }
+
         $maintenances = $vehicle->vehicleMaintenances()
             ->with(['vehicle', 'maintenanceService', 'partner', 'user'])
             ->orderBy('date', 'desc')

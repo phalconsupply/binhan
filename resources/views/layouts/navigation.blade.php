@@ -15,31 +15,34 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         Bảng điều khiển
                     </x-nav-link>
-                    @can('view vehicles')
+                    @php
+                        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())->where('staff_type', 'vehicle_owner')->exists();
+                    @endphp
+                    @if($isVehicleOwner || auth()->user()->can('view vehicles'))
                     <x-nav-link :href="route('vehicles.index')" :active="request()->routeIs('vehicles.*')">
                         Xe cấp cứu
                     </x-nav-link>
-                    @endcan
-                    @can('view incidents')
+                    @endif
+                    @if($isVehicleOwner || auth()->user()->can('view incidents'))
                     <x-nav-link :href="route('incidents.index')" :active="request()->routeIs('incidents.*')">
                         Chuyến đi
                     </x-nav-link>
-                    @endcan
-                    @can('view transactions')
+                    @endif
+                    @if($isVehicleOwner || auth()->user()->can('view transactions'))
                     <x-nav-link :href="route('transactions.index')" :active="request()->routeIs('transactions.*')">
                         Giao dịch
                     </x-nav-link>
-                    @endcan
-                    @can('view patients')
+                    @endif
+                    @if($isVehicleOwner || auth()->user()->can('view patients'))
                     <x-nav-link :href="route('patients.index')" :active="request()->routeIs('patients.*')">
                         Bệnh nhân
                     </x-nav-link>
-                    @endcan
-                    @can('view reports')
+                    @endif
+                    @if($isVehicleOwner || auth()->user()->can('view reports'))
                     <x-nav-link :href="route('reports.index')" :active="request()->routeIs('reports.*')">
                         Báo cáo
                     </x-nav-link>
-                    @endcan
+                    @endif
                     <x-nav-link :href="route('search.index')" :active="request()->routeIs('search.*')">
                         Tìm kiếm
                     </x-nav-link>
@@ -50,6 +53,10 @@
             <div class="hidden sm:flex sm:items-center sm:ms-6 space-x-4">
                 <!-- Settings Menu Dropdown -->
                 @canany(['manage settings', 'manage vehicles'])
+                @php
+                    $isVehicleOwnerForSettings = \App\Models\Staff::where('user_id', auth()->id())->where('staff_type', 'vehicle_owner')->exists();
+                @endphp
+                @if(!$isVehicleOwnerForSettings)
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
@@ -99,6 +106,7 @@
                         @endcan
                     </x-slot>
                 </x-dropdown>
+                @endif
                 @endcanany
 
                 <!-- User Dropdown -->
@@ -165,36 +173,40 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 Bảng điều khiển
             </x-responsive-nav-link>
-            @can('view vehicles')
+            @php
+                $isVehicleOwnerMobile = \App\Models\Staff::where('user_id', auth()->id())->where('staff_type', 'vehicle_owner')->exists();
+            @endphp
+            @if($isVehicleOwnerMobile || auth()->user()->can('view vehicles'))
             <x-responsive-nav-link :href="route('vehicles.index')" :active="request()->routeIs('vehicles.*')">
                 Xe cấp cứu
             </x-responsive-nav-link>
-            @endcan
-            @can('view incidents')
+            @endif
+            @if($isVehicleOwnerMobile || auth()->user()->can('view incidents'))
             <x-responsive-nav-link :href="route('incidents.index')" :active="request()->routeIs('incidents.*')">
                 Chuyến đi
             </x-responsive-nav-link>
-            @endcan
-            @can('view transactions')
+            @endif
+            @if($isVehicleOwnerMobile || auth()->user()->can('view transactions'))
             <x-responsive-nav-link :href="route('transactions.index')" :active="request()->routeIs('transactions.*')">
                 Giao dịch
             </x-responsive-nav-link>
-            @endcan
-            @can('view patients')
+            @endif
+            @if($isVehicleOwnerMobile || auth()->user()->can('view patients'))
             <x-responsive-nav-link :href="route('patients.index')" :active="request()->routeIs('patients.*')">
                 Bệnh nhân
             </x-responsive-nav-link>
-            @endcan
-            @can('view reports')
+            @endif
+            @if($isVehicleOwnerMobile || auth()->user()->can('view reports'))
             <x-responsive-nav-link :href="route('reports.index')" :active="request()->routeIs('reports.*')">
                 Báo cáo
             </x-responsive-nav-link>
-            @endcan
+            @endif
             <x-responsive-nav-link :href="route('search.index')" :active="request()->routeIs('search.*')">
                 Tìm kiếm
             </x-responsive-nav-link>
             
             @can('manage settings')
+            @if(!$isVehicleOwnerMobile)
             <div class="pt-2 pb-2 border-t border-gray-200">
                 <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">Cài đặt</div>
                 <x-responsive-nav-link :href="route('settings.index')" :active="request()->routeIs('settings.*')">
@@ -219,17 +231,18 @@
                     💰 Loại tiền công
                 </x-responsive-nav-link>
             </div>
+            @endif
             @endcan
-            @can('view staff')
+            @if($isVehicleOwnerMobile || auth()->user()->can('view staff'))
             <x-responsive-nav-link :href="route('staff.index')" :active="request()->routeIs('staff.*')">
                 👥 Nhân sự
             </x-responsive-nav-link>
-            @endcan
-            @can('manage vehicles')
+            @endif
+            @if($isVehicleOwnerMobile || auth()->user()->can('manage vehicles'))
             <x-responsive-nav-link :href="route('vehicle-maintenances.index')" :active="request()->routeIs('vehicle-maintenances.*')">
                 🛠️ Bảo trì xe
             </x-responsive-nav-link>
-            @endcan
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

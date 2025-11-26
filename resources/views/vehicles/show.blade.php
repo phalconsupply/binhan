@@ -168,12 +168,17 @@
             </div>
 
             {{-- Loan Management Section --}}
-            @can('manage vehicles')
+            @php
+                $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())->where('staff_type', 'vehicle_owner')->exists();
+                $canManageLoan = !$isVehicleOwner && auth()->user()->can('manage vehicles');
+            @endphp
+            
+            @if($canManageLoan || $isVehicleOwner)
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-semibold">💰 Quản lý khoản vay</h3>
-                        @if(!$vehicle->loanProfile)
+                        @if(!$vehicle->loanProfile && $canManageLoan)
                         <button onclick="openLoanModal()" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
                             + Thêm khoản vay
                         </button>
@@ -251,6 +256,7 @@
                         </div>
 
                         {{-- Action Buttons --}}
+                        @if($canManageLoan)
                         <div class="flex gap-2 mb-6">
                             <button onclick="openEditLoanModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                                 ✏️ Sửa thông tin
@@ -267,17 +273,20 @@
                                 🗑️ Xóa khoản vay
                             </button>
                         </div>
+                        @endif
 
                         {{-- Repayment Schedule Table --}}
                         <div class="overflow-x-auto">
                             <div class="flex justify-between items-center mb-3">
                                 <h4 class="font-semibold">📅 Lịch trả nợ</h4>
+                                @if($canManageLoan)
                                 <form method="POST" action="{{ route('loans.process-repayments', $vehicle->loanProfile) }}" class="inline">
                                     @csrf
                                     <button type="submit" class="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
                                         🔄 Cập nhật trạng thái
                                     </button>
                                 </form>
+                                @endif
                             </div>
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
@@ -334,7 +343,9 @@
                                             <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Lãi suất mới</th>
                                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ghi chú</th>
                                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Người tạo</th>
+                                            @if($canManageLoan)
                                             <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
+                                            @endif
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
@@ -345,6 +356,7 @@
                                             <td class="px-4 py-2 text-sm text-right font-semibold text-purple-600">{{ number_format($adjustment->new_interest_rate, 2) }}%</td>
                                             <td class="px-4 py-2 text-sm">{{ $adjustment->note ?? '-' }}</td>
                                             <td class="px-4 py-2 text-sm">{{ $adjustment->creator->name ?? '-' }}</td>
+                                            @if($canManageLoan)
                                             <td class="px-4 py-2 text-center">
                                                 <form method="POST" action="{{ route('loans.delete-adjustment', $adjustment) }}" class="inline" onsubmit="return confirm('Xóa điều chỉnh lãi suất này? Lịch trả nợ sẽ được khôi phục về lãi suất cũ.');">
                                                     @csrf
@@ -352,6 +364,7 @@
                                                     <button type="submit" class="text-red-600 hover:text-red-800 text-sm">🗑️ Xóa</button>
                                                 </form>
                                             </td>
+                                            @endif
                                         </tr>
                                         @endforeach
                                     </tbody>
@@ -365,7 +378,7 @@
                     @endif
                 </div>
             </div>
-            @endcan
+            @endif
 
             {{-- Filter Section --}}
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">

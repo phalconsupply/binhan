@@ -15,12 +15,31 @@ class VehicleMaintenanceController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'permission:manage vehicles']);
+        $this->middleware(['auth', 'owner_or_permission:manage vehicles']);
     }
 
     public function index(Request $request)
     {
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        $ownedVehicleIds = [];
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+        }
+
         $query = VehicleMaintenance::with(['vehicle', 'maintenanceService', 'partner', 'user']);
+
+        // Scope to owner's vehicles if owner
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $query->whereIn('vehicle_id', $ownedVehicleIds);
+        }
 
         if ($request->has('vehicle_id') && $request->vehicle_id) {
             $query->where('vehicle_id', $request->vehicle_id);
@@ -112,6 +131,23 @@ class VehicleMaintenanceController extends Controller
 
     public function edit(VehicleMaintenance $vehicleMaintenance)
     {
+        // Check if user is vehicle owner and has access to this maintenance
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($vehicleMaintenance->vehicle_id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền chỉnh sửa bảo trì này.');
+            }
+        }
+
         $vehicles = Vehicle::orderBy('license_plate')->get();
         $services = MaintenanceService::active()->orderBy('name')->get();
         $partners = Partner::maintenancePartners()->active()->orderBy('name')->get();
@@ -121,6 +157,23 @@ class VehicleMaintenanceController extends Controller
 
     public function update(Request $request, VehicleMaintenance $vehicleMaintenance)
     {
+        // Check if user is vehicle owner and has access to this maintenance
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($vehicleMaintenance->vehicle_id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền cập nhật bảo trì này.');
+            }
+        }
+
         $validated = $request->validate([
             'vehicle_id' => 'required|exists:vehicles,id',
             'maintenance_service_id' => 'nullable|exists:maintenance_services,id',
@@ -198,6 +251,23 @@ class VehicleMaintenanceController extends Controller
 
     public function destroy(VehicleMaintenance $vehicleMaintenance)
     {
+        // Check if user is vehicle owner and has access to this maintenance
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($vehicleMaintenance->vehicle_id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xóa bảo trì này.');
+            }
+        }
+
         $vehicleId = $vehicleMaintenance->vehicle_id;
         
         // Delete associated transaction
