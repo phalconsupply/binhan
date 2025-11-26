@@ -874,7 +874,8 @@
 
         function openPayOffModal() {
             @if($vehicle->loanProfile)
-            const remaining = {{ $vehicle->loanProfile->schedules()->where('status', 'pending')->sum('total') }};
+            const schedules = @json($vehicle->loanProfile->schedules->where('status', 'pending'));
+            const remaining = schedules.reduce((sum, schedule) => sum + parseFloat(schedule.total), 0);
             document.getElementById('payoff_amount_display').textContent = new Intl.NumberFormat('vi-VN').format(remaining) + 'đ';
             @endif
             document.getElementById('payOffModal').classList.remove('hidden');
