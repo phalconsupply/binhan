@@ -177,7 +177,10 @@ class LoanProfile extends Model
     /**
      * Get interest rate applicable for a specific date
      */
-    protected function getInterestRateForDate($date)
+    /**
+     * Get interest rate applicable for a specific date
+     */
+    public function getInterestRateForDate($date)
     {
         $adjustment = $this->interestAdjustments()
             ->where('effective_date', '<=', $date)
