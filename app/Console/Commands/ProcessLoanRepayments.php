@@ -89,7 +89,7 @@ class ProcessLoanRepayments extends Command
                         'type' => 'chi',
                         'category' => 'trả_nợ_gốc',
                         'amount' => $schedule->principal,
-                        'method' => 'auto',
+                        'method' => 'other',
                         'recorded_by' => 1, // System user
                         'date' => $today,
                         'note' => "Tự động trả nợ gốc kỳ {$schedule->period_no}/{$loan->total_periods} - {$loan->bank_name}",
@@ -104,7 +104,7 @@ class ProcessLoanRepayments extends Command
                         'type' => 'chi',
                         'category' => 'trả_nợ_lãi',
                         'amount' => $schedule->interest,
-                        'method' => 'auto',
+                        'method' => 'other',
                         'recorded_by' => 1, // System user
                         'date' => $today,
                         'note' => "Tự động trả lãi kỳ {$schedule->period_no}/{$loan->total_periods} - {$loan->bank_name} (lãi suất {$schedule->interest_rate}%)",
