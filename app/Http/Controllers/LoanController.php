@@ -188,8 +188,18 @@ class LoanController extends Controller
                     ->where('status', 'pending')
                     ->sum('total');
 
+                // Save snapshot before payment
+                $schedulesSnapshot = $loan->schedules()->get()->map(function($schedule) {
+                    return [
+                        'id' => $schedule->id,
+                        'status' => $schedule->status,
+                        'principal' => $schedule->principal,
+                        'total' => $schedule->total,
+                    ];
+                })->toArray();
+
                 // Create transaction for full payment
-                Transaction::create([
+                $transaction = Transaction::create([
                     'vehicle_id' => $loan->vehicle_id,
                     'type' => 'chi',
                     'category' => 'trả_nợ_sớm',
@@ -198,6 +208,16 @@ class LoanController extends Controller
                     'recorded_by' => auth()->id(),
                     'date' => now(),
                     'note' => 'Trả nợ sớm (đóng khoản vay) xe ' . $vehicle->license_plate . ' - ' . $loan->bank_name . ($validated['note'] ? ' - ' . $validated['note'] : ''),
+                ]);
+
+                // Save payment history
+                \App\Models\LoanPaymentHistory::create([
+                    'transaction_id' => $transaction->id,
+                    'loan_id' => $loan->id,
+                    'payment_type' => 'full_payoff',
+                    'amount' => $remainingAmount,
+                    'schedules_snapshot' => $schedulesSnapshot,
+                    'previous_remaining_balance' => $loan->remaining_balance,
                 ]);
 
                 // Mark loan as paid off
@@ -224,8 +244,25 @@ class LoanController extends Controller
                         ->with('error', 'Số tiền trả vượt quá số dư gốc còn lại!');
                 }
 
+                // Get pending schedules and save snapshot
+                $pendingSchedules = $loan->schedules()
+                    ->where('status', 'pending')
+                    ->orderBy('period_no')
+                    ->get();
+
+                $schedulesSnapshot = $pendingSchedules->map(function($schedule) {
+                    return [
+                        'id' => $schedule->id,
+                        'status' => $schedule->status,
+                        'principal' => $schedule->principal,
+                        'total' => $schedule->total,
+                    ];
+                })->toArray();
+
+                $previousRemainingBalance = $loan->remaining_balance;
+
                 // Create transaction for partial payment
-                Transaction::create([
+                $transaction = Transaction::create([
                     'vehicle_id' => $loan->vehicle_id,
                     'type' => 'chi',
                     'category' => 'trả_nợ_gốc',
@@ -236,16 +273,21 @@ class LoanController extends Controller
                     'note' => 'Trả nợ gốc sớm (một phần) xe ' . $vehicle->license_plate . ' - ' . $loan->bank_name . ($validated['note'] ? ' - ' . $validated['note'] : ''),
                 ]);
 
+                // Save payment history
+                \App\Models\LoanPaymentHistory::create([
+                    'transaction_id' => $transaction->id,
+                    'loan_id' => $loan->id,
+                    'payment_type' => 'partial_prepayment',
+                    'amount' => $partialAmount,
+                    'schedules_snapshot' => $schedulesSnapshot,
+                    'previous_remaining_balance' => $previousRemainingBalance,
+                ]);
+
                 // Update remaining balance
                 $loan->remaining_balance -= $partialAmount;
                 $loan->save();
 
                 // Recalculate monthly principal for remaining periods
-                $pendingSchedules = $loan->schedules()
-                    ->where('status', 'pending')
-                    ->orderBy('period_no')
-                    ->get();
-
                 $remainingPeriods = $pendingSchedules->count();
                 $newMonthlyPrincipal = $loan->remaining_balance / $remainingPeriods;
 
