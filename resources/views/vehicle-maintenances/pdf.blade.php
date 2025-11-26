@@ -76,6 +76,9 @@
 <body>
     <div class="header">
         <h1>DANH SÁCH BẢO TRÌ XE</h1>
+        @if(isset($vehicle))
+            <div class="date">Xe: {{ $vehicle->license_plate }}</div>
+        @endif
         <div class="date">Ngày xuất: {{ now()->format('d/m/Y H:i') }}</div>
     </div>
 

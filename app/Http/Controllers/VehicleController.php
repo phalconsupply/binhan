@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\VehicleMaintenancesExport;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class VehicleController extends Controller
 {
@@ -91,11 +94,13 @@ class VehicleController extends Controller
             },
         ]);
 
-        // Get maintenance history
-        $maintenances = $vehicle->vehicleMaintenances()
+        // Get maintenance history with total cost
+        $maintenancesQuery = $vehicle->vehicleMaintenances()
             ->with(['maintenanceService', 'partner', 'user', 'transaction'])
-            ->orderBy('date', 'desc')
-            ->paginate(10, ['*'], 'maintenance_page');
+            ->orderBy('date', 'desc');
+        
+        $totalMaintenanceCost = (clone $maintenancesQuery)->sum('cost');
+        $maintenances = $maintenancesQuery->paginate(10, ['*'], 'maintenance_page');
 
         // Build transactions query with filters
         $transactionsQuery = $vehicle->transactions()
@@ -223,7 +228,7 @@ class VehicleController extends Controller
             $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
         }
 
-        return view('vehicles.show', compact('vehicle', 'stats', 'transactions', 'maintenances'));
+        return view('vehicles.show', compact('vehicle', 'stats', 'transactions', 'maintenances', 'totalMaintenanceCost'));
     }
 
     /**
@@ -272,5 +277,41 @@ class VehicleController extends Controller
 
         return redirect()->route('vehicles.index')
             ->with('success', "Đã xóa xe {$licensePlate} thành công!");
+    }
+
+    /**
+     * Export vehicle maintenances to Excel
+     */
+    public function exportMaintenancesExcel(Vehicle $vehicle)
+    {
+        $maintenances = $vehicle->vehicleMaintenances()
+            ->with(['vehicle', 'maintenanceService', 'partner', 'user'])
+            ->orderBy('date', 'desc')
+            ->get();
+        
+        $totalCost = $maintenances->sum('cost');
+
+        return Excel::download(
+            new VehicleMaintenancesExport($maintenances, $totalCost), 
+            'bao-tri-xe-' . $vehicle->license_plate . '-' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    /**
+     * Export vehicle maintenances to PDF
+     */
+    public function exportMaintenancesPdf(Vehicle $vehicle)
+    {
+        $maintenances = $vehicle->vehicleMaintenances()
+            ->with(['vehicle', 'maintenanceService', 'partner', 'user'])
+            ->orderBy('date', 'desc')
+            ->get();
+        
+        $totalCost = $maintenances->sum('cost');
+
+        $pdf = Pdf::loadView('vehicle-maintenances.pdf', compact('maintenances', 'totalCost', 'vehicle'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download('bao-tri-xe-' . $vehicle->license_plate . '-' . now()->format('Y-m-d') . '.pdf');
     }
 }

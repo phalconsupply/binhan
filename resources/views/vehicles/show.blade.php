@@ -209,11 +209,38 @@
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-semibold">🔧 Lịch sử bảo trì xe</h3>
-                            @can('manage vehicles')
-                            <a href="{{ route('vehicle-maintenances.create', ['vehicle_id' => $vehicle->id]) }}" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">
-                                + Thêm bảo trì
-                            </a>
-                            @endcan
+                            <div class="flex items-center gap-2">
+                                @can('manage vehicles')
+                                <a href="{{ route('vehicle-maintenances.create', ['vehicle_id' => $vehicle->id]) }}" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">
+                                    + Thêm bảo trì
+                                </a>
+                                @endcan
+                            </div>
+                        </div>
+
+                        <!-- Statistics Section -->
+                        <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h4 class="text-sm font-medium text-gray-600 mb-1">Tổng chi phí bảo trì</h4>
+                                    <p class="text-2xl font-bold text-orange-600">{{ number_format($totalMaintenanceCost, 0, ',', '.') }} đ</p>
+                                    <p class="text-xs text-gray-500 mt-1">Xe: {{ $vehicle->license_plate }}</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <a href="{{ route('vehicles.export-maintenances-pdf', $vehicle) }}" class="inline-flex items-center px-3 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                        </svg>
+                                        In PDF
+                                    </a>
+                                    <a href="{{ route('vehicles.export-maintenances-excel', $vehicle) }}" class="inline-flex items-center px-3 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                        Xuất Excel
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                         
                         @if($maintenances->isEmpty())
