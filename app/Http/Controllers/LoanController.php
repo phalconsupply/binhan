@@ -312,10 +312,12 @@ class LoanController extends Controller
             $processedCount = 0;
             $insufficientFundsCount = 0;
 
-            // Get all schedules due today or overdue
+            // Get all schedules due today or overdue that are NOT yet paid
             $dueSchedules = $loan->schedules()
-                ->whereIn('status', ['pending', 'overdue'])
+                ->where('status', 'pending')
+                ->orWhere('status', 'overdue')
                 ->where('due_date', '<=', $today)
+                ->whereNull('paid_date')
                 ->orderBy('due_date')
                 ->get();
 
@@ -326,6 +328,11 @@ class LoanController extends Controller
             DB::beginTransaction();
 
             foreach ($dueSchedules as $schedule) {
+                // Skip if already has transaction_id (already processed)
+                if ($schedule->transaction_id) {
+                    continue;
+                }
+
                 $vehicle = $loan->vehicle;
 
                 // Calculate available balance
@@ -340,8 +347,9 @@ class LoanController extends Controller
                 $currentBalance = $vehicleProfit - $vehicleExpenses;
 
                 // Create principal transaction if amount > 0
+                $principalTransaction = null;
                 if ($schedule->principal > 0) {
-                    Transaction::create([
+                    $principalTransaction = Transaction::create([
                         'vehicle_id' => $vehicle->id,
                         'type' => 'chi',
                         'category' => 'trả_nợ_gốc',
@@ -365,8 +373,8 @@ class LoanController extends Controller
                     'note' => "Trả lãi kỳ {$schedule->period_no}/{$loan->total_periods} - {$loan->bank_name} (lãi suất {$schedule->interest_rate}%)",
                 ]);
 
-                // Mark schedule as paid
-                $schedule->markAsPaid();
+                // Mark schedule as paid with transaction reference
+                $schedule->markAsPaid($principalTransaction ? $principalTransaction->id : null);
 
                 // Update remaining balance
                 $loan->remaining_balance -= $schedule->principal;
@@ -381,6 +389,10 @@ class LoanController extends Controller
             }
 
             DB::commit();
+
+            if ($processedCount == 0) {
+                return redirect()->back()->with('info', 'Tất cả các kỳ đến hạn đã được xử lý trước đó.');
+            }
 
             $message = "Đã xử lý {$processedCount} kỳ thanh toán.";
             if ($insufficientFundsCount > 0) {
