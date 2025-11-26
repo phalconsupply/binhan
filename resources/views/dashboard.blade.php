@@ -109,6 +109,24 @@
                         <h3 class="text-lg font-semibold mb-2">Ghi nhận nhanh</h3>
                         <p class="text-xs text-gray-500 mb-4">📌 ID chuyến đi sẽ được tạo tự động sau khi lưu</p>
                         
+                        {{-- Display Errors --}}
+                        @if ($errors->any())
+                            <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                                <strong class="font-bold">Có lỗi xảy ra!</strong>
+                                <ul class="mt-2 list-disc list-inside text-sm">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
+                        @if (session('error'))
+                            <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                                <span class="block sm:inline">{{ session('error') }}</span>
+                            </div>
+                        @endif
+                        
                         <form method="POST" action="{{ route('dashboard.quick-entry') }}" class="space-y-4">
                                 @csrf
 
