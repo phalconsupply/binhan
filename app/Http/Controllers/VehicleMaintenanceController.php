@@ -7,6 +7,9 @@ use App\Models\Vehicle;
 use App\Models\MaintenanceService;
 use App\Models\Partner;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\VehicleMaintenancesExport;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class VehicleMaintenanceController extends Controller
 {
@@ -30,10 +33,13 @@ class VehicleMaintenanceController extends Controller
             });
         }
 
+        // Calculate total cost based on current filters
+        $totalCost = (clone $query)->sum('cost');
+
         $maintenances = $query->orderBy('date', 'desc')->paginate(15);
         $vehicles = Vehicle::orderBy('license_plate')->get();
 
-        return view('vehicle-maintenances.index', compact('maintenances', 'vehicles'));
+        return view('vehicle-maintenances.index', compact('maintenances', 'vehicles', 'totalCost'));
     }
 
     public function create(Request $request)
@@ -254,5 +260,59 @@ class VehicleMaintenanceController extends Controller
             'results' => $partners,
             'pagination' => ['more' => false]
         ]);
+    }
+
+    /**
+     * Export maintenances to Excel
+     */
+    public function exportExcel(Request $request)
+    {
+        $query = VehicleMaintenance::with(['vehicle', 'maintenanceService', 'partner', 'user']);
+
+        if ($request->has('vehicle_id') && $request->vehicle_id) {
+            $query->where('vehicle_id', $request->vehicle_id);
+        }
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->whereHas('vehicle', function($q) use ($search) {
+                $q->where('license_plate', 'like', "%{$search}%");
+            });
+        }
+
+        $maintenances = $query->orderBy('date', 'desc')->get();
+        $totalCost = $maintenances->sum('cost');
+
+        return Excel::download(
+            new VehicleMaintenancesExport($maintenances, $totalCost), 
+            'danh-sach-bao-tri-xe-' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    /**
+     * Export maintenances to PDF
+     */
+    public function exportPdf(Request $request)
+    {
+        $query = VehicleMaintenance::with(['vehicle', 'maintenanceService', 'partner', 'user']);
+
+        if ($request->has('vehicle_id') && $request->vehicle_id) {
+            $query->where('vehicle_id', $request->vehicle_id);
+        }
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->whereHas('vehicle', function($q) use ($search) {
+                $q->where('license_plate', 'like', "%{$search}%");
+            });
+        }
+
+        $maintenances = $query->orderBy('date', 'desc')->get();
+        $totalCost = $maintenances->sum('cost');
+
+        $pdf = Pdf::loadView('vehicle-maintenances.pdf', compact('maintenances', 'totalCost'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download('danh-sach-bao-tri-xe-' . now()->format('Y-m-d') . '.pdf');
     }
 }

@@ -149,6 +149,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Vehicle Maintenance routes
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('vehicle-maintenances/export-excel', [VehicleMaintenanceController::class, 'exportExcel'])->name('vehicle-maintenances.export-excel');
+    Route::get('vehicle-maintenances/export-pdf', [VehicleMaintenanceController::class, 'exportPdf'])->name('vehicle-maintenances.export-pdf');
     Route::get('vehicle-maintenances/search/services', [VehicleMaintenanceController::class, 'searchServices'])->name('vehicle-maintenances.search.services');
     Route::get('vehicle-maintenances/search/partners', [VehicleMaintenanceController::class, 'searchPartners'])->name('vehicle-maintenances.search.partners');
     Route::resource('vehicle-maintenances', VehicleMaintenanceController::class);
