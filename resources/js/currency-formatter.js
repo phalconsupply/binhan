@@ -65,21 +65,28 @@ function initCurrencyInputs() {
         const form = e.target;
         const currencyInputs = form.querySelectorAll('input[data-currency]');
         
+        // Store original values to restore if needed
+        const originalValues = new Map();
+        
         currencyInputs.forEach(input => {
-            // Create hidden input with unformatted value
-            if (input.value) {
-                const hiddenInput = document.createElement('input');
-                hiddenInput.type = 'hidden';
-                hiddenInput.name = input.name;
-                hiddenInput.value = unformatCurrency(input.value);
+            if (input.value && input.name) {
+                // Store original formatted value
+                originalValues.set(input, input.value);
                 
-                // Change original input name to avoid conflict
-                input.name = input.name + '_formatted';
-                
-                // Add hidden input before the original
-                input.parentNode.insertBefore(hiddenInput, input);
+                // Replace formatted value with raw number
+                input.value = unformatCurrency(input.value);
             }
         });
+        
+        // If form submission fails (validation error), restore formatted values
+        // This will happen if the page reloads and shows errors
+        setTimeout(() => {
+            originalValues.forEach((value, input) => {
+                if (document.contains(input)) {
+                    input.value = value;
+                }
+            });
+        }, 100);
     }, true);
 }
 

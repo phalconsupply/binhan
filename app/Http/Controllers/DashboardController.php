@@ -51,6 +51,9 @@ class DashboardController extends Controller
 
     public function quickEntry(Request $request)
     {
+        // Log request data for debugging
+        \Log::info('Quick Entry Request Data:', $request->all());
+        
         $validated = $request->validate([
             'vehicle_id' => 'required|exists:vehicles,id',
             'drivers' => 'nullable|array',
@@ -73,11 +76,11 @@ class DashboardController extends Controller
             'expense_main_name' => 'nullable|string|max:255',
             'amount_chi' => 'nullable|numeric|min:0',
             'additional_services' => 'nullable|array',
-            'additional_services.*.name' => 'required|string|max:255',
-            'additional_services.*.amount' => 'required|numeric|min:0',
+            'additional_services.*.name' => 'required_with:additional_services.*|string|max:255',
+            'additional_services.*.amount' => 'required_with:additional_services.*|numeric|min:0',
             'additional_expenses' => 'nullable|array',
-            'additional_expenses.*.name' => 'required|string|max:255',
-            'additional_expenses.*.amount' => 'required|numeric|min:0',
+            'additional_expenses.*.name' => 'required_with:additional_expenses.*|string|max:255',
+            'additional_expenses.*.amount' => 'required_with:additional_expenses.*|numeric|min:0',
             'maintenance_partner_id' => 'nullable|exists:partners,id',
             'maintenance_service' => 'nullable|string|max:255',
             'maintenance_cost' => 'nullable|numeric|min:0',
