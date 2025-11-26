@@ -338,29 +338,72 @@ class LoanController extends Controller
             DB::beginTransaction();
 
             $vehicleId = $loan->vehicle_id;
+            $vehicle = $loan->vehicle;
 
-            // Check if any payments have been made
-            $paidCount = $loan->schedules()->where('status', 'paid')->count();
-            
-            if ($paidCount > 0) {
-                return redirect()->back()
-                    ->with('error', 'Không thể xóa khoản vay đã có lịch sử thanh toán!');
+            // Get all loan-related transactions before deletion
+            $loanTransactions = Transaction::where('vehicle_id', $vehicleId)
+                ->whereIn('category', ['trả_nợ_gốc', 'trả_nợ_lãi', 'trả_nợ_sớm'])
+                ->where('date', '>=', $loan->disbursement_date)
+                ->get();
+
+            $totalToReverse = 0;
+            $transactionDetails = [];
+
+            foreach ($loanTransactions as $transaction) {
+                $totalToReverse += $transaction->amount;
+                $transactionDetails[] = [
+                    'id' => $transaction->id,
+                    'category' => $transaction->category,
+                    'amount' => $transaction->amount,
+                    'date' => $transaction->date,
+                ];
+
+                // Delete the transaction (this will trigger the reverseLoanPayment event)
+                $transaction->delete();
             }
+
+            // Create a reversal transaction to restore vehicle profit
+            if ($totalToReverse > 0) {
+                Transaction::create([
+                    'vehicle_id' => $vehicleId,
+                    'type' => 'thu',
+                    'category' => 'hoàn_trả_khoản_vay',
+                    'amount' => $totalToReverse,
+                    'method' => 'other',
+                    'recorded_by' => auth()->id(),
+                    'date' => now(),
+                    'note' => "Hoàn trả do xóa khoản vay xe {$vehicle->license_plate} - {$loan->bank_name}. Tổng số tiền đã trả trước đó: " . number_format($totalToReverse, 0, ',', '.') . 'đ',
+                ]);
+            }
+
+            // Delete interest adjustments
+            $loan->interestAdjustments()->delete();
+
+            // Delete payment history
+            \App\Models\LoanPaymentHistory::where('loan_id', $loan->id)->delete();
 
             // Delete schedules and loan
             $loan->schedules()->delete();
             $loan->delete();
 
-            Log::info('Loan profile deleted', [
+            Log::info('Loan profile deleted with reversals', [
                 'loan_id' => $loan->id,
                 'vehicle_id' => $vehicleId,
+                'transactions_deleted' => count($transactionDetails),
+                'total_reversed' => $totalToReverse,
+                'transaction_details' => $transactionDetails,
                 'user_id' => auth()->id(),
             ]);
 
             DB::commit();
 
+            $message = 'Đã xóa khoản vay!';
+            if ($totalToReverse > 0) {
+                $message .= ' Đã hoàn trả ' . number_format($totalToReverse, 0, ',', '.') . 'đ vào lợi nhuận xe.';
+            }
+
             return redirect()->route('vehicles.show', $vehicleId)
-                ->with('success', 'Đã xóa khoản vay!');
+                ->with('success', $message);
 
         } catch (\Exception $e) {
             DB::rollBack();

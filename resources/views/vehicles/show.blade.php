@@ -263,11 +263,9 @@
                                 ✅ Trả nợ sớm
                             </button>
                             @endif
-                            @if($loan->schedules()->where('status', 'paid')->count() == 0)
                             <button onclick="deleteLoan()" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
                                 🗑️ Xóa khoản vay
                             </button>
-                            @endif
                         </div>
 
                         {{-- Repayment Schedule Table --}}
@@ -922,7 +920,7 @@
         }
 
         function deleteLoan() {
-            if (confirm('Bạn có chắc chắn muốn xóa khoản vay này?\n\nLưu ý: Chỉ có thể xóa khoản vay chưa có lịch sử thanh toán.')) {
+            if (confirm('Bạn có chắc chắn muốn xóa khoản vay này?\n\n⚠️ Cảnh báo: Tất cả giao dịch trả nợ liên quan sẽ bị xóa và số tiền đã trả sẽ được hoàn lại vào lợi nhuận xe.\n\nHành động này không thể hoàn tác!')) {
                 document.getElementById('deleteLoanForm').submit();
             }
         }
