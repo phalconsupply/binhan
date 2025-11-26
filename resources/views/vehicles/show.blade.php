@@ -990,7 +990,7 @@
 
     {{-- Adjust Interest Modal --}}
     <div id="adjustInterestModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white mb-10">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">Điều chỉnh lãi suất</h3>
                 <button onclick="closeAdjustInterestModal()" class="text-gray-400 hover:text-gray-600">✕</button>
@@ -1012,10 +1012,10 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                        <textarea name="note" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                        <textarea name="note" rows="2" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                     </div>
                 </div>
-                <div class="flex justify-end gap-2 mt-6">
+                <div class="flex justify-end gap-2 mt-4">
                     <button type="button" onclick="closeAdjustInterestModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">Hủy</button>
                     <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">Điều chỉnh</button>
                 </div>
