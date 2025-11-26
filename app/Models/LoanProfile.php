@@ -135,17 +135,39 @@ class LoanProfile extends Model
 
         $monthlyPrincipal = $this->getMonthlyPrincipal();
         $remainingBalance = $this->principal_amount;
-        $currentDate = Carbon::parse($this->disbursement_date);
+        $disbursementDate = Carbon::parse($this->disbursement_date);
 
         for ($period = 1; $period <= $this->total_periods; $period++) {
-            // Calculate due date (next month with payment_day)
-            $dueDate = $currentDate->copy()->addMonth()->day($this->payment_day);
+            // Calculate due date
+            if ($period == 1) {
+                // First period: Check if payment day is in the same month as disbursement
+                $firstDueDate = $disbursementDate->copy()->day($this->payment_day);
+                
+                // If payment day is before or equal to disbursement day, move to next month
+                if ($firstDueDate->lte($disbursementDate)) {
+                    $firstDueDate->addMonth();
+                }
+                
+                $dueDate = $firstDueDate;
+            } else {
+                // Subsequent periods: Add one month to previous due date
+                $dueDate = $previousDueDate->copy()->addMonth();
+            }
             
             // Get applicable interest rate for this period
             $interestRate = $this->getInterestRateForDate($dueDate);
             
-            // Calculate interest: (Remaining Balance × Annual Rate / 12)
-            $interest = $remainingBalance * ($interestRate / 100 / 12);
+            // Calculate interest based on actual days
+            if ($period == 1) {
+                // First period: Calculate interest based on actual days from disbursement to first due date
+                $daysInFirstPeriod = $disbursementDate->diffInDays($dueDate);
+                $interest = $remainingBalance * ($interestRate / 100) * ($daysInFirstPeriod / 365);
+            } else {
+                // Subsequent periods: Calculate interest for full month (30/360 or actual/365)
+                // Using actual/365 method for consistency
+                $daysInPeriod = $previousDueDate->diffInDays($dueDate);
+                $interest = $remainingBalance * ($interestRate / 100) * ($daysInPeriod / 365);
+            }
             
             // Principal for this period
             $principal = $monthlyPrincipal;
@@ -165,9 +187,10 @@ class LoanProfile extends Model
                 'status' => 'pending',
             ]);
 
-            // Update remaining balance
+            // Update remaining balance and previous due date
             $remainingBalance -= $principal;
-            $currentDate = $dueDate;
+            $previousDueDate = $dueDate;
+        }
         }
 
         // Update remaining balance
