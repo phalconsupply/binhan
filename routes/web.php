@@ -19,6 +19,7 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\WageTypeController;
 use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\MediaController;
+use App\Http\Controllers\LoanController;
 use App\Http\Controllers\API\QuickEntryController;
 use Illuminate\Support\Facades\Route;
 
@@ -77,6 +78,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('vehicles/{vehicle}/export-maintenances-excel', [VehicleController::class, 'exportMaintenancesExcel'])->name('vehicles.export-maintenances-excel');
     Route::get('vehicles/{vehicle}/export-maintenances-pdf', [VehicleController::class, 'exportMaintenancesPdf'])->name('vehicles.export-maintenances-pdf');
     Route::resource('vehicles', VehicleController::class);
+    
+    // Loan routes
+    Route::post('vehicles/{vehicle}/loans', [LoanController::class, 'store'])->name('loans.store');
+    Route::put('loans/{loan}', [LoanController::class, 'update'])->name('loans.update');
+    Route::post('loans/{loan}/adjust-interest', [LoanController::class, 'adjustInterest'])->name('loans.adjust-interest');
+    Route::post('loans/{loan}/pay-off', [LoanController::class, 'payOff'])->name('loans.pay-off');
+    Route::delete('loans/{loan}', [LoanController::class, 'destroy'])->name('loans.destroy');
 });
 
 // Incident routes

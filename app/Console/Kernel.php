@@ -12,7 +12,10 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Process loan repayments daily at 01:00 AM
+        $schedule->command('loans:process-repayments')
+            ->dailyAt('01:00')
+            ->appendOutputTo(storage_path('logs/loan-repayments.log'));
     }
 
     /**
