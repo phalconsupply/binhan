@@ -936,6 +936,13 @@
                         <input type="number" name="payment_day" required min="1" max="28" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     </div>
                     <div class="col-span-2">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="first_period_interest_only" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <span class="text-sm font-medium text-gray-700">Kỳ đầu tiên chỉ trả lãi (không trả gốc)</span>
+                        </label>
+                        <p class="text-xs text-gray-500 ml-6 mt-1">Áp dụng khi ngày giải ngân gần với ngày trả nợ, kỳ đầu chỉ trả lãi để giảm gánh nặng thanh toán</p>
+                    </div>
+                    <div class="col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
                         <textarea name="note" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                     </div>

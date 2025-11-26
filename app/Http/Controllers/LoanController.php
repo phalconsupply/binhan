@@ -31,6 +31,7 @@ class LoanController extends Controller
             'disbursement_date' => 'required|date',
             'base_interest_rate' => 'required|numeric|min:0|max:100',
             'payment_day' => 'required|integer|min:1|max:28',
+            'first_period_interest_only' => 'nullable|boolean',
             'note' => 'nullable|string',
         ]);
 

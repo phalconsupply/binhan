@@ -21,6 +21,7 @@ class LoanProfile extends Model
         'disbursement_date',
         'base_interest_rate',
         'payment_day',
+        'first_period_interest_only',
         'status',
         'remaining_balance',
         'note',
@@ -170,7 +171,12 @@ class LoanProfile extends Model
             }
             
             // Principal for this period
-            $principal = $monthlyPrincipal;
+            // If first period is interest-only, don't deduct principal
+            if ($period == 1 && $this->first_period_interest_only) {
+                $principal = 0;
+            } else {
+                $principal = $monthlyPrincipal;
+            }
             
             // Total payment
             $total = $principal + $interest;
