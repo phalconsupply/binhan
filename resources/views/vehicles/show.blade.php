@@ -888,6 +888,7 @@
             
             document.getElementById('remaining_principal_display').textContent = new Intl.NumberFormat('vi-VN').format(principalRemaining) + 'đ';
             document.getElementById('total_remaining_display').textContent = new Intl.NumberFormat('vi-VN').format(totalRemaining) + 'đ';
+            document.getElementById('max_partial_display').textContent = new Intl.NumberFormat('vi-VN').format(principalRemaining) + 'đ';
             document.getElementById('partial_amount').max = principalRemaining;
             @endif
             document.getElementById('payOffModal').classList.remove('hidden');
@@ -1091,7 +1092,7 @@
                     <div id="partial_payment_section" class="hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Số tiền gốc muốn trả <span class="text-red-500">*</span></label>
                         <input type="number" name="partial_amount" id="partial_amount" min="0" step="1000" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Nhập số tiền...">
-                        <p class="text-xs text-gray-500 mt-1">Số tiền này sẽ được trừ vào tiền gốc còn lại</p>
+                        <p class="text-xs text-gray-500 mt-1">Tối đa: <span id="max_partial_display" class="font-semibold"></span> (số dư gốc còn lại)</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>

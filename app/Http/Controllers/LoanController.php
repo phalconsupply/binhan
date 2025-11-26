@@ -440,9 +440,11 @@ class LoanController extends Controller
                 // Mark schedule as paid with transaction reference
                 $schedule->markAsPaid($principalTransaction ? $principalTransaction->id : null);
 
-                // Update remaining balance
-                $loan->remaining_balance -= $schedule->principal;
-                $loan->save();
+                // Update remaining balance only if principal was paid
+                if ($schedule->principal > 0) {
+                    $loan->remaining_balance -= $schedule->principal;
+                    $loan->save();
+                }
 
                 $processedCount++;
 
