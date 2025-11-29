@@ -89,7 +89,7 @@
                             <label for="amount" class="block text-sm font-medium text-gray-700">
                                 Số tiền <span class="text-red-500">*</span>
                             </label>
-                            <input type="text" id="amount" name="amount" value="{{ old('amount', $transaction->amount) }}" required data-currency
+                            <input type="text" id="amount" name="amount" value="{{ number_format(old('amount', $transaction->amount), 0, ',', '.') }}" required data-currency
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         </div>
 

@@ -470,6 +470,50 @@ class ReportController extends Controller
     }
 
     /**
+     * Save notes from preview (AJAX)
+     */
+    public function saveDepartmentNotes(Request $request)
+    {
+        $this->authorize('edit incidents');
+
+        $validated = $request->validate([
+            'incident_id' => 'required|exists:incidents,id',
+            'note' => 'nullable|string',
+        ]);
+
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        $ownedVehicleIds = [];
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+        }
+
+        $incident = Incident::findOrFail($validated['incident_id']);
+
+        // Check permission for vehicle owners
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            if (!in_array($incident->vehicle_id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền chỉnh sửa chuyến đi này.');
+            }
+        }
+
+        $incident->summary = $validated['note'];
+        $incident->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã lưu ghi chú'
+        ]);
+    }
+
+    /**
      * Export department report with custom notes to PDF
      */
     public function exportDepartmentPdfWithNotes(Request $request)
@@ -481,11 +525,13 @@ class ReportController extends Controller
             'date_to' => 'required|date',
             'notes' => 'nullable|array',
             'notes.*' => 'nullable|string',
+            'save_notes' => 'nullable|boolean',
         ]);
 
         $dateFrom = $validated['date_from'];
         $dateTo = $validated['date_to'];
         $customNotes = $validated['notes'] ?? [];
+        $saveNotes = $validated['save_notes'] ?? true; // Mặc định lưu ghi chú
 
         // Check if user is vehicle owner
         $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
@@ -536,10 +582,27 @@ class ReportController extends Controller
             'partner'
         ]);
 
-        // Apply custom notes
+        // Save and apply custom notes
         foreach ($incidents as $incident) {
             if (isset($customNotes[$incident->id])) {
-                $incident->custom_note = $customNotes[$incident->id];
+                $note = $customNotes[$incident->id];
+                
+                // Lưu ghi chú vào database nếu được yêu cầu
+                if ($saveNotes && $note !== $incident->summary) {
+                    // Check permission for vehicle owners
+                    if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+                        if (in_array($incident->vehicle_id, $ownedVehicleIds)) {
+                            $incident->summary = $note;
+                            $incident->save();
+                        }
+                    } else {
+                        $incident->summary = $note;
+                        $incident->save();
+                    }
+                }
+                
+                // Apply custom note for PDF
+                $incident->custom_note = $note;
             }
         }
 

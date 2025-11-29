@@ -241,7 +241,7 @@
                                     <label for="base_salary" class="block text-sm font-medium text-gray-700">
                                         Lương cơ bản (tháng)
                                     </label>
-                                    <input type="text" id="base_salary" name="base_salary" value="{{ old('base_salary', $staff->base_salary) }}" 
+                                    <input type="text" id="base_salary" name="base_salary" value="{{ number_format(old('base_salary', $staff->base_salary ?? 0), 0, ',', '.') }}" 
                                         data-currency
                                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                         placeholder="VD: 5000000">

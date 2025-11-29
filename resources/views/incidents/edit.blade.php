@@ -115,7 +115,7 @@
                                                         <span class="text-xs text-green-600 ml-2">({{ number_format($driver->pivot->actual_wage, 0, ',', '.') }}đ)</span>
                                                     @endif
                                                 </div>
-                                                <input type="text" name="drivers[{{ $driverIndex }}][wage]" value="{{ $driver->pivot->actual_wage ?? 0 }}" placeholder="Tiền công (đ)" data-currency class="w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                <input type="text" name="drivers[{{ $driverIndex }}][wage]" value="{{ number_format($driver->pivot->actual_wage ?? 0, 0, ',', '.') }}" placeholder="Tiền công (đ)" data-currency class="w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                                 <button type="button" onclick="removeStaff(this)" class="px-2 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded" title="Xóa nhân viên">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -149,7 +149,7 @@
                                                         <span class="text-xs text-green-600 ml-2">({{ number_format($staff->pivot->actual_wage, 0, ',', '.') }}đ)</span>
                                                     @endif
                                                 </div>
-                                                <input type="text" name="medical_staff[{{ $medicalIndex }}][wage]" value="{{ $staff->pivot->actual_wage ?? 0 }}" placeholder="Tiền công (đ)" data-currency class="w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                <input type="text" name="medical_staff[{{ $medicalIndex }}][wage]" value="{{ number_format($staff->pivot->actual_wage ?? 0, 0, ',', '.') }}" placeholder="Tiền công (đ)" data-currency class="w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                                 <button type="button" onclick="removeStaff(this)" class="px-2 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded" title="Xóa nhân viên">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -196,7 +196,7 @@
                                     <div class="w-40">
                                         <input type="text" 
                                             name="existing_services[{{ $index }}][amount]" 
-                                            value="{{ $service->amount }}"
+                                            value="{{ number_format($service->amount, 0, ',', '.') }}"
                                             data-currency
                                             placeholder="Số tiền" 
                                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
@@ -251,7 +251,7 @@
                                     <label for="commission_amount" class="block text-sm font-medium text-gray-700">
                                         Tiền hoa hồng (đ)
                                     </label>
-                                    <input type="text" id="commission_amount" name="commission_amount" value="{{ old('commission_amount', $incident->commission_amount) }}" data-currency
+                                    <input type="text" id="commission_amount" name="commission_amount" value="{{ number_format(old('commission_amount', $incident->commission_amount ?? 0), 0, ',', '.') }}" data-currency
                                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                         placeholder="Nhập tiền hoa hồng">
                                 </div>

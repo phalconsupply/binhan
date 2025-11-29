@@ -115,6 +115,7 @@ Route::middleware(['auth', 'verified', 'owner_or_permission:view reports'])->gro
     
     // Department Report Preview
     Route::get('/reports/department/preview', [ReportController::class, 'departmentPreview'])->name('reports.department.preview');
+    Route::post('/reports/department/save-notes', [ReportController::class, 'saveDepartmentNotes'])->name('reports.department.save-notes');
     
     Route::middleware('owner_or_permission:export reports')->group(function () {
         Route::get('/reports/export/incidents/excel', [ReportController::class, 'exportIncidentsExcel'])->name('reports.export.incidents.excel');

@@ -189,7 +189,7 @@
                                 <details class="border-t pt-3" open>
                                     <summary class="text-sm font-semibold text-gray-800 cursor-pointer hover:text-gray-900">🏥 Thông tin bệnh nhân</summary>
                                     <div class="mt-2 space-y-2">
-                                        <input type="text" name="patient_name" placeholder="Tên bệnh nhân" value="{{ old('patient_name') }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                        <input type="text" name="patient_name" placeholder="Tên bệnh nhân" value="{{ old('patient_name') }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm capitalize">
                                         <input type="text" name="patient_phone" placeholder="Số điện thoại" value="{{ old('patient_phone') }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                         <div class="grid grid-cols-2 gap-2">
                                             <input type="number" name="patient_birth_year" placeholder="Năm sinh" min="1900" max="{{ date('Y') }}" value="{{ old('patient_birth_year') }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">

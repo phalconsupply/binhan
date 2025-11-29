@@ -22,7 +22,7 @@
                     </div>
                     <div class="ml-3">
                         <p class="text-sm text-blue-700">
-                            Bạn có thể chỉnh sửa <strong>Ghi chú</strong> trực tiếp trong bảng bên dưới. Sau đó nhấn <strong>Xuất PDF</strong> hoặc <strong>In báo cáo</strong>.
+                            Bạn có thể chỉnh sửa <strong>Ghi chú</strong> trực tiếp trong bảng bên dưới. Ghi chú sẽ được <strong>tự động lưu</strong> sau 2 giây khi bạn ngừng nhập.
                         </p>
                     </div>
                 </div>
@@ -72,8 +72,10 @@
                                     <input type="text" 
                                            name="notes[{{ $incident->id }}]" 
                                            value="{{ $incident->summary ?? '' }}"
-                                           class="w-full text-sm border-0 focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+                                           data-incident-id="{{ $incident->id }}"
+                                           class="note-input w-full text-sm border-0 focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
                                            placeholder="Nhập ghi chú...">
+                                    <span class="save-status text-xs text-gray-500 hidden"></span>
                                 </td>
                                 <td class="px-3 py-2 text-right text-sm border border-gray-300">{{ $incident->commission_amount ? number_format($incident->commission_amount, 0, ',', '.') : '-' }}</td>
                                 <td class="px-3 py-2 text-sm border border-gray-300">{{ $incident->partner ? $incident->partner->name : '-' }}</td>
@@ -105,20 +107,28 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="p-6 bg-gray-50 border-t border-gray-200 flex gap-3 print:hidden">
-                    <button type="submit" class="px-6 py-2.5 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
-                        📄 Xuất PDF
-                    </button>
-                    <button type="button" onclick="window.print()" class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                        🖨️ In báo cáo
-                    </button>
-                    <a href="{{ route('reports.export.incidents.excel', ['date_from' => $dateFrom, 'date_to' => $dateTo]) }}" 
-                       class="px-6 py-2.5 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors text-center">
-                        📊 Xuất Excel
-                    </a>
-                    <a href="{{ route('reports.index') }}" class="ml-auto px-6 py-2.5 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
-                        Quay lại
-                    </a>
+                <div class="p-6 bg-gray-50 border-t border-gray-200 print:hidden">
+                    <div class="mb-3">
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" name="save_notes" value="1" checked class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                            <span class="ml-2 text-sm text-gray-700">Lưu các thay đổi ghi chú vào hệ thống khi xuất PDF</span>
+                        </label>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="submit" class="px-6 py-2.5 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                            📄 Xuất PDF
+                        </button>
+                        <button type="button" onclick="window.print()" class="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            🖨️ In báo cáo
+                        </button>
+                        <a href="{{ route('reports.export.incidents.excel', ['date_from' => $dateFrom, 'date_to' => $dateTo]) }}" 
+                           class="px-6 py-2.5 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors text-center">
+                            📊 Xuất Excel
+                        </a>
+                        <a href="{{ route('reports.index') }}" class="ml-auto px-6 py-2.5 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
+                            Quay lại
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>
@@ -157,4 +167,65 @@
             }
         }
     </style>
+
+    <script>
+        // Auto-save notes with debounce
+        let saveTimers = {};
+        
+        document.querySelectorAll('.note-input').forEach(input => {
+            input.addEventListener('input', function() {
+                const incidentId = this.getAttribute('data-incident-id');
+                const statusSpan = this.parentElement.querySelector('.save-status');
+                
+                // Clear existing timer
+                if (saveTimers[incidentId]) {
+                    clearTimeout(saveTimers[incidentId]);
+                }
+                
+                // Show saving status
+                statusSpan.textContent = 'Đang lưu...';
+                statusSpan.className = 'save-status text-xs text-blue-500';
+                statusSpan.classList.remove('hidden');
+                
+                // Set new timer
+                saveTimers[incidentId] = setTimeout(() => {
+                    saveNote(incidentId, this.value, statusSpan);
+                }, 2000);
+            });
+        });
+        
+        function saveNote(incidentId, note, statusSpan) {
+            fetch('{{ route('reports.department.save-notes') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    incident_id: incidentId,
+                    note: note
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusSpan.textContent = '✓ Đã lưu';
+                    statusSpan.className = 'save-status text-xs text-green-600';
+                    
+                    // Hide status after 3 seconds
+                    setTimeout(() => {
+                        statusSpan.classList.add('hidden');
+                    }, 3000);
+                } else {
+                    statusSpan.textContent = '✗ Lỗi';
+                    statusSpan.className = 'save-status text-xs text-red-600';
+                }
+            })
+            .catch(error => {
+                console.error('Error saving note:', error);
+                statusSpan.textContent = '✗ Lỗi kết nối';
+                statusSpan.className = 'save-status text-xs text-red-600';
+            });
+        }
+    </script>
 </x-app-layout>

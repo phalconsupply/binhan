@@ -405,7 +405,7 @@
                                                 {{ $adj->type == 'addition' ? '+' : '-' }}{{ number_format($adj->amount, 0, ',', '.') }}đ
                                             </div>
                                             <div x-show="editing" x-cloak>
-                                                <input type="text" x-model="amount" data-currency class="w-32 px-2 py-1 border rounded text-sm text-right" value="{{ $adj->amount }}">
+                                                <input type="text" x-model="amount" data-currency class="w-32 px-2 py-1 border rounded text-sm text-right" value="{{ number_format($adj->amount, 0, ',', '.') }}">
                                             </div>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-center">
@@ -519,7 +519,7 @@
                                             </span>
                                             <input x-show="editing" type="text" x-model="amount_{{ $advance->id }}" 
                                                    class="w-32 px-2 py-1 text-sm border rounded" 
-                                                   value="{{ $advance->amount }}" data-currency>
+                                                   value="{{ number_format($advance->amount, 0, ',', '.') }}" data-currency>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-right text-sm text-green-600">
                                             {{ number_format($advance->from_earnings, 0, ',', '.') }}đ

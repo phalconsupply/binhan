@@ -17,7 +17,7 @@
                     <h3 class="text-lg font-semibold mb-2">Thông tin chuyến đi</h3>
                     <p class="text-xs text-gray-500 mb-4">📌 ID chuyến đi sẽ được tạo tự động sau khi lưu</p>
                     
-                    <form method="POST" action="{{ route('incidents.store') }}" class="space-y-4">
+                    <form id="incident-form" method="POST" action="{{ route('incidents.store') }}" class="space-y-4">
                         @csrf
 
                         {{-- 1. Thông tin xe --}}
@@ -84,7 +84,7 @@
                                     @endforeach
                                 </select>
                                 <div id="new_patient_fields">
-                                    <input type="text" name="patient_name" placeholder="Tên bệnh nhân" value="{{ old('patient_name') }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                    <input type="text" name="patient_name" placeholder="Tên bệnh nhân" value="{{ old('patient_name') }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm capitalize">
                                     <input type="text" name="patient_phone" placeholder="Số điện thoại" value="{{ old('patient_phone') }}" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                     <div class="grid grid-cols-2 gap-2 mt-2">
                                         <input type="number" name="patient_birth_year" placeholder="Năm sinh" min="1900" max="{{ date('Y') }}" value="{{ old('patient_birth_year') }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
@@ -104,65 +104,39 @@
                         <div class="border-t pt-3">
                             <h4 class="text-sm font-semibold text-gray-800 mb-2">👥 Thông tin nhân sự & Tiền công</h4>
                             
-                            <div class="space-y-4">
+                            <div class="space-y-3">
                                 <div>
-                                    <label class="block text-xs text-gray-600 mb-2 font-medium">Lái xe</label>
-                                    <div id="drivers-container" class="space-y-3">
-                                        <div class="driver-item border border-gray-200 rounded-lg p-3 bg-gray-50">
-                                            <div class="flex items-start gap-2 mb-2">
-                                                <select name="drivers[0][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" onchange="updateStaffWages(this, 'driver', 0)">
-                                                    <option value="">-- Chọn lái xe --</option>
-                                                    @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
-                                                        <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
-                                                    @endforeach
-                                                </select>
-                                                <button type="button" onclick="removeStaffRow(this)" class="px-2 py-1 text-red-600 hover:text-red-800">✕</button>
-                                            </div>
-                                            <div class="wage-details-container space-y-1">
-                                                <div class="wage-detail-row flex gap-2">
-                                                    <select name="drivers[0][wages][0][type]" class="w-32 rounded-md border-gray-300 text-xs">
-                                                        @foreach(\App\Models\WageType::active()->ordered()->get() as $wageType)
-                                                            <option value="{{ $wageType->name }}">{{ $wageType->name }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                    <input type="text" name="drivers[0][wages][0][amount]" placeholder="Số tiền" data-currency class="flex-1 rounded-md border-gray-300 text-xs">
-                                                    <button type="button" onclick="removeWageRow(this)" class="px-2 text-red-500 hover:text-red-700 text-xs">✕</button>
-                                                </div>
-                                            </div>
-                                            <button type="button" onclick="addWageRow(this, 'driver', 0)" class="mt-2 text-xs text-green-600 hover:text-green-800">+ Thêm loại tiền</button>
+                                    <label class="block text-xs text-gray-600 mb-1">Lái xe</label>
+                                    <div id="drivers-container" class="space-y-2">
+                                        <div class="driver-item flex gap-2">
+                                            <select name="drivers[0][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                <option value="">-- Chọn lái xe --</option>
+                                                @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
+                                                    <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
+                                                @endforeach
+                                            </select>
+                                            <input type="text" name="drivers[0][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                            <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
                                         </div>
                                     </div>
-                                    <button type="button" onclick="addDriverRow()" class="mt-2 text-xs text-blue-600 hover:text-blue-800">+ Thêm lái xe</button>
+                                    <button type="button" onclick="addDriverRow()" class="mt-1 text-xs text-blue-600 hover:text-blue-800">+ Thêm</button>
                                 </div>
 
                                 <div>
-                                    <label class="block text-xs text-gray-600 mb-2 font-medium">Nhân viên y tế</label>
-                                    <div id="medical-staff-container" class="space-y-3">
-                                        <div class="medical-staff-item border border-gray-200 rounded-lg p-3 bg-gray-50">
-                                            <div class="flex items-start gap-2 mb-2">
-                                                <select name="medical_staff[0][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" onchange="updateStaffWages(this, 'medical', 0)">
-                                                    <option value="">-- Chọn NVYT --</option>
-                                                    @foreach(\App\Models\Staff::active()->where('staff_type', 'medical_staff')->orderBy('full_name')->get() as $staff)
-                                                        <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
-                                                    @endforeach
-                                                </select>
-                                                <button type="button" onclick="removeStaffRow(this)" class="px-2 py-1 text-red-600 hover:text-red-800">✕</button>
-                                            </div>
-                                            <div class="wage-details-container space-y-1">
-                                                <div class="wage-detail-row flex gap-2">
-                                                    <select name="medical_staff[0][wages][0][type]" class="w-32 rounded-md border-gray-300 text-xs">
-                                                        @foreach(\App\Models\WageType::active()->ordered()->get() as $wageType)
-                                                            <option value="{{ $wageType->name }}">{{ $wageType->name }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                    <input type="text" name="medical_staff[0][wages][0][amount]" placeholder="Số tiền" data-currency class="flex-1 rounded-md border-gray-300 text-xs">
-                                                    <button type="button" onclick="removeWageRow(this)" class="px-2 text-red-500 hover:text-red-700 text-xs">✕</button>
-                                                </div>
-                                            </div>
-                                            <button type="button" onclick="addWageRow(this, 'medical', 0)" class="mt-2 text-xs text-green-600 hover:text-green-800">+ Thêm loại tiền</button>
+                                    <label class="block text-xs text-gray-600 mb-1">Nhân viên y tế</label>
+                                    <div id="medical-staff-container" class="space-y-2">
+                                        <div class="medical-staff-item flex gap-2">
+                                            <select name="medical_staff[0][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                <option value="">-- Chọn NVYT --</option>
+                                                @foreach(\App\Models\Staff::active()->where('staff_type', 'medical_staff')->orderBy('full_name')->get() as $staff)
+                                                    <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
+                                                @endforeach
+                                            </select>
+                                            <input type="text" name="medical_staff[0][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                            <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
                                         </div>
                                     </div>
-                                    <button type="button" onclick="addMedicalStaffRow()" class="mt-2 text-xs text-blue-600 hover:text-blue-800">+ Thêm nhân viên y tế</button>
+                                    <button type="button" onclick="addMedicalStaffRow()" class="mt-1 text-xs text-blue-600 hover:text-blue-800">+ Thêm</button>
                                 </div>
                             </div>
                         </div>
@@ -199,55 +173,57 @@
                             </div>
                         </details>
 
-                        {{-- 6. Thông tin thu chi --}}
+                        {{-- 6. Thông tin thu --}}
                         <div class="border-t pt-3">
-                            <h4 class="text-sm font-semibold text-gray-800 mb-2">💰 Thông tin thu - chi</h4>
-                            <div class="grid grid-cols-2 gap-3">
-                                {{-- Revenue --}}
-                                <div>
-                                    <div class="flex items-center justify-between mb-2">
-                                        <label class="block text-xs font-medium text-green-600">Thu</label>
-                                        <button type="button" id="add-service-btn" class="text-xs text-green-600 hover:text-green-700">+</button>
-                                    <input 
-                                        type="text" 
-                                        id="amount_thu" 
-                                        name="amount_thu" 
-                                        value="{{ old('amount_thu') }}" 
-                                        data-currency 
-                                        placeholder="Số tiền thu" 
-                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                                    <input type="text" 
-                                        name="revenue_main_name" 
-                                        value="{{ old('revenue_main_name', 'Thu chuyến đi') }}" 
-                                        placeholder="Ghi chú" 
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-xs">
-                                    <div id="additional-services-container" class="mt-2 space-y-1"></div>
+                            <h4 class="text-sm font-semibold text-gray-800 mb-2">💰 Thông tin thu</h4>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="block text-xs font-medium text-green-600">Số tiền thu</label>
+                                    <button type="button" id="add-service-btn" class="text-xs text-green-600 hover:text-green-700">+ Thêm khoản thu</button>
                                 </div>
-
-                                {{-- Expense --}}
-                                <div>
-                                    <div class="flex items-center justify-between mb-2">
-                                        <label class="block text-xs font-medium text-red-600">Chi</label>
-                                        <button type="button" id="add-expense-btn" class="text-xs text-red-600 hover:text-red-700">+</button>
-                                    <input 
-                                        type="text" 
-                                        id="amount_chi" 
-                                        name="amount_chi" 
-                                        value="{{ old('amount_chi') }}" 
-                                        data-currency 
-                                        placeholder="Số tiền chi" 
-                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                                    <input type="text" 
-                                        name="expense_main_name" 
-                                        value="{{ old('expense_main_name', 'Chi phí chuyến đi') }}" 
-                                        placeholder="Ghi chú" 
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-xs">
-                                    <div id="additional-expenses-container" class="mt-2 space-y-1"></div>
-                                </div>
+                                <input 
+                                    type="text" 
+                                    id="amount_thu" 
+                                    name="amount_thu" 
+                                    value="{{ old('amount_thu') }}" 
+                                    data-currency 
+                                    placeholder="Số tiền thu" 
+                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <input type="text" 
+                                    name="revenue_main_name" 
+                                    value="{{ old('revenue_main_name', 'Thu chuyến đi') }}" 
+                                    placeholder="Ghi chú" 
+                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-xs">
+                                <div id="additional-services-container" class="space-y-1"></div>
                             </div>
                         </div>
 
-                        {{-- 7. Thông tin bảo trì --}}
+                        {{-- 7. Thông tin chi --}}
+                        <div class="border-t pt-3">
+                            <h4 class="text-sm font-semibold text-gray-800 mb-2">💳 Thông tin chi</h4>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="block text-xs font-medium text-red-600">Số tiền chi</label>
+                                    <button type="button" id="add-expense-btn" class="text-xs text-red-600 hover:text-red-700">+ Thêm khoản chi</button>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    id="amount_chi" 
+                                    name="amount_chi" 
+                                    value="{{ old('amount_chi') }}" 
+                                    data-currency 
+                                    placeholder="Số tiền chi" 
+                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <input type="text" 
+                                    name="expense_main_name" 
+                                    value="{{ old('expense_main_name', 'Chi phí chuyến đi') }}" 
+                                    placeholder="Ghi chú" 
+                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-xs">
+                                <div id="additional-expenses-container" class="space-y-1"></div>
+                            </div>
+                        </div>
+
+                        {{-- 8. Thông tin bảo trì --}}
                         <details class="border-t pt-3">
                             <summary class="text-sm font-semibold text-gray-800 cursor-pointer hover:text-gray-900">🔧 Thông tin bảo trì (tùy chọn)</summary>
                             <div class="mt-2 space-y-2">
@@ -271,7 +247,7 @@
                             </div>
                         </details>
 
-                        {{-- 8. Ghi chú --}}
+                        {{-- 9. Ghi chú --}}
                         <div class="border-t pt-3">
                             <h4 class="text-sm font-semibold text-gray-800 mb-2">📝 Ghi chú</h4>
                             <div class="space-y-2">
@@ -289,16 +265,21 @@
                                 <input type="text" id="tags" name="tags" value="{{ old('tags') }}" placeholder="vd: khẩn cấp, đường xa, ..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                             </div>
                         </div>
+                    </form>
+                </div>
+            </div>
 
-                        {{-- Submit --}}
-                        <div class="border-t pt-3 flex items-center justify-end space-x-3">
-                            <a href="{{ route('incidents.index') }}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
-                                Hủy
-                            </a>
-                            <button type="submit" class="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                                💾 Tạo chuyến đi
-                            </button>
-                        </div>
+            {{-- Submit Buttons - Fixed at bottom --}}
+            <div class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-4 flex items-center justify-end space-x-3 border-t">
+                    <a href="{{ route('incidents.index') }}" class="px-6 py-2.5 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 font-medium">
+                        ← Hủy
+                    </a>
+                    <button type="submit" form="incident-form" class="px-8 py-2.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium shadow-sm">
+                        💾 Tạo chuyến đi
+                    </button>
+                </div>
+            </div>
                     </form>
                 </div>
             </div>
@@ -398,126 +379,60 @@
         // Staff management functions
         let driverIndex = 1;
         let medicalStaffIndex = 1;
-        let wageIndexes = { driver: {}, medical: {} };
 
         function addDriverRow() {
             const container = document.getElementById('drivers-container');
             const newRow = document.createElement('div');
-            newRow.className = 'driver-item border border-gray-200 rounded-lg p-3 bg-gray-50';
-            
-            let wageTypeOptions = '';
-            wageTypes.forEach(type => {
-                wageTypeOptions += `<option value="${type}">${type}</option>`;
-            });
+            newRow.className = 'driver-item flex gap-2';
             
             newRow.innerHTML = `
-                <div class="flex items-start gap-2 mb-2">
-                    <select name="drivers[${driverIndex}][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" onchange="updateStaffWages(this, 'driver', ${driverIndex})">
-                        <option value="">-- Chọn lái xe --</option>
-                        @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
-                            <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
-                        @endforeach
-                    </select>
-                    <button type="button" onclick="removeStaffRow(this)" class="px-2 py-1 text-red-600 hover:text-red-800">✕</button>
-                </div>
-                <div class="wage-details-container space-y-1">
-                    <div class="wage-detail-row flex gap-2">
-                        <select name="drivers[${driverIndex}][wages][0][type]" class="w-32 rounded-md border-gray-300 text-xs">
-                            ${wageTypeOptions}
-                        </select>
-                        <input type="number" name="drivers[${driverIndex}][wages][0][amount]" placeholder="Số tiền" min="0" step="1000" class="flex-1 rounded-md border-gray-300 text-xs">
-                        <button type="button" onclick="removeWageRow(this)" class="px-2 text-red-500 hover:text-red-700 text-xs">✕</button>
-                    </div>
-                </div>
-                <button type="button" onclick="addWageRow(this, 'driver', ${driverIndex})" class="mt-2 text-xs text-green-600 hover:text-green-800">+ Thêm loại tiền</button>
+                <select name="drivers[${driverIndex}][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <option value="">-- Chọn lái xe --</option>
+                    @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
+                        <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
+                    @endforeach
+                </select>
+                <input type="text" name="drivers[${driverIndex}][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
             `;
             container.appendChild(newRow);
-            wageIndexes.driver[driverIndex] = 1;
+            
+            // Re-initialize currency inputs
+            if (window.initCurrencyInputs) {
+                window.initCurrencyInputs();
+            }
+            
             driverIndex++;
         }
 
         function addMedicalStaffRow() {
             const container = document.getElementById('medical-staff-container');
             const newRow = document.createElement('div');
-            newRow.className = 'medical-staff-item border border-gray-200 rounded-lg p-3 bg-gray-50';
-            
-            let wageTypeOptions = '';
-            wageTypes.forEach(type => {
-                wageTypeOptions += `<option value="${type}">${type}</option>`;
-            });
+            newRow.className = 'medical-staff-item flex gap-2';
             
             newRow.innerHTML = `
-                <div class="flex items-start gap-2 mb-2">
-                    <select name="medical_staff[${medicalStaffIndex}][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" onchange="updateStaffWages(this, 'medical', ${medicalStaffIndex})">
-                        <option value="">-- Chọn NVYT --</option>
-                        @foreach(\App\Models\Staff::active()->where('staff_type', 'medical_staff')->orderBy('full_name')->get() as $staff)
-                            <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
-                        @endforeach
-                    </select>
-                    <button type="button" onclick="removeStaffRow(this)" class="px-2 py-1 text-red-600 hover:text-red-800">✕</button>
-                </div>
-                <div class="wage-details-container space-y-1">
-                    <div class="wage-detail-row flex gap-2">
-                        <select name="medical_staff[${medicalStaffIndex}][wages][0][type]" class="w-32 rounded-md border-gray-300 text-xs">
-                            ${wageTypeOptions}
-                        </select>
-                        <input type="number" name="medical_staff[${medicalStaffIndex}][wages][0][amount]" placeholder="Số tiền" min="0" step="1000" class="flex-1 rounded-md border-gray-300 text-xs">
-                        <button type="button" onclick="removeWageRow(this)" class="px-2 text-red-500 hover:text-red-700 text-xs">✕</button>
-                    </div>
-                </div>
-                <button type="button" onclick="addWageRow(this, 'medical', ${medicalStaffIndex})" class="mt-2 text-xs text-green-600 hover:text-green-800">+ Thêm loại tiền</button>
+                <select name="medical_staff[${medicalStaffIndex}][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <option value="">-- Chọn NVYT --</option>
+                    @foreach(\App\Models\Staff::active()->where('staff_type', 'medical_staff')->orderBy('full_name')->get() as $staff)
+                        <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
+                    @endforeach
+                </select>
+                <input type="text" name="medical_staff[${medicalStaffIndex}][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
             `;
             container.appendChild(newRow);
-            wageIndexes.medical[medicalStaffIndex] = 1;
+            
+            // Re-initialize currency inputs
+            if (window.initCurrencyInputs) {
+                window.initCurrencyInputs();
+            }
+            
             medicalStaffIndex++;
         }
 
         function removeStaffRow(button) {
             button.closest('.driver-item, .medical-staff-item').remove();
         }
-
-        function addWageRow(button, type, staffIndex) {
-            const container = button.previousElementSibling;
-            if (!wageIndexes[type][staffIndex]) {
-                wageIndexes[type][staffIndex] = 1;
-            }
-            const wageIndex = wageIndexes[type][staffIndex];
-            
-            let wageTypeOptions = '';
-            wageTypes.forEach(wageType => {
-                wageTypeOptions += `<option value="${wageType}">${wageType}</option>`;
-            });
-            
-            const newWageRow = document.createElement('div');
-            newWageRow.className = 'wage-detail-row flex gap-2';
-            const fieldName = type === 'driver' ? 'drivers' : 'medical_staff';
-            newWageRow.innerHTML = `
-                <select name="${fieldName}[${staffIndex}][wages][${wageIndex}][type]" class="w-32 rounded-md border-gray-300 text-xs">
-                    ${wageTypeOptions}
-                </select>
-                <input type="number" name="${fieldName}[${staffIndex}][wages][${wageIndex}][amount]" placeholder="Số tiền" min="0" step="1000" class="flex-1 rounded-md border-gray-300 text-xs">
-                <button type="button" onclick="removeWageRow(this)" class="px-2 text-red-500 hover:text-red-700 text-xs">✕</button>
-            `;
-            container.appendChild(newWageRow);
-            wageIndexes[type][staffIndex]++;
-        }
-
-        function removeWageRow(button) {
-            const container = button.closest('.wage-details-container');
-            if (container.querySelectorAll('.wage-detail-row').length > 1) {
-                button.closest('.wage-detail-row').remove();
-            } else {
-                alert('Phải có ít nhất một loại tiền công!');
-            }
-        }
-
-        function updateStaffWages(selectElement, type, index) {
-            // Placeholder for future functionality if needed
-        }
-
-        // Initialize wage indexes for existing staff
-        wageIndexes.driver[0] = 1;
-        wageIndexes.medical[0] = 1;
 
         // === INCIDENT ADDITIONAL SERVICES ===
         let incidentServiceIndex = 0;
