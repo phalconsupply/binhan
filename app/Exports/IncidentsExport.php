@@ -42,11 +42,26 @@ class IncidentsExport implements FromCollection, WithHeadings, WithMapping, With
         }
 
         // Sort by from_location name, then by date (oldest to newest)
-        return $query->join('locations', 'incidents.from_location_id', '=', 'locations.id')
+        $incidents = $query->join('locations', 'incidents.from_location_id', '=', 'locations.id')
             ->select('incidents.*')
             ->orderBy('locations.name', 'asc')
             ->orderBy('incidents.date', 'asc')
             ->get();
+        
+        // Re-load relationships after join (join can break eager loading)
+        $incidents->load([
+            'vehicle', 
+            'patient', 
+            'dispatcher', 
+            'transactions',
+            'fromLocation',
+            'toLocation',
+            'drivers',
+            'medicalStaff',
+            'partner'
+        ]);
+        
+        return $incidents;
     }
 
     public function headings(): array

@@ -322,6 +322,18 @@ class ReportController extends Controller
             ->orderBy('locations.name', 'asc')
             ->orderBy('incidents.date', 'asc')
             ->get();
+        
+        // Re-load relationships after join (join can break eager loading)
+        $incidents->load([
+            'vehicle', 
+            'patient', 
+            'dispatcher',
+            'fromLocation',
+            'toLocation',
+            'drivers',
+            'medicalStaff',
+            'partner'
+        ]);
 
         $totals = [
             'count' => $incidents->count(),
