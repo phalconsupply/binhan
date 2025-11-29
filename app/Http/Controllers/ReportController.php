@@ -13,6 +13,7 @@ use App\Exports\IncidentsExport;
 use App\Exports\TransactionsExport;
 use App\Exports\VehiclesReportExport;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\FinancialCalculator;
 
 class ReportController extends Controller
 {
@@ -44,22 +45,23 @@ class ReportController extends Controller
         $dateFrom = request('date_from', now()->startOfMonth()->format('Y-m-d'));
         $dateTo = request('date_to', now()->endOfMonth()->format('Y-m-d'));
 
+        // Get financial statistics using FinancialCalculator service
+        $financialStats = FinancialCalculator::calculateStatistics($ownedVehicleIds, $dateFrom, $dateTo);
+
         // Overall statistics (scoped to owner's vehicles if owner)
         $incidentsQuery = Incident::whereBetween('date', [$dateFrom, $dateTo]);
-        $transactionsQuery = Transaction::whereBetween('date', [$dateFrom, $dateTo]);
         
         if ($isVehicleOwner && !empty($ownedVehicleIds)) {
             $incidentsQuery->whereIn('vehicle_id', $ownedVehicleIds);
-            $transactionsQuery->whereIn('vehicle_id', $ownedVehicleIds);
         }
 
         $statistics = [
-            'total_incidents' => (clone $incidentsQuery)->count(),
-            'total_revenue' => (clone $transactionsQuery)->revenue()->sum('amount'),
-            'total_expense' => (clone $transactionsQuery)->expense()->sum('amount'),
-            'total_planned_expense' => (clone $transactionsQuery)->plannedExpense()->sum('amount'),
+            'total_incidents' => $incidentsQuery->count(),
+            'total_revenue' => $financialStats['total_revenue'],
+            'total_expense' => $financialStats['total_expense'],
+            'total_planned_expense' => $financialStats['total_planned_expense'],
+            'net_profit' => $financialStats['total_profit'],
         ];
-        $statistics['net_profit'] = $statistics['total_revenue'] - $statistics['total_expense'] - $statistics['total_planned_expense'];
 
         // Vehicle performance (scoped to owner's vehicles if owner)
         $vehicleQuery = Vehicle::query();
