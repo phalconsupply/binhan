@@ -74,16 +74,6 @@
                                    class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 text-center">
                                     📋 Xem trước & Chỉnh sửa
                                 </a>
-                                <div class="flex gap-2">
-                                    <a href="{{ route('reports.export.incidents.excel', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
-                                       class="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 text-center">
-                                        Excel
-                                    </a>
-                                    <a href="{{ route('reports.export.incidents.pdf', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
-                                       class="flex-1 px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 text-center">
-                                        PDF
-                                    </a>
-                                </div>
                             </div>
                         </div>
 
@@ -96,16 +86,6 @@
                                    class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 text-center">
                                     📋 Xem trước & Chọn khoa
                                 </a>
-                                <div class="flex gap-2">
-                                    <a href="{{ route('reports.export.transactions.excel', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
-                                       class="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 text-center">
-                                        Excel
-                                    </a>
-                                    <a href="{{ route('reports.export.transactions.pdf', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
-                                       class="flex-1 px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 text-center">
-                                        PDF
-                                    </a>
-                                </div>
                             </div>
                         </div>
 
