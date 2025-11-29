@@ -25,53 +25,74 @@ class IncidentsExport implements FromCollection, WithHeadings, WithMapping, With
 
     public function collection()
     {
-        $query = Incident::with(['vehicle', 'patient', 'dispatcher', 'transactions'])
-            ->whereBetween('date', [$this->dateFrom, $this->dateTo]);
+        $query = Incident::with([
+            'vehicle', 
+            'patient', 
+            'dispatcher', 
+            'transactions',
+            'fromLocation',
+            'toLocation',
+            'drivers',
+            'medicalStaff',
+            'partner'
+        ])->whereBetween('date', [$this->dateFrom, $this->dateTo]);
 
         if ($this->vehicleId) {
             $query->where('vehicle_id', $this->vehicleId);
         }
 
-        return $query->orderBy('date', 'desc')->get();
+        // Sort by from_location name, then by date (oldest to newest)
+        return $query->join('locations', 'incidents.from_location_id', '=', 'locations.id')
+            ->select('incidents.*')
+            ->orderBy('locations.name', 'asc')
+            ->orderBy('incidents.date', 'asc')
+            ->get();
     }
 
     public function headings(): array
     {
         return [
-            'ID',
-            'Ngày giờ',
-            'Biển số xe',
-            'Bệnh nhân',
-            'SĐT',
-            'Điểm đến',
-            'Điều phối bởi',
-            'Thu (đ)',
-            'Chi (đ)',
-            'Lợi nhuận (đ)',
+            'Số thứ tự',
+            'Ngày',
+            'Họ tên người bệnh',
+            'Nơi đi',
+            'Nơi đến',
+            'Lái xe',
+            'Nhân viên Y tế',
             'Ghi chú',
+            'Hoa hồng',
+            'Nơi nhận hoa hồng',
         ];
     }
 
     public function map($incident): array
     {
+        // Get driver names
+        $drivers = $incident->drivers->pluck('name')->join(', ') ?: '-';
+        
+        // Get medical staff names
+        $medicalStaff = $incident->medicalStaff->pluck('name')->join(', ') ?: '-';
+        
+        // Get partner name for commission
+        $partnerName = $incident->partner ? $incident->partner->name : '-';
+        
         return [
             $incident->id,
-            $incident->date->format('d/m/Y H:i'),
-            $incident->vehicle->license_plate,
-            $incident->patient ? $incident->patient->name : '',
-            $incident->patient ? $incident->patient->phone : '',
-            $incident->destination ?? '',
-            $incident->dispatcher->name,
-            $incident->total_revenue,
-            $incident->total_expense,
-            $incident->net_amount,
-            $incident->summary ?? '',
+            $incident->date->format('d/m/Y'),
+            $incident->patient ? $incident->patient->name : '-',
+            $incident->fromLocation ? $incident->fromLocation->name : '-',
+            $incident->toLocation ? $incident->toLocation->name : '-',
+            $drivers,
+            $medicalStaff,
+            $incident->summary ?? '-',
+            $incident->commission_amount ? number_format($incident->commission_amount, 0, ',', '.') : '-',
+            $partnerName,
         ];
     }
 
     public function title(): string
     {
-        return 'Chuyến đi';
+        return 'Báo cáo khoa - phòng';
     }
 
     public function styles(Worksheet $sheet)

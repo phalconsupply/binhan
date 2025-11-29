@@ -292,8 +292,16 @@ class ReportController extends Controller
         $dateTo = $request->input('date_to', now()->endOfMonth()->format('Y-m-d'));
         $vehicleId = $request->input('vehicle_id');
 
-        $query = Incident::with(['vehicle', 'patient', 'dispatcher'])
-            ->whereBetween('date', [$dateFrom, $dateTo]);
+        $query = Incident::with([
+            'vehicle', 
+            'patient', 
+            'dispatcher',
+            'fromLocation',
+            'toLocation',
+            'drivers',
+            'medicalStaff',
+            'partner'
+        ])->whereBetween('date', [$dateFrom, $dateTo]);
 
         // Scope to owner's vehicles if owner
         if ($isVehicleOwner && !empty($ownedVehicleIds)) {
@@ -308,18 +316,21 @@ class ReportController extends Controller
             $query->where('vehicle_id', $vehicleId);
         }
 
-        $incidents = $query->orderBy('date', 'desc')->get();
+        // Sort by from_location name, then by date (oldest to newest)
+        $incidents = $query->join('locations', 'incidents.from_location_id', '=', 'locations.id')
+            ->select('incidents.*')
+            ->orderBy('locations.name', 'asc')
+            ->orderBy('incidents.date', 'asc')
+            ->get();
 
         $totals = [
             'count' => $incidents->count(),
-            'revenue' => $incidents->sum('total_revenue'),
-            'expense' => $incidents->sum('total_expense'),
         ];
-        $totals['net'] = $totals['revenue'] - $totals['expense'];
 
         $pdf = Pdf::loadView('reports.pdf.incidents', compact('incidents', 'dateFrom', 'dateTo', 'totals'));
+        $pdf->setPaper('a4', 'landscape');
         
-        return $pdf->download('incidents_' . $dateFrom . '_to_' . $dateTo . '.pdf');
+        return $pdf->download('bao_cao_chuyen_vien_' . $dateFrom . '_to_' . $dateTo . '.pdf');
     }
 
     /**

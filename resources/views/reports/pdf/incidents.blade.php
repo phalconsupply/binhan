@@ -2,57 +2,92 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Báo cáo Chuyến đi</title>
+    <title>Báo cáo Chuyển viện Bình An</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; font-weight: bold; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .summary { margin: 20px 0; padding: 10px; background-color: #f9f9f9; }
+        @page { 
+            size: A4 landscape;
+            margin: 15mm;
+        }
+        body { 
+            font-family: DejaVu Sans, sans-serif; 
+            font-size: 11px; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px; 
+        }
+        th, td { 
+            border: 1px solid #333; 
+            padding: 6px 4px; 
+            text-align: left;
+            vertical-align: top;
+        }
+        th { 
+            background-color: #e8e8e8; 
+            font-weight: bold; 
+            text-align: center;
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 15px; 
+        }
+        .header h2 {
+            margin: 5px 0;
+            font-size: 16px;
+        }
+        .header p {
+            margin: 3px 0;
+            font-size: 12px;
+        }
+        .text-center { text-align: center; }
         .text-right { text-align: right; }
-        .text-green { color: green; }
-        .text-red { color: red; }
+        .col-stt { width: 5%; text-align: center; }
+        .col-date { width: 8%; }
+        .col-patient { width: 15%; }
+        .col-from { width: 12%; }
+        .col-to { width: 12%; }
+        .col-driver { width: 12%; }
+        .col-medical { width: 12%; }
+        .col-note { width: 12%; }
+        .col-commission { width: 7%; text-align: right; }
+        .col-partner { width: 10%; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h2>BÁO CÁO CHUYẾN ĐI</h2>
-        <p>Từ ngày {{ \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') }} đến {{ \Carbon\Carbon::parse($dateTo)->format('d/m/Y') }}</p>
-    </div>
-
-    <div class="summary">
-        <strong>Tổng kết:</strong><br>
-        Tổng số chuyến: {{ $totals['count'] }}<br>
-        Tổng thu: {{ number_format($totals['revenue'], 0, ',', '.') }}đ<br>
-        Tổng chi: {{ number_format($totals['expense'], 0, ',', '.') }}đ<br>
-        Lợi nhuận: <span class="{{ $totals['net'] >= 0 ? 'text-green' : 'text-red' }}">{{ number_format($totals['net'], 0, ',', '.') }}đ</span>
+        <h2>BÁO CÁO CHUYỂN VIỆN BÌNH AN</h2>
+        <p>Thông tin tháng báo cáo: Tháng {{ \Carbon\Carbon::parse($dateFrom)->format('m') }} Năm {{ \Carbon\Carbon::parse($dateFrom)->format('Y') }}</p>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th>Ngày</th>
-                <th>Xe</th>
-                <th>Bệnh nhân</th>
-                <th>Điểm đến</th>
-                <th class="text-right">Thu</th>
-                <th class="text-right">Chi</th>
-                <th class="text-right">Lợi nhuận</th>
+                <th class="col-stt">Số thứ tự</th>
+                <th class="col-date">Ngày</th>
+                <th class="col-patient">Họ tên người bệnh</th>
+                <th class="col-from">Nơi đi</th>
+                <th class="col-to">Nơi đến</th>
+                <th class="col-driver">Lái xe</th>
+                <th class="col-medical">Nhân viên Y tế</th>
+                <th class="col-note">Ghi chú</th>
+                <th class="col-commission">Hoa hồng</th>
+                <th class="col-partner">Nơi nhận hoa hồng</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($incidents as $incident)
+            @foreach($incidents as $index => $incident)
             <tr>
-                <td>{{ $incident->date->format('d/m/Y H:i') }}</td>
-                <td>{{ $incident->vehicle->license_plate }}</td>
+                <td class="text-center">{{ $index + 1 }}</td>
+                <td>{{ $incident->date->format('d/m/Y') }}</td>
                 <td>{{ $incident->patient ? $incident->patient->name : '-' }}</td>
-                <td>{{ $incident->destination ?? '-' }}</td>
-                <td class="text-right">{{ number_format($incident->total_revenue, 0, ',', '.') }}</td>
-                <td class="text-right">{{ number_format($incident->total_expense, 0, ',', '.') }}</td>
-                <td class="text-right {{ $incident->net_amount >= 0 ? 'text-green' : 'text-red' }}">
-                    {{ number_format($incident->net_amount, 0, ',', '.') }}
-                </td>
+                <td>{{ $incident->fromLocation ? $incident->fromLocation->name : '-' }}</td>
+                <td>{{ $incident->toLocation ? $incident->toLocation->name : '-' }}</td>
+                <td>{{ $incident->drivers->pluck('name')->join(', ') ?: '-' }}</td>
+                <td>{{ $incident->medicalStaff->pluck('name')->join(', ') ?: '-' }}</td>
+                <td>{{ $incident->summary ?? '-' }}</td>
+                <td class="text-right">{{ $incident->commission_amount ? number_format($incident->commission_amount, 0, ',', '.') : '-' }}</td>
+                <td>{{ $incident->partner ? $incident->partner->name : '-' }}</td>
             </tr>
             @endforeach
         </tbody>
