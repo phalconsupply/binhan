@@ -298,8 +298,8 @@ class ReportController extends Controller
             'dispatcher',
             'fromLocation',
             'toLocation',
-            'drivers',
-            'medicalStaff',
+            'drivers.user',
+            'medicalStaff.user',
             'partner'
         ])->whereBetween('date', [$dateFrom, $dateTo]);
 
@@ -330,8 +330,8 @@ class ReportController extends Controller
             'dispatcher',
             'fromLocation',
             'toLocation',
-            'drivers',
-            'medicalStaff',
+            'drivers.user',
+            'medicalStaff.user',
             'partner'
         ]);
 

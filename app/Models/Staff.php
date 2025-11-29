@@ -83,6 +83,20 @@ class Staff extends Model
     }
 
     // Accessors
+    public function getNameAttribute()
+    {
+        // Return full_name if exists, otherwise get from user relationship
+        if ($this->full_name) {
+            return $this->full_name;
+        }
+        
+        if ($this->user) {
+            return $this->user->name;
+        }
+        
+        return 'N/A';
+    }
+
     public function getStaffTypeLabelAttribute()
     {
         return match($this->staff_type) {

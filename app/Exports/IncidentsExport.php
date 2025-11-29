@@ -32,8 +32,8 @@ class IncidentsExport implements FromCollection, WithHeadings, WithMapping, With
             'transactions',
             'fromLocation',
             'toLocation',
-            'drivers',
-            'medicalStaff',
+            'drivers.user',
+            'medicalStaff.user',
             'partner'
         ])->whereBetween('date', [$this->dateFrom, $this->dateTo]);
 
@@ -56,8 +56,8 @@ class IncidentsExport implements FromCollection, WithHeadings, WithMapping, With
             'transactions',
             'fromLocation',
             'toLocation',
-            'drivers',
-            'medicalStaff',
+            'drivers.user',
+            'medicalStaff.user',
             'partner'
         ]);
         
