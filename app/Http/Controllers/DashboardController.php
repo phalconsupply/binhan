@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\Patient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\FinancialCalculator;
 
 class DashboardController extends Controller
 {
@@ -18,7 +19,6 @@ class DashboardController extends Controller
             ->where('staff_type', 'vehicle_owner')
             ->exists();
         
-        // Get owned vehicle IDs if vehicle owner
         $ownedVehicleIds = [];
         if ($isVehicleOwner) {
             $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
@@ -28,65 +28,68 @@ class DashboardController extends Controller
                 ->toArray();
         }
 
-        // Statistics - scope to owned vehicles if vehicle owner
+        // Get financial statistics using FinancialCalculator service
+        $todayStats = FinancialCalculator::calculateTodayStatistics($ownedVehicleIds);
+        $monthStats = FinancialCalculator::calculateMonthStatistics($ownedVehicleIds);
+
+        // Scope queries for vehicle owners
+        $incidentsQuery = Incident::query();
         if ($isVehicleOwner && !empty($ownedVehicleIds)) {
-            $stats = [
-                'total_vehicles' => Vehicle::whereIn('id', $ownedVehicleIds)->count(),
-                'active_vehicles' => Vehicle::whereIn('id', $ownedVehicleIds)->active()->count(),
-                'today_incidents' => Incident::whereIn('vehicle_id', $ownedVehicleIds)->today()->count(),
-                'today_revenue' => Transaction::whereIn('vehicle_id', $ownedVehicleIds)->revenue()->today()->sum('amount'),
-                'today_expense' => Transaction::whereIn('vehicle_id', $ownedVehicleIds)->expense()->today()->sum('amount'),
-                'today_planned_expense' => Transaction::whereIn('vehicle_id', $ownedVehicleIds)->plannedExpense()->today()->sum('amount'),
-                'month_revenue' => Transaction::whereIn('vehicle_id', $ownedVehicleIds)->revenue()->thisMonth()->sum('amount'),
-                'month_expense' => Transaction::whereIn('vehicle_id', $ownedVehicleIds)->expense()->thisMonth()->sum('amount'),
-                'month_planned_expense' => Transaction::whereIn('vehicle_id', $ownedVehicleIds)->plannedExpense()->thisMonth()->sum('amount'),
-            ];
-        } else {
-            $stats = [
-                'total_vehicles' => Vehicle::count(),
-                'active_vehicles' => Vehicle::active()->count(),
-                'today_incidents' => Incident::today()->count(),
-                'today_revenue' => Transaction::revenue()->today()->sum('amount'),
-                'today_expense' => Transaction::expense()->today()->sum('amount'),
-                'today_planned_expense' => Transaction::plannedExpense()->today()->sum('amount'),
-                'month_revenue' => Transaction::revenue()->thisMonth()->sum('amount'),
-                'month_expense' => Transaction::expense()->thisMonth()->sum('amount'),
-                'month_planned_expense' => Transaction::plannedExpense()->thisMonth()->sum('amount'),
-            ];
+            $incidentsQuery->whereIn('vehicle_id', $ownedVehicleIds);
         }
 
-        $stats['today_net'] = $stats['today_revenue'] - $stats['today_expense'] - $stats['today_planned_expense'];
-        $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
+        // Statistics
+        $stats = [
+            'total_vehicles' => Vehicle::count(),
+            'active_vehicles' => Vehicle::active()->count(),
+            'today_incidents' => (clone $incidentsQuery)->today()->count(),
+            'today_revenue' => $todayStats['today_revenue'],
+            'today_expense' => $todayStats['today_expense'],
+            'today_planned_expense' => $todayStats['today_planned_expense'],
+            'today_net' => $todayStats['today_profit'],
+            'month_revenue' => $monthStats['month_revenue'],
+            'month_expense' => $monthStats['month_expense'],
+            'month_planned_expense' => $monthStats['month_planned_expense'],
+            'month_net' => $monthStats['month_profit'],
+        ];
 
-        // Recent incidents (last 10) - scope to owned vehicles if vehicle owner
-        $recentIncidentsQuery = Incident::with(['vehicle', 'patient', 'dispatcher']);
-        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
-            $recentIncidentsQuery->whereIn('vehicle_id', $ownedVehicleIds);
-        }
-        $recentIncidents = $recentIncidentsQuery->orderBy('date', 'desc')->limit(10)->get();
+        // Recent incidents (last 10)
+        $recentIncidents = Incident::with(['vehicle', 'patient', 'dispatcher'])
+            ->when($isVehicleOwner && !empty($ownedVehicleIds), function($q) use ($ownedVehicleIds) {
+                $q->whereIn('vehicle_id', $ownedVehicleIds);
+            })
+            ->orderBy('date', 'desc')
+            ->limit(10)
+            ->get();
 
-        // Today's incidents - scope to owned vehicles if vehicle owner
-        $todayIncidentsQuery = Incident::with(['vehicle', 'patient'])->today();
-        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
-            $todayIncidentsQuery->whereIn('vehicle_id', $ownedVehicleIds);
-        }
-        $todayIncidents = $todayIncidentsQuery->orderBy('date', 'desc')->get();
+        // Today's incidents
+        $todayIncidents = Incident::with(['vehicle', 'patient'])
+            ->when($isVehicleOwner && !empty($ownedVehicleIds), function($q) use ($ownedVehicleIds) {
+                $q->whereIn('vehicle_id', $ownedVehicleIds);
+            })
+            ->today()
+            ->orderBy('date', 'desc')
+            ->get();
 
-        // Active vehicles for dropdown - scope to owned vehicles if vehicle owner
-        $vehiclesQuery = Vehicle::active();
-        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
-            $vehiclesQuery->whereIn('id', $ownedVehicleIds);
-        }
-        $vehicles = $vehiclesQuery->orderBy('license_plate')->get();
+        // Active vehicles for dropdown
+        $vehicles = Vehicle::active()
+            ->when($isVehicleOwner && !empty($ownedVehicleIds), function($q) use ($ownedVehicleIds) {
+                $q->whereIn('id', $ownedVehicleIds);
+            })
+            ->orderBy('license_plate')
+            ->get();
 
-        return view('dashboard', compact('stats', 'recentIncidents', 'todayIncidents', 'vehicles'));
+        $isOwner = $isVehicleOwner;
+        $recentIncidentsForWidget = $recentIncidents;
+
+        return view('dashboard', compact('stats', 'recentIncidents', 'todayIncidents', 'vehicles', 'isOwner', 'recentIncidentsForWidget'));
     }
 
     public function quickEntry(Request $request)
     {
         // Log request data for debugging
         \Log::info('Quick Entry Request Data:', $request->all());
-
+        
         $validated = $request->validate([
             'vehicle_id' => 'required|exists:vehicles,id',
             'drivers' => 'nullable|array',
@@ -133,7 +136,7 @@ class DashboardController extends Controller
             // Find or create locations based on names
             $fromLocationId = null;
             $toLocationId = null;
-
+            
             if (!empty($validated['from_location'])) {
                 $location = \App\Models\Location::firstOrCreate(
                     ['name' => $validated['from_location']],
@@ -141,7 +144,7 @@ class DashboardController extends Controller
                 );
                 $fromLocationId = $location->id;
             }
-
+            
             if (!empty($validated['to_location'])) {
                 $location = \App\Models\Location::firstOrCreate(
                     ['name' => $validated['to_location']],
@@ -206,7 +209,7 @@ class DashboardController extends Controller
                     }
                 }
             }
-
+            
             if (!empty($validated['medical_staff'])) {
                 foreach ($validated['medical_staff'] as $staff) {
                     if (!empty($staff['staff_id'])) {
@@ -254,7 +257,7 @@ class DashboardController extends Controller
                     if (!empty($service['name']) && !empty($service['amount'])) {
                         // Try to find matching service
                         $additionalService = \App\Models\AdditionalService::where('name', $service['name'])->first();
-
+                        
                         // Save to incident_additional_services
                         \App\Models\IncidentAdditionalService::create([
                             'incident_id' => $incident->id,
@@ -284,7 +287,7 @@ class DashboardController extends Controller
                     if (!empty($service['service_name']) && !empty($service['amount'])) {
                         // Try to find matching service
                         $additionalService = \App\Models\AdditionalService::where('name', $service['service_name'])->first();
-
+                        
                         // Save to incident_services
                         \App\Models\IncidentService::create([
                             'incident_id' => $incident->id,
@@ -397,7 +400,7 @@ class DashboardController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-
+            
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());

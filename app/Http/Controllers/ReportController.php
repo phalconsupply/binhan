@@ -406,4 +406,151 @@ class ReportController extends Controller
         
         return $pdf->download('transactions_' . $dateFrom . '_to_' . $dateTo . '.pdf');
     }
+
+    /**
+     * Preview department report with editable notes
+     */
+    public function departmentPreview(Request $request)
+    {
+        $this->authorize('view reports');
+
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        $ownedVehicleIds = [];
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+        }
+
+        $dateFrom = $request->input('date_from', now()->startOfMonth()->format('Y-m-d'));
+        $dateTo = $request->input('date_to', now()->endOfMonth()->format('Y-m-d'));
+
+        $query = Incident::with([
+            'vehicle', 
+            'patient', 
+            'dispatcher',
+            'fromLocation',
+            'toLocation',
+            'drivers.user',
+            'medicalStaff.user',
+            'partner'
+        ])->whereBetween('date', [$dateFrom, $dateTo]);
+
+        // Scope to owner's vehicles if owner
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $query->whereIn('vehicle_id', $ownedVehicleIds);
+        }
+
+        // Sort by from_location name, then by date (oldest to newest)
+        $incidents = $query->join('locations', 'incidents.from_location_id', '=', 'locations.id')
+            ->select('incidents.*')
+            ->orderBy('locations.name', 'asc')
+            ->orderBy('incidents.date', 'asc')
+            ->get();
+        
+        // Re-load relationships after join
+        $incidents->load([
+            'vehicle', 
+            'patient', 
+            'dispatcher',
+            'fromLocation',
+            'toLocation',
+            'drivers.user',
+            'medicalStaff.user',
+            'partner'
+        ]);
+
+        return view('reports.department-preview', compact('incidents', 'dateFrom', 'dateTo'));
+    }
+
+    /**
+     * Export department report with custom notes to PDF
+     */
+    public function exportDepartmentPdfWithNotes(Request $request)
+    {
+        $this->authorize('export reports');
+
+        $validated = $request->validate([
+            'date_from' => 'required|date',
+            'date_to' => 'required|date',
+            'notes' => 'nullable|array',
+            'notes.*' => 'nullable|string',
+        ]);
+
+        $dateFrom = $validated['date_from'];
+        $dateTo = $validated['date_to'];
+        $customNotes = $validated['notes'] ?? [];
+
+        // Check if user is vehicle owner
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        $ownedVehicleIds = [];
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+        }
+
+        $query = Incident::with([
+            'vehicle', 
+            'patient', 
+            'dispatcher',
+            'fromLocation',
+            'toLocation',
+            'drivers.user',
+            'medicalStaff.user',
+            'partner'
+        ])->whereBetween('date', [$dateFrom, $dateTo]);
+
+        // Scope to owner's vehicles if owner
+        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
+            $query->whereIn('vehicle_id', $ownedVehicleIds);
+        }
+
+        // Sort by from_location name, then by date (oldest to newest)
+        $incidents = $query->join('locations', 'incidents.from_location_id', '=', 'locations.id')
+            ->select('incidents.*')
+            ->orderBy('locations.name', 'asc')
+            ->orderBy('incidents.date', 'asc')
+            ->get();
+        
+        // Re-load relationships after join
+        $incidents->load([
+            'vehicle', 
+            'patient', 
+            'dispatcher',
+            'fromLocation',
+            'toLocation',
+            'drivers.user',
+            'medicalStaff.user',
+            'partner'
+        ]);
+
+        // Apply custom notes
+        foreach ($incidents as $incident) {
+            if (isset($customNotes[$incident->id])) {
+                $incident->custom_note = $customNotes[$incident->id];
+            }
+        }
+
+        $totals = [
+            'count' => $incidents->count(),
+        ];
+
+        $pdf = Pdf::loadView('reports.pdf.department', compact('incidents', 'dateFrom', 'dateTo', 'totals'));
+        $pdf->setPaper('a4', 'landscape');
+        
+        return $pdf->download('bao_cao_chuyen_vien_' . $dateFrom . '_to_' . $dateTo . '.pdf');
+    }
 }
+

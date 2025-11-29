@@ -69,15 +69,21 @@
                         <div class="border border-gray-200 rounded-lg p-4">
                             <h4 class="font-medium text-gray-900 mb-2">Báo cáo khoa - phòng</h4>
                             <p class="text-sm text-gray-600 mb-4">Báo cáo chuyển viện theo khoa phòng</p>
-                            <div class="flex gap-2">
-                                <a href="{{ route('reports.export.incidents.excel', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
-                                   class="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 text-center">
-                                    Excel
+                            <div class="flex flex-col gap-2">
+                                <a href="{{ route('reports.department.preview', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
+                                   class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 text-center">
+                                    📋 Xem trước & Chỉnh sửa
                                 </a>
-                                <a href="{{ route('reports.export.incidents.pdf', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
-                                   class="flex-1 px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 text-center">
-                                    PDF
-                                </a>
+                                <div class="flex gap-2">
+                                    <a href="{{ route('reports.export.incidents.excel', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
+                                       class="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 text-center">
+                                        Excel
+                                    </a>
+                                    <a href="{{ route('reports.export.incidents.pdf', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
+                                       class="flex-1 px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 text-center">
+                                        PDF
+                                    </a>
+                                </div>
                             </div>
                         </div>
 
