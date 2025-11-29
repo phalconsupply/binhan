@@ -20,6 +20,7 @@ use App\Http\Controllers\WageTypeController;
 use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\LoanController;
+use App\Http\Controllers\AssetController;
 use App\Http\Controllers\API\QuickEntryController;
 use Illuminate\Support\Facades\Route;
 
@@ -194,6 +195,11 @@ Route::middleware(['auth', 'verified', 'permission:manage settings'])->group(fun
     Route::post('/settings/upload', [SystemSettingController::class, 'uploadFile'])->name('settings.upload');
     Route::post('/settings/delete-file', [SystemSettingController::class, 'deleteFile'])->name('settings.delete-file');
     Route::get('/settings/get-value', [SystemSettingController::class, 'getValue'])->name('settings.get-value');
+});
+
+// Asset Management routes
+Route::middleware(['auth', 'verified', 'permission:manage settings'])->group(function () {
+    Route::resource('assets', AssetController::class);
 });
 
 // Media Library routes

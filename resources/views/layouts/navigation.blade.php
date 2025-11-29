@@ -93,6 +93,9 @@
                         <x-dropdown-link :href="route('wage-types.index')">
                             💰 Loại tiền công
                         </x-dropdown-link>
+                        <x-dropdown-link :href="route('assets.index')">
+                            🛠️ Quản lý tài sản
+                        </x-dropdown-link>
                         @endcan
                         @can('view staff')
                         <x-dropdown-link :href="route('staff.index')">
@@ -229,6 +232,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('wage-types.index')" :active="request()->routeIs('wage-types.*')">
                     💰 Loại tiền công
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
+                    🛠️ Quản lý tài sản
                 </x-responsive-nav-link>
             </div>
             @endif
