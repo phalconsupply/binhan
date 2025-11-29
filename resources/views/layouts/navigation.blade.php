@@ -97,6 +97,15 @@
                             🛠️ Quản lý tài sản
                         </x-dropdown-link>
                         @endcan
+                        @can('manage users')
+                        <div class="border-t border-gray-100"></div>
+                        <x-dropdown-link :href="route('role-permissions.index')">
+                            🔐 Quản lý phân quyền
+                        </x-dropdown-link>
+                        @endcan
+                        @can('manage settings')
+                        <div class="border-t border-gray-100"></div>
+                        @endcan
                         @can('view staff')
                         <x-dropdown-link :href="route('staff.index')">
                             👥 Nhân sự
@@ -235,6 +244,16 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
                     🛠️ Quản lý tài sản
+                </x-responsive-nav-link>
+            </div>
+            @endif
+            @endcan
+            @can('manage users')
+            @if(!$isVehicleOwnerMobile)
+            <div class="pt-2 pb-2 border-t border-gray-200">
+                <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">Phân quyền</div>
+                <x-responsive-nav-link :href="route('role-permissions.index')" :active="request()->routeIs('role-permissions.*')">
+                    🔐 Quản lý phân quyền
                 </x-responsive-nav-link>
             </div>
             @endif

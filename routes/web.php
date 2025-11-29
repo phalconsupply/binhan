@@ -21,6 +21,7 @@ use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\AssetController;
+use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\API\QuickEntryController;
 use Illuminate\Support\Facades\Route;
 
@@ -200,6 +201,13 @@ Route::middleware(['auth', 'verified', 'permission:manage settings'])->group(fun
 // Asset Management routes
 Route::middleware(['auth', 'verified', 'permission:manage settings'])->group(function () {
     Route::resource('assets', AssetController::class);
+});
+
+// Role Permission Management routes
+Route::middleware(['auth', 'verified', 'permission:manage users'])->group(function () {
+    Route::get('/role-permissions', [RolePermissionController::class, 'index'])->name('role-permissions.index');
+    Route::post('/role-permissions/toggle', [RolePermissionController::class, 'toggle'])->name('role-permissions.toggle');
+    Route::put('/role-permissions/{role}', [RolePermissionController::class, 'update'])->name('role-permissions.update');
 });
 
 // Media Library routes
