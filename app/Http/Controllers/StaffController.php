@@ -203,7 +203,12 @@ class StaffController extends Controller
      */
     public function show(Staff $staff)
     {
-        $staff->load('user.roles');
+        $staff->load([
+            'user.roles',
+            'assets' => function($q) {
+                $q->orderBy('equipped_date', 'desc');
+            },
+        ]);
         return view('staff.show', compact('staff'));
     }
 

@@ -126,6 +126,9 @@ class VehicleController extends Controller
             },
             'loanProfile.schedules',
             'loanProfile.interestAdjustments.creator',
+            'assets' => function($q) {
+                $q->orderBy('equipped_date', 'desc');
+            },
         ]);
 
         // Get maintenance history with total cost

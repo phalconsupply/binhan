@@ -380,6 +380,75 @@
             </div>
             @endif
 
+            {{-- Assets Section --}}
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold">🛠️ Tài sản được gán</h3>
+                        @can('manage settings')
+                        <a href="{{ route('assets.create', ['usage_type' => 'vehicle', 'vehicle_id' => $vehicle->id]) }}" class="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700">
+                            + Thêm tài sản
+                        </a>
+                        @endcan
+                    </div>
+
+                    @if($vehicle->assets->isEmpty())
+                        <p class="text-gray-500 text-center py-8">Chưa có tài sản nào được gán cho xe này</p>
+                    @else
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên tài sản</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nhãn hiệu</th>
+                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Số lượng</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày trang bị</th>
+                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($vehicle->assets as $asset)
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ $asset->name }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $asset->brand ?? '-' }}</td>
+                                        <td class="px-4 py-3 text-center">
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                {{ $asset->quantity }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $asset->equipped_date->format('d/m/Y') }}</td>
+                                        <td class="px-4 py-3 text-center">
+                                            @if($asset->is_active)
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                                    ✓ Đang dùng
+                                                </span>
+                                            @else
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                    ✕ Ngừng dùng
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 text-center text-sm">
+                                            <a href="{{ route('assets.show', $asset) }}" class="text-blue-600 hover:text-blue-900 mr-2">👁️ Xem</a>
+                                            @can('manage settings')
+                                            <a href="{{ route('assets.edit', $asset) }}" class="text-indigo-600 hover:text-indigo-900">✏️ Sửa</a>
+                                            @endcan
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mt-4 text-sm text-gray-600">
+                            <strong>Tổng số tài sản:</strong> {{ $vehicle->assets->count() }} | 
+                            <strong>Tổng số lượng:</strong> {{ $vehicle->assets->sum('quantity') }}
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             {{-- Filter Section --}}
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">

@@ -76,6 +76,11 @@ class Vehicle extends Model
         return $this->hasMany(LoanProfile::class);
     }
 
+    public function assets()
+    {
+        return $this->hasMany(Asset::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {

@@ -59,8 +59,8 @@
                                 <select name="usage_type" id="usage_type" required onchange="toggleUsageFields()"
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @error('usage_type') border-red-300 @enderror">
                                     <option value="">-- Chọn loại --</option>
-                                    <option value="vehicle" {{ old('usage_type') == 'vehicle' ? 'selected' : '' }}>🚗 Xe</option>
-                                    <option value="staff" {{ old('usage_type') == 'staff' ? 'selected' : '' }}>👤 Cá nhân</option>
+                                    <option value="vehicle" {{ old('usage_type', request('usage_type')) == 'vehicle' ? 'selected' : '' }}>🚗 Xe</option>
+                                    <option value="staff" {{ old('usage_type', request('usage_type')) == 'staff' ? 'selected' : '' }}>👤 Cá nhân</option>
                                 </select>
                                 @error('usage_type')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -84,7 +84,7 @@
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @error('vehicle_id') border-red-300 @enderror">
                                     <option value="">-- Chọn xe --</option>
                                     @foreach($vehicles as $vehicle)
-                                        <option value="{{ $vehicle->id }}" {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
+                                        <option value="{{ $vehicle->id }}" {{ old('vehicle_id', request('vehicle_id')) == $vehicle->id ? 'selected' : '' }}>
                                             {{ $vehicle->license_plate }} @if($vehicle->model) - {{ $vehicle->model }} @endif
                                         </option>
                                     @endforeach
@@ -101,7 +101,7 @@
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @error('staff_id') border-red-300 @enderror">
                                     <option value="">-- Chọn nhân viên --</option>
                                     @foreach($staffs as $staff)
-                                        <option value="{{ $staff->id }}" {{ old('staff_id') == $staff->id ? 'selected' : '' }}>
+                                        <option value="{{ $staff->id }}" {{ old('staff_id', request('staff_id')) == $staff->id ? 'selected' : '' }}>
                                             {{ $staff->full_name }} @if($staff->staff_type) - {{ $staff->staff_type }} @endif
                                         </option>
                                     @endforeach
