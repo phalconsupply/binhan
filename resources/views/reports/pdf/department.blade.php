@@ -86,31 +86,71 @@
     <table>
         <thead>
             <tr>
+                @if(in_array('col-stt', $visibleColumns ?? []))
                 <th class="col-stt">Số thứ tự</th>
+                @endif
+                @if(in_array('col-date', $visibleColumns ?? []))
                 <th class="col-date">Ngày</th>
+                @endif
+                @if(in_array('col-patient', $visibleColumns ?? []))
                 <th class="col-patient">Họ tên người bệnh</th>
+                @endif
+                @if(in_array('col-from', $visibleColumns ?? []))
                 <th class="col-from">Nơi đi</th>
+                @endif
+                @if(in_array('col-to', $visibleColumns ?? []))
                 <th class="col-to">Nơi đến</th>
+                @endif
+                @if(in_array('col-driver', $visibleColumns ?? []))
                 <th class="col-driver">Lái xe</th>
+                @endif
+                @if(in_array('col-staff', $visibleColumns ?? []))
                 <th class="col-medical">Nhân viên Y tế</th>
+                @endif
+                @if(in_array('col-note', $visibleColumns ?? []))
                 <th class="col-note">Ghi chú</th>
+                @endif
+                @if(in_array('col-commission', $visibleColumns ?? []))
                 <th class="col-commission">Hoa hồng</th>
+                @endif
+                @if(in_array('col-partner', $visibleColumns ?? []))
                 <th class="col-partner">Nơi nhận hoa hồng</th>
+                @endif
             </tr>
         </thead>
         <tbody>
             @foreach($incidents as $index => $incident)
             <tr>
+                @if(in_array('col-stt', $visibleColumns ?? []))
                 <td class="text-center">{{ $index + 1 }}</td>
+                @endif
+                @if(in_array('col-date', $visibleColumns ?? []))
                 <td>{{ $incident->date->format('d/m/Y') }}</td>
+                @endif
+                @if(in_array('col-patient', $visibleColumns ?? []))
                 <td>{{ $incident->patient ? $incident->patient->name : '-' }}</td>
+                @endif
+                @if(in_array('col-from', $visibleColumns ?? []))
                 <td>{{ $incident->fromLocation ? $incident->fromLocation->name : '-' }}</td>
+                @endif
+                @if(in_array('col-to', $visibleColumns ?? []))
                 <td>{{ $incident->toLocation ? $incident->toLocation->name : '-' }}</td>
+                @endif
+                @if(in_array('col-driver', $visibleColumns ?? []))
                 <td>{{ $incident->drivers->pluck('name')->join(', ') ?: '-' }}</td>
+                @endif
+                @if(in_array('col-staff', $visibleColumns ?? []))
                 <td>{{ $incident->medicalStaff->pluck('name')->join(', ') ?: '-' }}</td>
+                @endif
+                @if(in_array('col-note', $visibleColumns ?? []))
                 <td>{{ $incident->custom_note ?? $incident->summary ?? '-' }}</td>
+                @endif
+                @if(in_array('col-commission', $visibleColumns ?? []))
                 <td class="text-right">{{ $incident->commission_amount ? number_format($incident->commission_amount, 0, ',', '.') : '-' }}</td>
+                @endif
+                @if(in_array('col-partner', $visibleColumns ?? []))
                 <td>{{ $incident->partner ? $incident->partner->name : '-' }}</td>
+                @endif
             </tr>
             @endforeach
         </tbody>

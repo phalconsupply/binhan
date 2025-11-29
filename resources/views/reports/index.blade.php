@@ -65,10 +65,10 @@
                 <div class="p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Xuất báo cáo</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <!-- Báo cáo khoa - phòng -->
+                        <!-- Báo cáo phòng điều dưỡng -->
                         <div class="border border-gray-200 rounded-lg p-4">
-                            <h4 class="font-medium text-gray-900 mb-2">Báo cáo khoa - phòng</h4>
-                            <p class="text-sm text-gray-600 mb-4">Báo cáo chuyển viện theo khoa phòng</p>
+                            <h4 class="font-medium text-gray-900 mb-2">Báo cáo phòng điều dưỡng</h4>
+                            <p class="text-sm text-gray-600 mb-4">Báo cáo chuyển viện</p>
                             <div class="flex flex-col gap-2">
                                 <a href="{{ route('reports.department.preview', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
                                    class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 text-center">
@@ -87,19 +87,25 @@
                             </div>
                         </div>
 
-                        <!-- Báo cáo giao dịch -->
+                        <!-- Báo cáo chi tiết theo khoa -->
                         <div class="border border-gray-200 rounded-lg p-4">
-                            <h4 class="font-medium text-gray-900 mb-2">Báo cáo giao dịch</h4>
-                            <p class="text-sm text-gray-600 mb-4">Chi tiết thu chi theo từng giao dịch</p>
-                            <div class="flex gap-2">
-                                <a href="{{ route('reports.export.transactions.excel', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
-                                   class="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 text-center">
-                                    Excel
+                            <h4 class="font-medium text-gray-900 mb-2">Báo cáo chi tiết theo khoa</h4>
+                            <p class="text-sm text-gray-600 mb-4">Chi tiết theo từng khoa phòng</p>
+                            <div class="flex flex-col gap-2">
+                                <a href="{{ route('reports.locations.preview', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
+                                   class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 text-center">
+                                    📋 Xem trước & Chọn khoa
                                 </a>
-                                <a href="{{ route('reports.export.transactions.pdf', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
-                                   class="flex-1 px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 text-center">
-                                    PDF
-                                </a>
+                                <div class="flex gap-2">
+                                    <a href="{{ route('reports.export.transactions.excel', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
+                                       class="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 text-center">
+                                        Excel
+                                    </a>
+                                    <a href="{{ route('reports.export.transactions.pdf', ['date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" 
+                                       class="flex-1 px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 text-center">
+                                        PDF
+                                    </a>
+                                </div>
                             </div>
                         </div>
 

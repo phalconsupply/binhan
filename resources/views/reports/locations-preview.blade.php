@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Báo cáo Chuyển viện Bình An - Xem trước') }}
+                {{ __('Báo cáo Chi tiết theo Khoa - Xem trước') }}
             </h2>
             <a href="{{ route('reports.index') }}" class="text-sm text-blue-600 hover:text-blue-800">
                 ← Quay lại Báo cáo
@@ -22,11 +22,38 @@
                     </div>
                     <div class="ml-3">
                         <p class="text-sm text-blue-700">
+                            • Chọn <strong>Nơi đi (Khoa phòng)</strong> để xuất báo cáo<br>
                             • Chỉnh sửa <strong>Ghi chú</strong> trực tiếp trong bảng (tự động lưu sau 2 giây)<br>
                             • <strong>Bỏ chọn</strong> checkbox ở cột đầu để loại bỏ dòng không muốn xuất hiện trong báo cáo<br>
                             • Sử dụng <strong>Tuỳ chọn cột</strong> bên dưới để ẩn/hiện các cột trong báo cáo
                         </p>
                     </div>
+                </div>
+            </div>
+
+            <!-- Location Selection -->
+            <div class="bg-white shadow-sm sm:rounded-lg p-4 mb-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <svg class="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <h3 class="text-sm font-semibold text-gray-700">Chọn Nơi đi (Khoa phòng):</h3>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" id="selectAllLocations" checked class="rounded border-gray-300 text-blue-600">
+                        <span class="ml-2 text-sm font-semibold text-gray-700">Chọn tất cả</span>
+                    </label>
+                    @foreach($locations as $location)
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" class="location-checkbox rounded border-gray-300 text-blue-600" 
+                               data-location="{{ $location->id }}" 
+                               value="{{ $location->id }}" 
+                               checked>
+                        <span class="ml-2 text-sm text-gray-700">{{ $location->name }} ({{ $location->incidents_count }})</span>
+                    </label>
+                    @endforeach
                 </div>
             </div>
 
@@ -82,16 +109,16 @@
                 </div>
             </div>
 
-            <form id="reportForm" method="POST" action="{{ route('reports.department.export-pdf-with-notes') }}" class="bg-white shadow-sm sm:rounded-lg">
+            <form id="reportForm" method="POST" action="{{ route('reports.locations.export-pdf') }}" class="bg-white shadow-sm sm:rounded-lg">
                 @csrf
                 <input type="hidden" name="date_from" value="{{ $dateFrom }}">
                 <input type="hidden" name="date_to" value="{{ $dateTo }}">
 
                 <!-- Report Header -->
                 <div class="p-6 border-b border-gray-200 text-center print:p-4">
-                    <h1 class="text-2xl font-bold text-gray-900">BÁO CÁO CHUYỂN VIỆN BÌNH AN</h1>
+                    <h1 class="text-2xl font-bold text-gray-900">BÁO CÁO CHI TIẾT THEO KHOA</h1>
                     <p class="text-sm text-gray-600 mt-2">
-                        Thông tin tháng báo cáo: Tháng {{ \Carbon\Carbon::parse($dateFrom)->format('m') }} Năm {{ \Carbon\Carbon::parse($dateFrom)->format('Y') }}
+                        Thời gian: {{ \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($dateTo)->format('d/m/Y') }}
                     </p>
                 </div>
 
@@ -101,7 +128,7 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-3 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border border-gray-300" style="width: 4%;">
-                                    <input type="checkbox" id="selectAll" checked class="rounded border-gray-300 text-blue-600" title="Chọn/Bỏ chọn tất cả">
+                                    <input type="checkbox" id="selectAllRows" checked class="rounded border-gray-300 text-blue-600" title="Chọn/Bỏ chọn tất cả">
                                 </th>
                                 <th class="col-stt px-3 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border border-gray-300" style="width: 4%;">STT</th>
                                 <th class="col-date px-3 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border border-gray-300" style="width: 8%;">Ngày</th>
@@ -116,8 +143,10 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            @forelse($incidents as $index => $incident)
-                            <tr class="hover:bg-gray-50 incident-row">
+                            @php $globalIndex = 1; @endphp
+                            @foreach($incidentsByLocation as $locationId => $locationIncidents)
+                            @foreach($locationIncidents as $incident)
+                            <tr class="hover:bg-gray-50 incident-row" data-location="{{ $locationId }}">
                                 <td class="px-3 py-2 text-center border border-gray-300">
                                     <input type="checkbox" 
                                            name="include_incidents[]" 
@@ -126,7 +155,7 @@
                                            class="row-checkbox rounded border-gray-300 text-blue-600"
                                            title="Bỏ chọn để loại bỏ khỏi báo cáo">
                                 </td>
-                                <td class="col-stt px-3 py-2 text-center text-sm border border-gray-300">{{ $index + 1 }}</td>
+                                <td class="col-stt px-3 py-2 text-center text-sm border border-gray-300">{{ $globalIndex++ }}</td>
                                 <td class="col-date px-3 py-2 text-sm border border-gray-300">{{ $incident->date->format('d/m/Y') }}</td>
                                 <td class="col-patient px-3 py-2 text-sm border border-gray-300">{{ $incident->patient ? $incident->patient->name : '-' }}</td>
                                 <td class="col-from px-3 py-2 text-sm border border-gray-300">{{ $incident->fromLocation ? $incident->fromLocation->name : '-' }}</td>
@@ -145,13 +174,8 @@
                                 <td class="col-commission px-3 py-2 text-right text-sm border border-gray-300">{{ $incident->commission_amount ? number_format($incident->commission_amount, 0, ',', '.') : '-' }}</td>
                                 <td class="col-partner px-3 py-2 text-sm border border-gray-300">{{ $incident->partner ? $incident->partner->name : '-' }}</td>
                             </tr>
-                            @empty
-                            <tr>
-                                <td colspan="11" class="px-6 py-8 text-center text-gray-500 border border-gray-300">
-                                    Không có dữ liệu trong khoảng thời gian này
-                                </td>
-                            </tr>
-                            @endforelse
+                            @endforeach
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
@@ -245,6 +269,59 @@
     </style>
 
     <script>
+        // Location filter functionality
+        const locationCheckboxes = document.querySelectorAll('.location-checkbox');
+        const selectAllLocations = document.getElementById('selectAllLocations');
+        
+        selectAllLocations.addEventListener('change', function() {
+            locationCheckboxes.forEach(cb => {
+                cb.checked = this.checked;
+                filterRowsByLocation();
+            });
+        });
+
+        locationCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                filterRowsByLocation();
+                updateSelectAllLocationsState();
+            });
+        });
+
+        function filterRowsByLocation() {
+            const selectedLocations = Array.from(locationCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.getAttribute('data-location'));
+            
+            document.querySelectorAll('.incident-row').forEach(row => {
+                const rowLocation = row.getAttribute('data-location');
+                if (selectedLocations.includes(rowLocation)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Re-number STT
+            renumberRows();
+        }
+
+        function renumberRows() {
+            let visibleIndex = 1;
+            document.querySelectorAll('.incident-row').forEach(row => {
+                if (row.style.display !== 'none') {
+                    const sttCell = row.querySelector('.col-stt');
+                    if (sttCell) {
+                        sttCell.textContent = visibleIndex++;
+                    }
+                }
+            });
+        }
+
+        function updateSelectAllLocationsState() {
+            const allChecked = Array.from(locationCheckboxes).every(cb => cb.checked);
+            selectAllLocations.checked = allChecked;
+        }
+
         // Column visibility toggle
         document.querySelectorAll('.column-toggle').forEach(toggle => {
             toggle.addEventListener('change', function() {
@@ -261,12 +338,15 @@
             });
         });
 
-        // Select/Deselect all checkbox functionality
-        document.getElementById('selectAll').addEventListener('change', function() {
+        // Select/Deselect all rows checkbox functionality
+        document.getElementById('selectAllRows').addEventListener('change', function() {
             const checkboxes = document.querySelectorAll('.row-checkbox');
             checkboxes.forEach(cb => {
-                cb.checked = this.checked;
-                updateRowStyle(cb);
+                const row = cb.closest('.incident-row');
+                if (row.style.display !== 'none') {
+                    cb.checked = this.checked;
+                    updateRowStyle(cb);
+                }
             });
         });
 
@@ -274,7 +354,7 @@
         document.querySelectorAll('.row-checkbox').forEach(checkbox => {
             checkbox.addEventListener('change', function() {
                 updateRowStyle(this);
-                updateSelectAllState();
+                updateSelectAllRowsState();
             });
         });
 
@@ -291,10 +371,13 @@
             }
         }
 
-        function updateSelectAllState() {
-            const allCheckboxes = document.querySelectorAll('.row-checkbox');
-            const checkedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-            const selectAll = document.getElementById('selectAll');
+        function updateSelectAllRowsState() {
+            const allCheckboxes = Array.from(document.querySelectorAll('.row-checkbox')).filter(cb => {
+                const row = cb.closest('.incident-row');
+                return row.style.display !== 'none';
+            });
+            const checkedCheckboxes = allCheckboxes.filter(cb => cb.checked);
+            const selectAll = document.getElementById('selectAllRows');
             
             selectAll.checked = allCheckboxes.length === checkedCheckboxes.length;
         }
@@ -372,13 +455,17 @@
                 checkbox.disabled = true;
             });
             
-            // Add hidden inputs for only checked checkboxes
+            // Add hidden inputs for only checked checkboxes that are visible (not filtered out)
             document.querySelectorAll('.row-checkbox:checked').forEach(checkbox => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'include_incidents[]';
-                input.value = checkbox.value;
-                form.appendChild(input);
+                const row = checkbox.closest('.incident-row');
+                // Only include if row is visible
+                if (row.style.display !== 'none') {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'include_incidents[]';
+                    input.value = checkbox.value;
+                    form.appendChild(input);
+                }
             });
             
             // Add visible columns info

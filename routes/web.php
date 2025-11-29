@@ -117,6 +117,9 @@ Route::middleware(['auth', 'verified', 'owner_or_permission:view reports'])->gro
     Route::get('/reports/department/preview', [ReportController::class, 'departmentPreview'])->name('reports.department.preview');
     Route::post('/reports/department/save-notes', [ReportController::class, 'saveDepartmentNotes'])->name('reports.department.save-notes');
     
+    // Locations Report Preview
+    Route::get('/reports/locations/preview', [ReportController::class, 'locationsPreview'])->name('reports.locations.preview');
+    
     Route::middleware('owner_or_permission:export reports')->group(function () {
         Route::get('/reports/export/incidents/excel', [ReportController::class, 'exportIncidentsExcel'])->name('reports.export.incidents.excel');
         Route::get('/reports/export/incidents/pdf', [ReportController::class, 'exportIncidentsPdf'])->name('reports.export.incidents.pdf');
@@ -126,6 +129,9 @@ Route::middleware(['auth', 'verified', 'owner_or_permission:view reports'])->gro
         
         // Department Report Export with Notes
         Route::post('/reports/department/export-pdf-with-notes', [ReportController::class, 'exportDepartmentPdfWithNotes'])->name('reports.department.export-pdf-with-notes');
+        
+        // Locations Report Export
+        Route::post('/reports/locations/export-pdf', [ReportController::class, 'exportLocationsPdf'])->name('reports.locations.export-pdf');
     });
 });
 
