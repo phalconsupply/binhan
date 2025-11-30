@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
+use App\Models\Staff;
+use App\Models\Transaction;
 
 class ProfileController extends Controller
 {
@@ -16,8 +18,25 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        $user = $request->user();
+        
+        // Check if user is staff (driver, medical_staff, or manager)
+        $staff = Staff::where('user_id', $user->id)->first();
+        $earnings = null;
+        
+        if ($staff && in_array($staff->staff_type, ['driver', 'medical_staff', 'manager'])) {
+            // Get earnings for this staff member
+            $earnings = Transaction::where('staff_id', $staff->id)
+                ->where('type', 'chi')
+                ->with(['incident.vehicle', 'incident.patient'])
+                ->orderBy('date', 'desc')
+                ->paginate(20);
+        }
+        
         return view('profile.edit', [
-            'user' => $request->user(),
+            'user' => $user,
+            'staff' => $staff,
+            'earnings' => $earnings,
         ]);
     }
 
