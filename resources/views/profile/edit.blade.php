@@ -16,13 +16,27 @@
             @if($earnings)
             <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
                 <div class="w-full">
-                    <header>
-                        <h2 class="text-lg font-medium text-gray-900">
-                            💰 Thu nhập của tôi
-                        </h2>
-                        <p class="mt-1 text-sm text-gray-600">
-                            Thống kê chi tiết thu nhập và các khoản điều chỉnh
-                        </p>
+                    <header class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-lg font-medium text-gray-900">
+                                💰 Thu nhập của tôi
+                            </h2>
+                            <p class="mt-1 text-sm text-gray-600">
+                                Thống kê chi tiết thu nhập và các khoản điều chỉnh
+                            </p>
+                        </div>
+                        
+                        {{-- Month Filter --}}
+                        <form method="GET" action="{{ route('profile.edit') }}" class="flex items-center gap-2">
+                            <label for="month_filter" class="text-sm text-gray-700 whitespace-nowrap">Chọn tháng:</label>
+                            <input type="month" 
+                                   id="month_filter" 
+                                   name="month" 
+                                   value="{{ $selectedMonth }}"
+                                   max="{{ now()->format('Y-m') }}"
+                                   class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                   onchange="this.form.submit()">
+                        </form>
                     </header>
 
                     {{-- Summary Cards --}}
@@ -40,7 +54,7 @@
                             </div>
                         </div>
                         <div class="bg-blue-50 rounded-lg p-4">
-                            <div class="text-sm text-gray-600">Thu nhập tháng {{ now()->format('m/Y') }}</div>
+                            <div class="text-sm text-gray-600">Thu nhập tháng {{ $monthDate->format('m/Y') }}</div>
                             <div class="text-2xl font-bold text-blue-600">{{ number_format($stats['month_total_earnings'], 0, ',', '.') }}đ</div>
                             <div class="text-xs text-gray-500 mt-1">
                                 CB: {{ number_format($stats['month_base_salary'], 0, ',', '.') }}đ
@@ -105,10 +119,10 @@
                     </div>
                     @endif
 
-                    {{-- Current Month Adjustments --}}
+                    {{-- Selected Month Adjustments --}}
                     @if($adjustments->isNotEmpty())
                     <div class="mt-6 bg-white border border-gray-200 rounded-lg p-4">
-                        <h3 class="text-md font-semibold mb-3">📋 Điều chỉnh tháng {{ now()->format('m/Y') }}</h3>
+                        <h3 class="text-md font-semibold mb-3">📋 Điều chỉnh tháng {{ $monthDate->format('m/Y') }}</h3>
                         
                         @php
                             $adjustmentAdditions = $adjustments->where('type', 'addition')->sum('amount');

@@ -30,17 +30,24 @@ class ProfileController extends Controller
         $pendingDebts = collect();
         $totalDebt = 0;
         
+        // Get selected month or default to current month
+        $selectedMonth = $request->input('month', now()->format('Y-m'));
+        $monthDate = \Carbon\Carbon::parse($selectedMonth . '-01');
+        
         if ($staff && in_array($staff->staff_type, ['driver', 'medical_staff', 'manager'])) {
-            // Get earnings transactions (excluding salary advances)
+            // Get earnings transactions for selected month (excluding salary advances)
             $earnings = Transaction::where('staff_id', $staff->id)
                 ->where('type', 'chi')
                 ->where(function($q) {
                     $q->where('category', '!=', 'ứng_lương')
                       ->orWhereNull('category');
                 })
+                ->whereYear('date', $monthDate->year)
+                ->whereMonth('date', $monthDate->month)
                 ->with(['incident.vehicle', 'incident.patient'])
                 ->orderBy('date', 'desc')
-                ->paginate(20);
+                ->paginate(20)
+                ->appends(['month' => $selectedMonth]);
             
             // Calculate months worked
             $monthsWorked = 0;
@@ -70,14 +77,15 @@ class ProfileController extends Controller
             
             $wageEarningsTotal = $chiTotal - $thuTotal;
             
-            // Month earnings
+            // Selected month earnings
             $monthChi = Transaction::where('staff_id', $staff->id)
                 ->where('type', 'chi')
                 ->where(function($query) {
                     $query->whereNotIn('category', ['ứng_lương', 'ứng_lương_nợ'])
                           ->orWhereNull('category');
                 })
-                ->thisMonth()
+                ->whereYear('date', $monthDate->year)
+                ->whereMonth('date', $monthDate->month)
                 ->sum('amount');
             
             $monthThu = Transaction::where('staff_id', $staff->id)
@@ -86,24 +94,24 @@ class ProfileController extends Controller
                     $query->whereNotIn('category', ['ứng_lương', 'ứng_lương_nợ'])
                           ->orWhereNull('category');
                 })
-                ->thisMonth()
+                ->whereYear('date', $monthDate->year)
+                ->whereMonth('date', $monthDate->month)
                 ->sum('amount');
             
             $monthWageEarnings = $monthChi - $monthThu;
             $monthBaseSalary = $staff->base_salary ?? 0;
             
-            // Get adjustments for current month
-            $currentMonth = now()->startOfMonth();
+            // Get adjustments for selected month
             $monthAdjustments = StaffAdjustment::where('staff_id', $staff->id)
-                ->forMonth($currentMonth)
+                ->forMonth($monthDate)
                 ->get();
             
             $monthAdjustmentAdditions = $monthAdjustments->where('type', 'addition')->where('status', 'applied')->sum('amount');
             $monthAdjustmentDeductions = $monthAdjustments->where('type', 'deduction')->where('status', 'applied')->sum('amount');
             
-            // Calculate salary advances for current month
+            // Calculate salary advances for selected month
             $monthSalaryAdvances = SalaryAdvance::where('staff_id', $staff->id)
-                ->forMonth($currentMonth)
+                ->forMonth($monthDate)
                 ->sum('from_earnings');
             
             // Statistics
@@ -121,9 +129,9 @@ class ProfileController extends Controller
                 'months_worked' => $monthsWorked,
             ];
             
-            // Get adjustments with details
+            // Get adjustments with details for selected month
             $adjustments = StaffAdjustment::where('staff_id', $staff->id)
-                ->forMonth($currentMonth)
+                ->forMonth($monthDate)
                 ->with(['creator', 'incident'])
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -156,6 +164,8 @@ class ProfileController extends Controller
             'adjustments' => $adjustments,
             'pendingDebts' => $pendingDebts,
             'totalDebt' => $totalDebt,
+            'selectedMonth' => $selectedMonth,
+            'monthDate' => $monthDate,
         ]);
     }
 
