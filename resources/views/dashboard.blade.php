@@ -27,6 +27,9 @@
             @endif
 
             {{-- Statistics Cards --}}
+            @cannot('view reports')
+            {{-- Ẩn thống kê cho driver và roles không có quyền view reports --}}
+            @else
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {{-- Total Vehicles --}}
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -101,6 +104,7 @@
                     </div>
                 </div>
             </div>
+            @endcannot
 
             {{-- Quick Entry Form - Full Width --}}
             @php

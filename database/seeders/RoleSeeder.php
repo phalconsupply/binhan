@@ -84,11 +84,12 @@ class RoleSeeder extends Seeder
             'manage settings',
         ]);
 
-        // Driver - view only own vehicle
+        // Driver - view only own vehicle and create incidents
         $driver = Role::firstOrCreate(['name' => 'driver']);
         $driver->syncPermissions([
             'view vehicles',
             'view incidents',
+            'create incidents',
             'view transactions',
         ]);
 
