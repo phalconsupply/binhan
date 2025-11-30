@@ -165,13 +165,17 @@
                                             @can('edit incidents')
                                             <a href="{{ route('incidents.edit', $incident) }}" class="text-indigo-600 hover:text-indigo-900">Sửa</a>
                                             @endcan
-                                            @can('delete incidents')
+                                            @php
+                                                $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())->where('staff_type', 'vehicle_owner')->exists();
+                                                $canDelete = $isVehicleOwner || auth()->user()->can('delete incidents');
+                                            @endphp
+                                            @if($canDelete)
                                             <form action="{{ route('incidents.destroy', $incident) }}" method="POST" class="inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="text-red-600 hover:text-red-900">Xóa</button>
                                             </form>
-                                            @endcan
+                                            @endif
                                         </td>
                                     </tr>
                                     @endforeach
