@@ -73,4 +73,9 @@ class SalaryAdvance extends Model
     {
         return $query->where('debt_amount', '>', 0);
     }
+
+    public function scopeDebt($query)
+    {
+        return $query->where('debt_amount', '>', 0);
+    }
 }
