@@ -216,15 +216,17 @@
                                         <div>
                                             <label class="block text-xs text-gray-600 mb-1">Lái xe</label>
                                             <div id="drivers-container" class="space-y-2">
-                                                <div class="driver-item flex gap-2">
+                                                <div class="driver-item flex flex-col sm:flex-row gap-2">
                                                     <select name="drivers[0][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                                         <option value="">-- Chọn lái xe --</option>
                                                         @foreach(\App\Models\Staff::active()->where('staff_type', 'driver')->orderBy('full_name')->get() as $driver)
                                                             <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
                                                         @endforeach
                                                     </select>
-                                                    <input type="text" name="drivers[0][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                                                    <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
+                                                    <div class="flex gap-2 sm:flex-1">
+                                                        <input type="text" name="drivers[0][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                        <button type="button" onclick="removeStaffRow(this)" class="px-3 sm:px-2 text-red-600 hover:text-red-800">✕</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <button type="button" onclick="addDriverRow()" class="mt-1 text-xs text-blue-600 hover:text-blue-800">+ Thêm</button>
@@ -233,15 +235,17 @@
                                         <div>
                                             <label class="block text-xs text-gray-600 mb-1">Nhân viên y tế</label>
                                             <div id="medical-staff-container" class="space-y-2">
-                                                <div class="medical-staff-item flex gap-2">
+                                                <div class="medical-staff-item flex flex-col sm:flex-row gap-2">
                                                     <select name="medical_staff[0][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                                         <option value="">-- Chọn NVYT --</option>
                                                         @foreach(\App\Models\Staff::active()->where('staff_type', 'medical_staff')->orderBy('full_name')->get() as $staff)
                                                             <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
                                                         @endforeach
                                                     </select>
-                                                    <input type="text" name="medical_staff[0][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                                                    <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
+                                                    <div class="flex gap-2 sm:flex-1">
+                                                        <input type="text" name="medical_staff[0][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                                        <button type="button" onclick="removeStaffRow(this)" class="px-3 sm:px-2 text-red-600 hover:text-red-800">✕</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <button type="button" onclick="addMedicalStaffRow()" class="mt-1 text-xs text-blue-600 hover:text-blue-800">+ Thêm</button>
@@ -482,9 +486,9 @@
         addIncidentServiceBtn.addEventListener('click', function() {
             incidentServiceCount++;
             const serviceRow = document.createElement('div');
-            serviceRow.className = 'grid grid-cols-12 gap-2 items-start bg-gray-50 p-2 rounded';
+            serviceRow.className = 'flex flex-col sm:grid sm:grid-cols-12 gap-2 items-start bg-gray-50 p-2 rounded';
             serviceRow.innerHTML = `
-                <div class="col-span-6">
+                <div class="sm:col-span-6">
                     <input type="text" 
                         name="incident_services[${incidentServiceCount}][service_name]" 
                         list="incident_services_datalist"
@@ -492,25 +496,27 @@
                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
                         onchange="autoFillIncidentServicePrice(this, ${incidentServiceCount})">
                 </div>
-                <div class="col-span-3">
-                    <input type="text" 
-                        name="incident_services[${incidentServiceCount}][amount]" 
-                        data-currency 
-                        placeholder="Số tiền" 
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-                </div>
-                <div class="col-span-2">
-                    <input type="text" 
-                        name="incident_services[${incidentServiceCount}][note]" 
-                        placeholder="Ghi chú" 
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-                </div>
-                <div class="col-span-1 flex justify-center">
-                    <button type="button" onclick="this.closest('.grid').remove()" class="text-red-500 hover:text-red-700">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
+                <div class="flex gap-2 sm:contents">
+                    <div class="flex-1 sm:col-span-3">
+                        <input type="text" 
+                            name="incident_services[${incidentServiceCount}][amount]" 
+                            data-currency 
+                            placeholder="Số tiền" 
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                    </div>
+                    <div class="flex-1 sm:col-span-2">
+                        <input type="text" 
+                            name="incident_services[${incidentServiceCount}][note]" 
+                            placeholder="Ghi chú" 
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                    </div>
+                    <div class="sm:col-span-1 flex justify-center">
+                        <button type="button" onclick="this.closest('.flex, .grid').remove()" class="text-red-500 hover:text-red-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             `;
             incidentServicesContainer.appendChild(serviceRow);
@@ -633,7 +639,7 @@
         function addDriverRow() {
             const container = document.getElementById('drivers-container');
             const newRow = document.createElement('div');
-            newRow.className = 'driver-item flex gap-2';
+            newRow.className = 'driver-item flex flex-col sm:flex-row gap-2';
             newRow.innerHTML = `
                 <select name="drivers[${driverIndex}][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                     <option value="">-- Chọn lái xe --</option>
@@ -641,8 +647,10 @@
                         <option value="{{ $driver->id }}">{{ $driver->employee_code }} - {{ $driver->full_name }}</option>
                     @endforeach
                 </select>
-                <input type="text" name="drivers[${driverIndex}][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
+                <div class="flex gap-2 sm:flex-1">
+                    <input type="text" name="drivers[${driverIndex}][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <button type="button" onclick="removeStaffRow(this)" class="px-3 sm:px-2 text-red-600 hover:text-red-800">✕</button>
+                </div>
             `;
             container.appendChild(newRow);
             driverIndex++;
@@ -651,7 +659,7 @@
         function addMedicalStaffRow() {
             const container = document.getElementById('medical-staff-container');
             const newRow = document.createElement('div');
-            newRow.className = 'medical-staff-item flex gap-2';
+            newRow.className = 'medical-staff-item flex flex-col sm:flex-row gap-2';
             newRow.innerHTML = `
                 <select name="medical_staff[${medicalStaffIndex}][staff_id]" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                     <option value="">-- Chọn NVYT --</option>
@@ -659,8 +667,10 @@
                         <option value="{{ $staff->id }}">{{ $staff->employee_code }} - {{ $staff->full_name }}</option>
                     @endforeach
                 </select>
-                <input type="text" name="medical_staff[${medicalStaffIndex}][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                <button type="button" onclick="removeStaffRow(this)" class="px-2 text-red-600 hover:text-red-800">✕</button>
+                <div class="flex gap-2 sm:flex-1">
+                    <input type="text" name="medical_staff[${medicalStaffIndex}][wage]" placeholder="Tiền công" data-currency class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <button type="button" onclick="removeStaffRow(this)" class="px-3 sm:px-2 text-red-600 hover:text-red-800">✕</button>
+                </div>
             `;
             container.appendChild(newRow);
             medicalStaffIndex++;
