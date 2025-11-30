@@ -486,26 +486,26 @@
         addIncidentServiceBtn.addEventListener('click', function() {
             incidentServiceCount++;
             const serviceRow = document.createElement('div');
-            serviceRow.className = 'incident-service-item flex flex-col sm:flex-row gap-2';
+            serviceRow.className = 'incident-service-item space-y-2 p-3 bg-gray-50 rounded border border-gray-200';
             serviceRow.innerHTML = `
-                <input type="text" 
-                    name="incident_services[${incidentServiceCount}][service_name]" 
-                    list="incident_services_datalist"
-                    placeholder="Tên dịch vụ..." 
-                    class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                    onchange="autoFillIncidentServicePrice(this, ${incidentServiceCount})">
-                <div class="flex gap-2 sm:flex-1">
+                <div class="flex items-center gap-2">
                     <input type="text" 
-                        name="incident_services[${incidentServiceCount}][amount]" 
-                        data-currency 
-                        placeholder="Số tiền" 
-                        class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-                    <input type="text" 
-                        name="incident_services[${incidentServiceCount}][note]" 
-                        placeholder="Ghi chú" 
-                        class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-                    <button type="button" onclick="removeIncidentServiceRow(this)" class="px-3 sm:px-2 text-red-600 hover:text-red-800">✕</button>
+                        name="incident_services[${incidentServiceCount}][service_name]" 
+                        list="incident_services_datalist"
+                        placeholder="Tên dịch vụ..." 
+                        class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                        onchange="autoFillIncidentServicePrice(this, ${incidentServiceCount})">
+                    <button type="button" onclick="removeIncidentServiceRow(this)" class="px-3 text-red-600 hover:text-red-800">✕</button>
                 </div>
+                <input type="text" 
+                    name="incident_services[${incidentServiceCount}][amount]" 
+                    data-currency 
+                    placeholder="Số tiền" 
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                <input type="text" 
+                    name="incident_services[${incidentServiceCount}][note]" 
+                    placeholder="Ghi chú" 
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
             `;
             incidentServicesContainer.appendChild(serviceRow);
             
