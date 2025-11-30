@@ -26,18 +26,8 @@
                     </header>
 
                     <div class="mt-6">
-                        @if($earnings->count() > 0)
+                        @if($earnings && $earnings->count() > 0)
                             {{-- Summary Stats --}}
-                            @php
-                                $totalEarnings = Transaction::where('staff_id', $staff->id)
-                                    ->where('type', 'chi')
-                                    ->sum('amount');
-                                $thisMonthEarnings = Transaction::where('staff_id', $staff->id)
-                                    ->where('type', 'chi')
-                                    ->whereYear('date', date('Y'))
-                                    ->whereMonth('date', date('m'))
-                                    ->sum('amount');
-                            @endphp
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                 <div class="bg-blue-50 rounded-lg p-4">
                                     <div class="text-sm text-gray-600">Tổng thu nhập</div>

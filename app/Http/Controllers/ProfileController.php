@@ -23,6 +23,8 @@ class ProfileController extends Controller
         // Check if user is staff (driver, medical_staff, or manager)
         $staff = Staff::where('user_id', $user->id)->first();
         $earnings = null;
+        $totalEarnings = 0;
+        $thisMonthEarnings = 0;
         
         if ($staff && in_array($staff->staff_type, ['driver', 'medical_staff', 'manager'])) {
             // Get earnings for this staff member
@@ -31,12 +33,25 @@ class ProfileController extends Controller
                 ->with(['incident.vehicle', 'incident.patient'])
                 ->orderBy('date', 'desc')
                 ->paginate(20);
+            
+            // Calculate totals
+            $totalEarnings = Transaction::where('staff_id', $staff->id)
+                ->where('type', 'chi')
+                ->sum('amount');
+            
+            $thisMonthEarnings = Transaction::where('staff_id', $staff->id)
+                ->where('type', 'chi')
+                ->whereYear('date', date('Y'))
+                ->whereMonth('date', date('m'))
+                ->sum('amount');
         }
         
         return view('profile.edit', [
             'user' => $user,
             'staff' => $staff,
             'earnings' => $earnings,
+            'totalEarnings' => $totalEarnings,
+            'thisMonthEarnings' => $thisMonthEarnings,
         ]);
     }
 
