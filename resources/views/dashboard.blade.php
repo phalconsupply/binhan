@@ -486,37 +486,25 @@
         addIncidentServiceBtn.addEventListener('click', function() {
             incidentServiceCount++;
             const serviceRow = document.createElement('div');
-            serviceRow.className = 'flex flex-col sm:grid sm:grid-cols-12 gap-2 items-start bg-gray-50 p-2 rounded';
+            serviceRow.className = 'incident-service-item flex flex-col sm:flex-row gap-2';
             serviceRow.innerHTML = `
-                <div class="sm:col-span-6">
+                <input type="text" 
+                    name="incident_services[${incidentServiceCount}][service_name]" 
+                    list="incident_services_datalist"
+                    placeholder="Tên dịch vụ..." 
+                    class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                    onchange="autoFillIncidentServicePrice(this, ${incidentServiceCount})">
+                <div class="flex gap-2 sm:flex-1">
                     <input type="text" 
-                        name="incident_services[${incidentServiceCount}][service_name]" 
-                        list="incident_services_datalist"
-                        placeholder="Tên dịch vụ..." 
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                        onchange="autoFillIncidentServicePrice(this, ${incidentServiceCount})">
-                </div>
-                <div class="flex gap-2 sm:contents">
-                    <div class="flex-1 sm:col-span-3">
-                        <input type="text" 
-                            name="incident_services[${incidentServiceCount}][amount]" 
-                            data-currency 
-                            placeholder="Số tiền" 
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-                    </div>
-                    <div class="flex-1 sm:col-span-2">
-                        <input type="text" 
-                            name="incident_services[${incidentServiceCount}][note]" 
-                            placeholder="Ghi chú" 
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-                    </div>
-                    <div class="sm:col-span-1 flex justify-center">
-                        <button type="button" onclick="this.closest('.flex, .grid').remove()" class="text-red-500 hover:text-red-700">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
+                        name="incident_services[${incidentServiceCount}][amount]" 
+                        data-currency 
+                        placeholder="Số tiền" 
+                        class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                    <input type="text" 
+                        name="incident_services[${incidentServiceCount}][note]" 
+                        placeholder="Ghi chú" 
+                        class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                    <button type="button" onclick="removeIncidentServiceRow(this)" class="px-3 sm:px-2 text-red-600 hover:text-red-800">✕</button>
                 </div>
             `;
             incidentServicesContainer.appendChild(serviceRow);
@@ -678,6 +666,10 @@
 
         function removeStaffRow(button) {
             button.closest('.driver-item, .medical-staff-item').remove();
+        }
+
+        function removeIncidentServiceRow(button) {
+            button.closest('.incident-service-item').remove();
         }
     </script>
     @endpush
