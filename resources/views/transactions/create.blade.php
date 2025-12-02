@@ -23,12 +23,14 @@
                                 Loại giao dịch <span class="text-red-500">*</span>
                             </label>
                             <select id="type" name="type" required 
+                                onchange="handleTypeChange(this.value)"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 <option value="thu" {{ old('type') == 'thu' ? 'selected' : '' }}>Thu</option>
                                 <option value="chi" {{ old('type') == 'chi' ? 'selected' : '' }}>Chi</option>
                                 <option value="du_kien_chi" {{ old('type') == 'du_kien_chi' ? 'selected' : '' }}>Dự kiến chi</option>
+                                <option value="nop_quy" {{ old('type') == 'nop_quy' ? 'selected' : '' }}>Nộp quỹ</option>
                             </select>
-                            <p class="mt-1 text-xs text-gray-500">💡 "Dự kiến chi" sẽ được trừ khỏi lợi nhuận và thống kê riêng là "khoản chưa chi"</p>
+                            <p class="mt-1 text-xs text-gray-500" id="type-hint">💡 "Dự kiến chi" sẽ được trừ khỏi lợi nhuận và thống kê riêng là "khoản chưa chi"</p>
                         </div>
 
                         {{-- Vehicle --}}
@@ -48,7 +50,7 @@
                         </div>
 
                         {{-- Incident (Optional) --}}
-                        <div x-data="incidentSearch({{ $selectedIncident ? $selectedIncident->id : 'null' }}, '{{ $selectedIncident ? '#'.$selectedIncident->id.' - '.($selectedIncident->patient->name ?? 'N/A') : '' }}')">
+                        <div id="incident-container" x-data="incidentSearch({{ $selectedIncident ? $selectedIncident->id : 'null' }}, '{{ $selectedIncident ? '#'.$selectedIncident->id.' - '.($selectedIncident->patient->name ?? 'N/A') : '' }}')">
                             <label for="incident_search" class="block text-sm font-medium text-gray-700">
                                 Chuyến đi (tùy chọn)
                             </label>
@@ -170,6 +172,35 @@
                 }
             }
         }
+        
+        function handleTypeChange(type) {
+            const incidentContainer = document.getElementById('incident-container');
+            const incidentInput = document.getElementById('incident_id');
+            const typeHint = document.getElementById('type-hint');
+            
+            if (type === 'nop_quy') {
+                // Ẩn chuyến đi khi chọn Nộp quỹ
+                incidentContainer.style.display = 'none';
+                incidentInput.value = '';
+                typeHint.textContent = '💡 "Nộp quỹ" sẽ cộng tiền vào quỹ. Nếu chọn xe liên quan, tiền sẽ cộng vào số dư xe (không tính phí 15%). Nếu không chọn xe hoặc xe không có chủ, tiền sẽ cộng vào lợi nhuận công ty.';
+            } else {
+                // Hiện lại chuyến đi cho các loại khác
+                incidentContainer.style.display = 'block';
+                if (type === 'du_kien_chi') {
+                    typeHint.textContent = '💡 "Dự kiến chi" sẽ được trừ khỏi lợi nhuận và thống kê riêng là "khoản chưa chi"';
+                } else {
+                    typeHint.textContent = '';
+                }
+            }
+        }
+        
+        // Gọi khi load trang nếu đã có giá trị cũ
+        document.addEventListener('DOMContentLoaded', function() {
+            const typeSelect = document.getElementById('type');
+            if (typeSelect && typeSelect.value === 'nop_quy') {
+                handleTypeChange('nop_quy');
+            }
+        });
     </script>
     @endpush
 </x-app-layout>

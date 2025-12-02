@@ -95,9 +95,15 @@ class TransactionController extends Controller
             return !empty($transaction->vehicle_maintenance_id);
         });
         
+        // Separate fund deposit transactions (nop_quy)
+        $fundDepositTransactions = $allTransactions->filter(function($transaction) {
+            return $transaction->type === 'nop_quy';
+        });
+        
         $regularTransactions = $allTransactions->reject(function($transaction) {
             return str_contains($transaction->note ?? '', 'Chia cổ tức') ||
-                   !empty($transaction->vehicle_maintenance_id);
+                   !empty($transaction->vehicle_maintenance_id) ||
+                   $transaction->type === 'nop_quy';
         });
 
         // Group regular transactions by incident_id
@@ -126,6 +132,7 @@ class TransactionController extends Controller
                 'profit_after_fee' => $profitAfterFee,
                 'is_dividend' => false,
                 'is_maintenance' => false,
+                'is_fund_deposit' => false,
                 'is_other' => false,
             ];
         })->sortByDesc('date');
@@ -158,6 +165,7 @@ class TransactionController extends Controller
                 'profit_after_fee' => 0,
                 'is_dividend' => true,
                 'is_maintenance' => false,
+                'is_fund_deposit' => false,
                 'is_other' => false,
             ];
             $finalGroups->push($dividendGroup);
@@ -179,18 +187,42 @@ class TransactionController extends Controller
                 'profit_after_fee' => 0,
                 'is_dividend' => false,
                 'is_maintenance' => true,
+                'is_fund_deposit' => false,
                 'is_other' => false,
             ];
             $finalGroups->push($maintenanceGroup);
         }
 
-        // 3. Other transactions group (if exists)
+        // 3. Fund Deposit group (if exists) - Nộp quỹ
+        if ($fundDepositTransactions->isNotEmpty()) {
+            $fundDepositGroup = [
+                'incident' => null,
+                'vehicle' => null,
+                'date' => $fundDepositTransactions->first()->date,
+                'transactions' => $fundDepositTransactions,
+                'total_revenue' => $fundDepositTransactions->sum('amount'),
+                'total_expense' => 0,
+                'total_planned_expense' => 0,
+                'net_amount' => $fundDepositTransactions->sum('amount'),
+                'has_owner' => false,
+                'management_fee' => 0, // Nộp quỹ KHÔNG tính phí 15%
+                'profit_after_fee' => $fundDepositTransactions->sum('amount'),
+                'is_dividend' => false,
+                'is_maintenance' => false,
+                'is_fund_deposit' => true,
+                'is_other' => false,
+            ];
+            $finalGroups->push($fundDepositGroup);
+        }
+
+        // 4. Other transactions group (if exists)
         if ($otherGroup) {
             $otherGroup['is_other'] = true;
+            $otherGroup['is_fund_deposit'] = false;
             $finalGroups->push($otherGroup);
         }
 
-        // 4. Incident groups (sorted by date desc)
+        // 5. Incident groups (sorted by date desc)
         $finalGroups = $finalGroups->merge($incidentGroups);
 
         $groupedTransactions = $finalGroups->values();
@@ -306,6 +338,41 @@ class TransactionController extends Controller
                     }
                 }
             }
+            
+            // Add "Nộp quỹ" (Fund Deposits) to company profit
+            // Logic: 
+            // - If vehicle_id is null OR vehicle has no owner: add full amount to company profit
+            // - If vehicle_id exists AND vehicle has owner: add to vehicle's balance (NOT company profit)
+            $fundDeposits = Transaction::where('type', 'nop_quy')->get();
+            
+            foreach ($fundDeposits as $deposit) {
+                $shouldAddToCompany = false;
+                
+                if (!$deposit->vehicle_id) {
+                    // No vehicle selected -> add to company
+                    $shouldAddToCompany = true;
+                } else {
+                    // Vehicle selected -> check if has owner
+                    $vehicle = Vehicle::find($deposit->vehicle_id);
+                    if (!$vehicle || !$vehicle->hasOwner()) {
+                        // Vehicle has no owner -> add to company
+                        $shouldAddToCompany = true;
+                    }
+                    // If vehicle has owner -> don't add to company (will be added to vehicle's balance)
+                }
+                
+                if ($shouldAddToCompany) {
+                    $companyProfit += $deposit->amount;
+                    
+                    if ($deposit->date->isToday()) {
+                        $companyTodayProfit += $deposit->amount;
+                    }
+                    
+                    if ($deposit->date->isCurrentMonth()) {
+                        $companyMonthProfit += $deposit->amount;
+                    }
+                }
+            }
         }
         
         $stats['total_net'] = $companyProfit;
@@ -343,12 +410,28 @@ class TransactionController extends Controller
         $validated = $request->validate([
             'incident_id' => 'nullable|exists:incidents,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
-            'type' => 'required|in:thu,chi,du_kien_chi',
+            'type' => 'required|in:thu,chi,du_kien_chi,nop_quy',
             'amount' => 'required|numeric|min:0',
             'method' => 'required|in:cash,bank,other',
             'date' => 'required|date',
             'note' => 'nullable|string',
         ]);
+
+        // Nếu là Nộp quỹ, không cho phép chọn incident_id
+        if ($validated['type'] === 'nop_quy') {
+            $validated['incident_id'] = null;
+            $validated['category'] = 'nop_quy';
+            
+            // Thêm ghi chú tự động nếu chưa có
+            if (empty($validated['note'])) {
+                if (!empty($validated['vehicle_id'])) {
+                    $vehicle = Vehicle::find($validated['vehicle_id']);
+                    $validated['note'] = 'Nộp quỹ - ' . $vehicle->license_plate;
+                } else {
+                    $validated['note'] = 'Nộp quỹ - Tổng công ty';
+                }
+            }
+        }
 
         $validated['recorded_by'] = auth()->id();
 

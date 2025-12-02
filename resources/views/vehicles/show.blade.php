@@ -115,7 +115,7 @@
             </div>
 
             {{-- Statistics --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <p class="text-sm text-gray-500">Tổng chuyến đi</p>
@@ -135,6 +135,14 @@
                         <p class="text-sm text-gray-500">Tổng chi</p>
                         <p class="text-xl font-bold text-red-600">{{ number_format($stats['total_expense'], 0, ',', '.') }}đ</p>
                         <p class="text-xs text-gray-500">{{ number_format($stats['month_expense'], 0, ',', '.') }}đ tháng này</p>
+                    </div>
+                </div>
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <p class="text-sm text-gray-500">Nộp quỹ</p>
+                        <p class="text-xl font-bold text-blue-600">{{ number_format($stats['total_fund_deposit'], 0, ',', '.') }}đ</p>
+                        <p class="text-xs text-gray-500">{{ number_format($stats['month_fund_deposit'], 0, ',', '.') }}đ tháng này</p>
+                        <p class="text-xs text-blue-500 mt-1">(Không tính phí 15%)</p>
                     </div>
                 </div>
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -750,6 +758,12 @@
                                                     <div class="text-red-600 font-semibold">-{{ number_format($group['total_expense'], 0, ',', '.') }}đ</div>
                                                     <div class="text-xs text-gray-500">Chi</div>
                                                 </div>
+                                                @if(isset($group['total_fund_deposit']) && $group['total_fund_deposit'] > 0)
+                                                <div class="text-right">
+                                                    <div class="text-blue-600 font-semibold">+{{ number_format($group['total_fund_deposit'], 0, ',', '.') }}đ</div>
+                                                    <div class="text-xs text-gray-500">Nộp quỹ</div>
+                                                </div>
+                                                @endif
                                                 @if($group['total_planned_expense'] > 0)
                                                 <div class="text-right">
                                                     <div class="text-orange-600 font-semibold">-{{ number_format($group['total_planned_expense'], 0, ',', '.') }}đ</div>
@@ -795,9 +809,9 @@
                                                 </thead>
                                                 <tbody class="divide-y divide-gray-100">
                                                     @foreach($group['transactions'] as $transaction)
-                                                    <tr class="hover:bg-gray-50 {{ $transaction->category == 'điều_chỉnh_lương' ? 'bg-blue-50' : '' }} {{ $transaction->vehicle_maintenance_id ? 'bg-green-50' : '' }}">
+                                                    <tr class="hover:bg-gray-50 {{ $transaction->category == 'điều_chỉnh_lương' ? 'bg-blue-50' : '' }} {{ $transaction->vehicle_maintenance_id ? 'bg-green-50' : '' }} {{ $transaction->type == 'nop_quy' ? 'bg-blue-50' : '' }}">
                                                         <td class="py-2">
-                                                            <span class="px-2 py-1 text-xs rounded-full {{ $transaction->type == 'thu' ? 'bg-green-100 text-green-800' : ($transaction->type == 'du_kien_chi' ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800') }}">
+                                                            <span class="px-2 py-1 text-xs rounded-full {{ $transaction->type == 'thu' || $transaction->type == 'nop_quy' ? 'bg-green-100 text-green-800' : ($transaction->type == 'du_kien_chi' ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800') }}">
                                                                 {{ $transaction->type_label }}
                                                             </span>
                                                             @if($transaction->category == 'điều_chỉnh_lương')
@@ -812,13 +826,17 @@
                                                                 <span class="ml-1 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
                                                                     🏢 Công ty
                                                                 </span>
+                                                            @elseif($transaction->type == 'nop_quy')
+                                                                <span class="ml-1 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                                                                    💰 Không tính phí
+                                                                </span>
                                                             @endif
                                                         </td>
                                                         <td class="py-2">
                                                             {{ $transaction->note ?? '-' }}
                                                         </td>
-                                                        <td class="py-2 text-right font-semibold {{ $transaction->type == 'thu' ? 'text-green-600' : ($transaction->type == 'du_kien_chi' ? 'text-orange-600' : 'text-red-600') }}">
-                                                            {{ $transaction->type == 'thu' ? '+' : '-' }}{{ number_format($transaction->amount, 0, ',', '.') }}đ
+                                                        <td class="py-2 text-right font-semibold {{ $transaction->type == 'thu' || $transaction->type == 'nop_quy' ? 'text-green-600' : ($transaction->type == 'du_kien_chi' ? 'text-orange-600' : 'text-red-600') }}">
+                                                            {{ $transaction->type == 'thu' || $transaction->type == 'nop_quy' ? '+' : '-' }}{{ number_format($transaction->amount, 0, ',', '.') }}đ
                                                         </td>
                                                         <td class="py-2">{{ $transaction->method_label }}</td>
                                                         <td class="py-2 text-xs text-gray-500">{{ $transaction->date->format('d/m/Y H:i') }}</td>

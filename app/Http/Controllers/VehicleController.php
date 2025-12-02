@@ -173,10 +173,16 @@ class VehicleController extends Controller
             $totalRevenue = $group->where('type', 'thu')->sum('amount');
             $totalExpense = $group->where('type', 'chi')->sum('amount');
             $totalPlannedExpense = $group->where('type', 'du_kien_chi')->sum('amount');
-            $netAmount = $totalRevenue - $totalExpense - $totalPlannedExpense;
+            $totalFundDeposit = $group->where('type', 'nop_quy')->sum('amount');
+            
+            // Nộp quỹ được cộng vào revenue nhưng KHÔNG tính phí 15%
+            $netAmount = $totalRevenue - $totalExpense - $totalPlannedExpense + $totalFundDeposit;
             
             $hasOwner = $vehicle->hasOwner();
-            $managementFee = ($hasOwner && $netAmount > 0) ? $netAmount * 0.15 : 0;
+            
+            // Chỉ tính management fee cho revenue thông thường, không tính cho Nộp quỹ
+            $revenueForFee = $totalRevenue - $totalExpense - $totalPlannedExpense;
+            $managementFee = ($hasOwner && $revenueForFee > 0) ? $revenueForFee * 0.15 : 0;
             $profitAfterFee = $netAmount - $managementFee;
             
             return [
@@ -187,6 +193,7 @@ class VehicleController extends Controller
                 'total_revenue' => $totalRevenue,
                 'total_expense' => $totalExpense,
                 'total_planned_expense' => $totalPlannedExpense,
+                'total_fund_deposit' => $totalFundDeposit,
                 'net_amount' => $netAmount,
                 'has_owner' => $hasOwner,
                 'management_fee' => $managementFee,
@@ -225,9 +232,11 @@ class VehicleController extends Controller
             'total_revenue' => (clone $statsQuery)->revenue()->sum('amount'),
             'total_expense' => (clone $statsQuery)->expense()->sum('amount'),
             'total_planned_expense' => (clone $statsQuery)->plannedExpense()->sum('amount'),
+            'total_fund_deposit' => (clone $statsQuery)->fundDeposit()->sum('amount'),
             'month_revenue' => $vehicle->transactions()->revenue()->thisMonth()->sum('amount'),
             'month_expense' => $vehicle->transactions()->expense()->thisMonth()->sum('amount'),
             'month_planned_expense' => $vehicle->transactions()->plannedExpense()->thisMonth()->sum('amount'),
+            'month_fund_deposit' => $vehicle->transactions()->fundDeposit()->thisMonth()->sum('amount'),
         ];
 
         // For vehicles with owner, separate owner maintenance costs
@@ -241,13 +250,16 @@ class VehicleController extends Controller
             $stats['total_expense_company'] = $stats['total_expense'] - $totalOwnerMaintenance;
             $stats['month_expense_company'] = $stats['month_expense'] - $monthOwnerMaintenance;
             
-            // Calculate net before owner costs
-            $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense_company'] - $stats['total_planned_expense'];
-            $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense_company'] - $stats['month_planned_expense'];
+            // Calculate net before owner costs (bao gồm fund deposit)
+            $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense_company'] - $stats['total_planned_expense'] + $stats['total_fund_deposit'];
+            $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense_company'] - $stats['month_planned_expense'] + $stats['month_fund_deposit'];
             
-            // Calculate management fee (15% of profit before owner maintenance)
-            $totalManagementFee = $stats['total_net'] > 0 ? $stats['total_net'] * 0.15 : 0;
-            $monthManagementFee = $stats['month_net'] > 0 ? $stats['month_net'] * 0.15 : 0;
+            // Calculate management fee (15% of profit BEFORE fund deposit, không tính phí cho Nộp quỹ)
+            $totalNetBeforeFundDeposit = $stats['total_revenue'] - $stats['total_expense_company'] - $stats['total_planned_expense'];
+            $monthNetBeforeFundDeposit = $stats['month_revenue'] - $stats['month_expense_company'] - $stats['month_planned_expense'];
+            
+            $totalManagementFee = $totalNetBeforeFundDeposit > 0 ? $totalNetBeforeFundDeposit * 0.15 : 0;
+            $monthManagementFee = $monthNetBeforeFundDeposit > 0 ? $monthNetBeforeFundDeposit * 0.15 : 0;
             
             $stats['total_management_fee'] = $totalManagementFee;
             $stats['month_management_fee'] = $monthManagementFee;
@@ -260,9 +272,9 @@ class VehicleController extends Controller
             $stats['total_owner_maintenance'] = $totalOwnerMaintenance;
             $stats['month_owner_maintenance'] = $monthOwnerMaintenance;
         } else {
-            // Company vehicle: include all expenses
-            $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'] - $stats['total_planned_expense'];
-            $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
+            // Company vehicle: include all expenses and fund deposits
+            $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'] - $stats['total_planned_expense'] + $stats['total_fund_deposit'];
+            $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'] + $stats['month_fund_deposit'];
         }
 
         // Get recent incidents (4 most recent)

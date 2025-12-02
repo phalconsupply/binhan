@@ -221,6 +221,11 @@ class Transaction extends Model
         return $query->where('type', 'du_kien_chi');
     }
 
+    public function scopeFundDeposit($query)
+    {
+        return $query->where('type', 'nop_quy');
+    }
+
     public function scopeToday($query)
     {
         return $query->whereDate('date', today());
@@ -264,6 +269,7 @@ class Transaction extends Model
             'thu' => 'Thu',
             'chi' => 'Chi',
             'du_kien_chi' => 'Dự kiến chi',
+            'nop_quy' => 'Nộp quỹ',
         ][$this->type] ?? $this->type;
     }
 
