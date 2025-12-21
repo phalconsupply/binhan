@@ -76,10 +76,43 @@ php artisan serve
 
 ---
 
+## 🤖 AI Assistant Setup (Claude Sonnet 4.5)
+
+Project này đã được cấu hình sẵn để sử dụng **Claude Sonnet 4.5** trong VS Code.
+
+### Quick Setup:
+
+1. **Cài đặt VS Code Extension:**
+   - [Continue.dev](https://marketplace.visualstudio.com/items?itemName=continue.continue) (Khuyên dùng)
+   - Hoặc [Cline](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev)
+
+2. **Lấy API Key:**
+   - Truy cập [Anthropic Console](https://console.anthropic.com/)
+   - Tạo API key mới
+
+3. **Setup API Key:**
+   ```bash
+   # Windows
+   setx ANTHROPIC_API_KEY "your_api_key_here"
+   
+   # Linux/Mac
+   echo 'export ANTHROPIC_API_KEY="your_api_key_here"' >> ~/.bashrc
+   source ~/.bashrc
+   ```
+
+4. **Chọn Model:**
+   - Mở Continue sidebar hoặc Cline
+   - Chọn model: **"Claude Sonnet 4.5"**
+
+📖 **Chi tiết:** Xem [.vscode/README.md](./.vscode/README.md) để biết thêm thông tin.
+
+---
+
 ## 📚 Documentation
 
 ### 📚 Documentation:
 
+- **[.vscode/README.md](./.vscode/README.md)** - Hướng dẫn setup Claude Sonnet 4.5 trong VS Code
 - **[DEPLOYMENT-CHECKLIST.md](./DEPLOYMENT-CHECKLIST.md)** - Checklist triển khai đầy đủ
 - **[SETUP-NEW-MACHINE.md](./SETUP-NEW-MACHINE.md)** - Hướng dẫn setup máy mới
 - **[TROUBLESHOOTING-ANALYSIS.md](./TROUBLESHOOTING-ANALYSIS.md)** - Phân tích lỗi thường gặp

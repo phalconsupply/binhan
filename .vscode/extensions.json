@@ -1,0 +1,33 @@
+{
+  "recommendations": [
+    // AI Coding Assistants - Claude Sonnet 4.5 Support
+    "continue.continue",
+    "saoudrizwan.claude-dev",
+    
+    // PHP/Laravel Development
+    "bmewburn.vscode-intelephense-client",
+    "onecentlin.laravel-blade",
+    "shufo.vscode-blade-formatter",
+    "amiralizadeh9480.laravel-extra-intellisense",
+    "ryannaddy.laravel-artisan",
+    
+    // JavaScript/Vue/Tailwind
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    
+    // Database
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-mysql",
+    
+    // Git
+    "eamodio.gitlens",
+    "donjayamanne.githistory",
+    
+    // Utilities
+    "editorconfig.editorconfig",
+    "mikestead.dotenv",
+    "gruntfuggly.todo-tree",
+    "streetsidesoftware.code-spell-checker"
+  ]
+}

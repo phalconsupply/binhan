@@ -1,0 +1,88 @@
+{
+  // Claude/Anthropic AI Assistant Settings
+  "cline.anthropic.apiKey": "${env:ANTHROPIC_API_KEY}",
+  "cline.anthropic.model": "claude-sonnet-4.5-20241022",
+  
+  // Continue.dev Settings
+  "continue.telemetryEnabled": false,
+  "continue.enableTabAutocomplete": true,
+  
+  // General Editor Settings
+  "editor.fontSize": 14,
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  
+  // PHP/Laravel Settings
+  "php.suggest.basic": true,
+  "php.validate.enable": true,
+  "php.validate.run": "onSave",
+  "[php]": {
+    "editor.defaultFormatter": "bmewburn.vscode-intelephense-client",
+    "editor.tabSize": 4
+  },
+  "[blade]": {
+    "editor.defaultFormatter": "shufo.vscode-blade-formatter",
+    "editor.tabSize": 4
+  },
+  
+  // JavaScript/Vue Settings
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  
+  // Files Settings
+  "files.associations": {
+    "*.blade.php": "blade",
+    "*.env.example": "dotenv"
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/node_modules": true,
+    "**/vendor": true,
+    "**/.phpunit.cache": true
+  },
+  
+  // Search Settings
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/vendor": true,
+    "**/storage": true,
+    "**/public/build": true,
+    "**/.phpunit.cache": true
+  },
+  
+  // Intelephense Settings (PHP)
+  "intelephense.files.exclude": [
+    "**/.git/**",
+    "**/.svn/**",
+    "**/.hg/**",
+    "**/CVS/**",
+    "**/.DS_Store/**",
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**/{Tests,tests}/**",
+    "**/.history/**",
+    "**/vendor/**/test/**",
+    "**/vendor/**/tests/**"
+  ],
+  
+  // Git Settings
+  "git.ignoreLimitWarning": true,
+  
+  // Terminal Settings
+  "terminal.integrated.fontSize": 13
+}
