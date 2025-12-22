@@ -987,5 +987,47 @@ class IncidentController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Export incidents to Excel
+     */
+    public function export(Request $request)
+    {
+        // Check if user is vehicle owner and only allow export their own vehicles
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        // Get filters from current page request (same as index filters)
+        $filters = [
+            'search' => $request->input('search'),
+            'vehicle_id' => $request->input('vehicle_id'),
+            'status' => $request->input('status'),
+            'date' => $request->input('date'),
+        ];
+
+        // If vehicle owner, limit to their vehicles
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            // If a specific vehicle is selected, verify ownership
+            if (!empty($filters['vehicle_id'])) {
+                if (!in_array($filters['vehicle_id'], $ownedVehicleIds)) {
+                    abort(403, 'Bạn không có quyền xuất dữ liệu xe này.');
+                }
+            } else {
+                // Set filter to owned vehicles if not specified
+                $filters['owned_vehicle_ids'] = $ownedVehicleIds;
+            }
+        }
+
+        $fileName = 'danh-sach-chuyen-di-' . now()->format('Y-m-d-His') . '.xlsx';
+        
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\IncidentsIndexExport($filters), $fileName);
+    }
 }
 

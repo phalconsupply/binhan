@@ -79,6 +79,7 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('vehicles/{vehicle}/export-maintenances-excel', [VehicleController::class, 'exportMaintenancesExcel'])->name('vehicles.export-maintenances-excel');
     Route::get('vehicles/{vehicle}/export-maintenances-pdf', [VehicleController::class, 'exportMaintenancesPdf'])->name('vehicles.export-maintenances-pdf');
+    Route::get('vehicles/{vehicle}/export-transactions', [VehicleController::class, 'exportTransactions'])->name('vehicles.export-transactions');
     Route::resource('vehicles', VehicleController::class);
     
     // Loan routes
@@ -94,6 +95,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Incident routes
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('incidents/search', [IncidentController::class, 'search'])->name('incidents.search');
+    Route::get('incidents/export', [IncidentController::class, 'export'])->name('incidents.export');
     Route::resource('incidents', IncidentController::class);
 });
 

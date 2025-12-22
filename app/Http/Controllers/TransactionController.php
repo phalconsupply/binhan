@@ -292,11 +292,42 @@ class TransactionController extends Controller
         // Calculate profit (different for owner vs company)
         if ($isVehicleOwner) {
             // For vehicle owner: simple calculation
-            // Owner's profit = Total Revenue - Total Expense - Total Planned Expense
-            // (No need to separate by incident or apply 85% because owner sees their vehicle's full P&L)
-            $companyProfit = $stats['total_revenue'] - $stats['total_expense'] - $stats['total_planned_expense'];
-            $companyTodayProfit = $stats['today_revenue'] - $stats['today_expense'] - $stats['today_planned_expense'];
-            $companyMonthProfit = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'];
+            // Owner's profit = Total Revenue - Total Expense (excluding owner maintenance) - Total Planned Expense + Fund Deposit
+            // Need to exclude "bảo_trì_xe_chủ_riêng" from expense calculation (deducted separately, not from company)
+            
+            // Get owner maintenance costs (these are deducted from vehicle profit, not company expense)
+            $totalOwnerMaintenance = (clone $statsQuery)->expense()->where('category', 'bảo_trì_xe_chủ_riêng')->sum('amount');
+            $todayOwnerMaintenance = (clone $statsQuery)->expense()->today()->where('category', 'bảo_trì_xe_chủ_riêng')->sum('amount');
+            $monthOwnerMaintenance = (clone $statsQuery)->expense()->thisMonth()->where('category', 'bảo_trì_xe_chủ_riêng')->sum('amount');
+            
+            // Calculate company expenses (excluding owner maintenance)
+            $totalExpenseCompany = $stats['total_expense'] - $totalOwnerMaintenance;
+            $todayExpenseCompany = $stats['today_expense'] - $todayOwnerMaintenance;
+            $monthExpenseCompany = $stats['month_expense'] - $monthOwnerMaintenance;
+            
+            // Include fund deposits for the owner's vehicle
+            $totalFundDeposit = (clone $statsQuery)->fundDeposit()->sum('amount');
+            $todayFundDeposit = (clone $statsQuery)->fundDeposit()->today()->sum('amount');
+            $monthFundDeposit = (clone $statsQuery)->fundDeposit()->whereMonth('date', now()->month)->whereYear('date', now()->year)->sum('amount');
+            
+            // Calculate net profit (before management fee and owner maintenance)
+            $totalNet = $stats['total_revenue'] - $totalExpenseCompany - $stats['total_planned_expense'] + $totalFundDeposit;
+            $todayNet = $stats['today_revenue'] - $todayExpenseCompany - $stats['today_planned_expense'] + $todayFundDeposit;
+            $monthNet = $stats['month_revenue'] - $monthExpenseCompany - $stats['month_planned_expense'] + $monthFundDeposit;
+            
+            // Calculate management fee (15% of net BEFORE fund deposit)
+            $totalNetBeforeFundDeposit = $stats['total_revenue'] - $totalExpenseCompany - $stats['total_planned_expense'];
+            $todayNetBeforeFundDeposit = $stats['today_revenue'] - $todayExpenseCompany - $stats['today_planned_expense'];
+            $monthNetBeforeFundDeposit = $stats['month_revenue'] - $monthExpenseCompany - $stats['month_planned_expense'];
+            
+            $totalManagementFee = $totalNetBeforeFundDeposit > 0 ? $totalNetBeforeFundDeposit * 0.15 : 0;
+            $todayManagementFee = $todayNetBeforeFundDeposit > 0 ? $todayNetBeforeFundDeposit * 0.15 : 0;
+            $monthManagementFee = $monthNetBeforeFundDeposit > 0 ? $monthNetBeforeFundDeposit * 0.15 : 0;
+            
+            // Final profit after management fee and owner maintenance
+            $companyProfit = $totalNet - $totalManagementFee - $totalOwnerMaintenance;
+            $companyTodayProfit = $todayNet - $todayManagementFee - $todayOwnerMaintenance;
+            $companyMonthProfit = $monthNet - $monthManagementFee - $monthOwnerMaintenance;
         } else {
             // For company/admin: calculate based on incidents
             $companyProfit = 0;

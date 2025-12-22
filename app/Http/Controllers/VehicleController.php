@@ -6,6 +6,7 @@ use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\VehicleMaintenancesExport;
+use App\Exports\VehicleTransactionsExport;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class VehicleController extends Controller
@@ -170,10 +171,10 @@ class VehicleController extends Controller
                 return 'other_' . $transaction->id;
             }
         })->map(function($group) use ($vehicle) {
-            $totalRevenue = $group->where('type', 'thu')->sum('amount');
-            $totalExpense = $group->where('type', 'chi')->sum('amount');
-            $totalPlannedExpense = $group->where('type', 'du_kien_chi')->sum('amount');
-            $totalFundDeposit = $group->where('type', 'nop_quy')->sum('amount');
+            $totalRevenue = $group->filter(function($t) { return $t->type === 'thu'; })->sum('amount');
+            $totalExpense = $group->filter(function($t) { return $t->type === 'chi'; })->sum('amount');
+            $totalPlannedExpense = $group->filter(function($t) { return $t->type === 'du_kien_chi'; })->sum('amount');
+            $totalFundDeposit = $group->filter(function($t) { return $t->type === 'nop_quy'; })->sum('amount');
             
             // Nộp quỹ được cộng vào revenue nhưng KHÔNG tính phí 15%
             $netAmount = $totalRevenue - $totalExpense - $totalPlannedExpense + $totalFundDeposit;
@@ -455,4 +456,39 @@ class VehicleController extends Controller
 
         return $pdf->download('bao-tri-xe-' . $vehicle->license_plate . '-' . now()->format('Y-m-d') . '.pdf');
     }
+
+    /**
+     * Export vehicle transactions to Excel
+     */
+    public function exportTransactions(Request $request, Vehicle $vehicle)
+    {
+        // Check if user is vehicle owner and only allow export their own vehicles
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($vehicle->id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền xuất dữ liệu xe này.');
+            }
+        }
+
+        // Get filters from request
+        $filters = [
+            'date_from' => $request->input('date_from'),
+            'date_to' => $request->input('date_to'),
+            'transaction_type' => $request->input('transaction_type'),
+        ];
+
+        $fileName = 'giao-dich-' . $vehicle->license_plate . '-' . now()->format('Y-m-d-His') . '.xlsx';
+        
+        return Excel::download(new VehicleTransactionsExport($vehicle->id, $filters), $fileName);
+    }
 }
+

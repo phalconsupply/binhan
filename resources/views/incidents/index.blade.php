@@ -4,19 +4,30 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 Quản lý Chuyến đi
             </h2>
-            @php
-                $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())->where('staff_type', 'vehicle_owner')->exists();
-            @endphp
-            @if(!$isVehicleOwner)
-                @can('create incidents')
-                <a href="{{ route('incidents.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
+            <div class="flex gap-2">
+                {{-- Export Button - uses current filters --}}
+                <a href="{{ route('incidents.export', request()->all()) }}" 
+                   class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold uppercase tracking-widest rounded-md transition">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
-                    Thêm chuyến đi
+                    Xuất Excel
                 </a>
-                @endcan
-            @endif
+
+                @php
+                    $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())->where('staff_type', 'vehicle_owner')->exists();
+                @endphp
+                @if(!$isVehicleOwner)
+                    @can('create incidents')
+                    <a href="{{ route('incidents.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Thêm chuyến đi
+                    </a>
+                    @endcan
+                @endif
+            </div>
         </div>
     </x-slot>
 
