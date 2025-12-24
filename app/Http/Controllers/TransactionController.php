@@ -54,6 +54,7 @@ class TransactionController extends Controller
                 ->orWhereHas('incident', function($iq) use ($search) {
                     $iq->where('id', 'like', "%{$search}%");
                 })
+                ->orWhere('code', 'like', "%{$search}%")
                 ->orWhere('note', 'like', "%{$search}%")
                 ->orWhere('amount', 'like', "%{$search}%");
             });
@@ -95,11 +96,12 @@ class TransactionController extends Controller
             return !empty($transaction->vehicle_maintenance_id);
         });
         
-        // Separate fund deposit transactions (nop_quy)
+        // Separate fund deposit transactions (nop_quy only)
         $fundDepositTransactions = $allTransactions->filter(function($transaction) {
             return $transaction->type === 'nop_quy';
         });
         
+        // Regular transactions include auto-repayments (tra_cong_ty from fund deposits)
         $regularTransactions = $allTransactions->reject(function($transaction) {
             return str_contains($transaction->note ?? '', 'Chia cổ tức') ||
                    !empty($transaction->vehicle_maintenance_id) ||
@@ -108,14 +110,29 @@ class TransactionController extends Controller
 
         // Group regular transactions by incident_id
         $groupedTransactions = $regularTransactions->groupBy('incident_id')->map(function($group) {
-            $totalRevenue = $group->where('type', 'thu')->sum('amount');
-            $totalExpense = $group->where('type', 'chi')->sum('amount');
+            // Define transaction types
+            $revenueTypes = ['thu', 'vay_cong_ty', 'nop_quy'];
+            $expenseTypes = ['chi', 'tra_cong_ty', 'du_kien_chi'];
+            
+            $totalRevenue = $group->filter(function($t) use ($revenueTypes) {
+                return in_array($t->type, $revenueTypes);
+            })->sum('amount');
+            
+            $totalExpense = $group->filter(function($t) use ($expenseTypes) {
+                return in_array($t->type, $expenseTypes);
+            })->sum('amount');
+            
             $totalPlannedExpense = $group->where('type', 'du_kien_chi')->sum('amount');
-            $netAmount = $totalRevenue - $totalExpense - $totalPlannedExpense;
+            $netAmount = $totalRevenue - $totalExpense;
             
             $vehicle = $group->first()->vehicle;
             $hasOwner = $vehicle && $vehicle->hasOwner();
-            $managementFee = ($hasOwner && $netAmount > 0) ? $netAmount * 0.15 : 0;
+            
+            // Only calculate management fee on real revenue (thu), not on borrowed or deposited funds
+            $realRevenue = $group->where('type', 'thu')->sum('amount');
+            $realExpense = $group->where('type', 'chi')->sum('amount');
+            $revenueForFee = $realRevenue - $realExpense - $totalPlannedExpense;
+            $managementFee = ($hasOwner && $revenueForFee > 0) ? $revenueForFee * 0.15 : 0;
             $profitAfterFee = $netAmount - $managementFee;
             
             return [
@@ -151,15 +168,16 @@ class TransactionController extends Controller
 
         // 1. Dividend group (if exists)
         if ($dividendTransactions->isNotEmpty()) {
+            $totalExpense = $dividendTransactions->sum('amount');
             $dividendGroup = [
                 'incident' => null,
                 'vehicle' => null,
                 'date' => $dividendTransactions->first()->date,
                 'transactions' => $dividendTransactions,
                 'total_revenue' => 0,
-                'total_expense' => $dividendTransactions->sum('amount'),
+                'total_expense' => $totalExpense,
                 'total_planned_expense' => 0,
-                'net_amount' => -$dividendTransactions->sum('amount'),
+                'net_amount' => -$totalExpense,
                 'has_owner' => false,
                 'management_fee' => 0,
                 'profit_after_fee' => 0,
@@ -173,15 +191,16 @@ class TransactionController extends Controller
 
         // 2. Maintenance group (if exists)
         if ($maintenanceTransactions->isNotEmpty()) {
+            $totalExpense = $maintenanceTransactions->sum('amount');
             $maintenanceGroup = [
                 'incident' => null,
                 'vehicle' => null,
                 'date' => $maintenanceTransactions->first()->date,
                 'transactions' => $maintenanceTransactions,
                 'total_revenue' => 0,
-                'total_expense' => $maintenanceTransactions->sum('amount'),
+                'total_expense' => $totalExpense,
                 'total_planned_expense' => 0,
-                'net_amount' => -$maintenanceTransactions->sum('amount'),
+                'net_amount' => -$totalExpense,
                 'has_owner' => false,
                 'management_fee' => 0,
                 'profit_after_fee' => 0,
@@ -193,20 +212,21 @@ class TransactionController extends Controller
             $finalGroups->push($maintenanceGroup);
         }
 
-        // 3. Fund Deposit group (if exists) - Nộp quỹ
+        // 3. Fund Deposit group (if exists) - Chỉ nộp quỹ
         if ($fundDepositTransactions->isNotEmpty()) {
+            $totalRevenue = $fundDepositTransactions->sum('amount');
             $fundDepositGroup = [
                 'incident' => null,
                 'vehicle' => null,
                 'date' => $fundDepositTransactions->first()->date,
                 'transactions' => $fundDepositTransactions,
-                'total_revenue' => $fundDepositTransactions->sum('amount'),
+                'total_revenue' => $totalRevenue,
                 'total_expense' => 0,
                 'total_planned_expense' => 0,
-                'net_amount' => $fundDepositTransactions->sum('amount'),
+                'net_amount' => $totalRevenue,
                 'has_owner' => false,
                 'management_fee' => 0, // Nộp quỹ KHÔNG tính phí 15%
-                'profit_after_fee' => $fundDepositTransactions->sum('amount'),
+                'profit_after_fee' => $totalRevenue,
                 'is_dividend' => false,
                 'is_maintenance' => false,
                 'is_fund_deposit' => true,
@@ -261,11 +281,25 @@ class TransactionController extends Controller
         $monthExpense = (clone $statsQuery)->expense()->thisMonth()->sum('amount');
         $monthPlannedExpense = (clone $statsQuery)->plannedExpense()->thisMonth()->sum('amount');
         
-        // Calculate "Chi từ công ty" = amount company had to cover when owner didn't have enough
-        // This is the amount owner owes back to company
+        // Calculate "Chi từ công ty" for vehicle owners
+        // NEW LOGIC: Chi từ công ty = Actual borrowed amount from company (vay_cong_ty - tra_cong_ty)
+        // FALLBACK: If no borrow transactions exist, calculate deficit (Chi - Thu)
         if ($isVehicleOwner) {
-            $companyExpense = max(0, $totalExpense - $totalRevenue);
-            $companyMonthExpense = max(0, $monthExpense - $monthRevenue);
+            $totalBorrowed = (clone $statsQuery)->borrowFromCompany()->sum('amount');
+            $totalReturned = (clone $statsQuery)->returnToCompany()->sum('amount');
+            $currentDebt = $totalBorrowed - $totalReturned;
+            
+            // If there are actual borrow transactions, use them; otherwise calculate deficit
+            if ($totalBorrowed > 0) {
+                $companyExpense = $currentDebt;
+                $monthBorrowed = (clone $statsQuery)->borrowFromCompany()->thisMonth()->sum('amount');
+                $monthReturned = (clone $statsQuery)->returnToCompany()->thisMonth()->sum('amount');
+                $companyMonthExpense = $monthBorrowed - $monthReturned;
+            } else {
+                // Legacy calculation: amount company had to cover when owner didn't have enough
+                $companyExpense = max(0, $totalExpense - $totalRevenue);
+                $companyMonthExpense = max(0, $monthExpense - $monthRevenue);
+            }
             $companyPlannedExpense = (clone $statsQuery)->plannedExpense()->whereNull('incident_id')->sum('amount');
         } else {
             // For admin: show expenses without incident_id (company's own expenses)
@@ -329,81 +363,12 @@ class TransactionController extends Controller
             $companyTodayProfit = $todayNet - $todayManagementFee - $todayOwnerMaintenance;
             $companyMonthProfit = $monthNet - $monthManagementFee - $monthOwnerMaintenance;
         } else {
-            // For company/admin: calculate based on incidents
-            $companyProfit = 0;
-            $companyTodayProfit = 0;
-            $companyMonthProfit = 0;
+            // For company/admin: Simplified calculation
+            // Lợi nhuận = Tổng thu - Tổng chi - Dự kiến chi (tất cả giao dịch)
             
-            $allIncidents = Incident::with('vehicle.owner')->get();
-            
-            foreach ($allIncidents as $incident) {
-                $incidentRevenue = $incident->transactions()->revenue()->sum('amount');
-                $incidentExpense = $incident->transactions()->expense()->sum('amount');
-                $incidentPlannedExpense = $incident->transactions()->plannedExpense()->sum('amount');
-                $incidentNet = $incidentRevenue - $incidentExpense - $incidentPlannedExpense;
-                
-                // Only count positive profits
-                if ($incidentNet > 0) {
-                    if ($incident->vehicle && $incident->vehicle->hasOwner()) {
-                        // Vehicle with owner: only count 15% management fee
-                        $companyProfit += $incidentNet * 0.15;
-                        
-                        if ($incident->date->isToday()) {
-                            $companyTodayProfit += $incidentNet * 0.15;
-                        }
-                        
-                        if ($incident->date->isCurrentMonth()) {
-                            $companyMonthProfit += $incidentNet * 0.15;
-                        }
-                    } else {
-                        // Vehicle without owner: count full profit
-                        $companyProfit += $incidentNet;
-                        
-                        if ($incident->date->isToday()) {
-                            $companyTodayProfit += $incidentNet;
-                        }
-                        
-                        if ($incident->date->isCurrentMonth()) {
-                            $companyMonthProfit += $incidentNet;
-                        }
-                    }
-                }
-            }
-            
-            // Add "Nộp quỹ" (Fund Deposits) to company profit
-            // Logic: 
-            // - If vehicle_id is null OR vehicle has no owner: add full amount to company profit
-            // - If vehicle_id exists AND vehicle has owner: add to vehicle's balance (NOT company profit)
-            $fundDeposits = Transaction::where('type', 'nop_quy')->get();
-            
-            foreach ($fundDeposits as $deposit) {
-                $shouldAddToCompany = false;
-                
-                if (!$deposit->vehicle_id) {
-                    // No vehicle selected -> add to company
-                    $shouldAddToCompany = true;
-                } else {
-                    // Vehicle selected -> check if has owner
-                    $vehicle = Vehicle::find($deposit->vehicle_id);
-                    if (!$vehicle || !$vehicle->hasOwner()) {
-                        // Vehicle has no owner -> add to company
-                        $shouldAddToCompany = true;
-                    }
-                    // If vehicle has owner -> don't add to company (will be added to vehicle's balance)
-                }
-                
-                if ($shouldAddToCompany) {
-                    $companyProfit += $deposit->amount;
-                    
-                    if ($deposit->date->isToday()) {
-                        $companyTodayProfit += $deposit->amount;
-                    }
-                    
-                    if ($deposit->date->isCurrentMonth()) {
-                        $companyMonthProfit += $deposit->amount;
-                    }
-                }
-            }
+            $companyProfit = $totalRevenue - $totalExpense - $totalPlannedExpense;
+            $companyTodayProfit = $stats['today_revenue'] - $stats['today_expense'] - $stats['today_planned_expense'];
+            $companyMonthProfit = $monthRevenue - $monthExpense - $monthPlannedExpense;
         }
         
         $stats['total_net'] = $companyProfit;

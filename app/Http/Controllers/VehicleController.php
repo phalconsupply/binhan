@@ -8,6 +8,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\VehicleMaintenancesExport;
 use App\Exports\VehicleTransactionsExport;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class VehicleController extends Controller
 {
@@ -141,8 +143,10 @@ class VehicleController extends Controller
         $maintenances = $maintenancesQuery->paginate(10, ['*'], 'maintenance_page');
 
         // Build transactions query with filters
+        // Exclude maintenance transactions as they're already shown in the maintenance table
         $transactionsQuery = $vehicle->transactions()
             ->with(['incident.patient', 'recorder', 'vehicleMaintenance.maintenanceService', 'vehicleMaintenance.partner'])
+            ->whereNull('vehicle_maintenance_id')  // Exclude maintenance transactions
             ->orderBy('date', 'desc');
         
         if ($type) {
@@ -161,28 +165,43 @@ class VehicleController extends Controller
         $allTransactions = $transactionsQuery->get();
 
         // Group by incident_id (for incidents) or vehicle_maintenance_id (for maintenances)
-        // Transactions without both will be grouped individually
+        // All other transactions go into a single "other" group
         $groupedTransactions = $allTransactions->groupBy(function($transaction) {
             if ($transaction->incident_id) {
                 return 'incident_' . $transaction->incident_id;
             } elseif ($transaction->vehicle_maintenance_id) {
                 return 'maintenance_' . $transaction->vehicle_maintenance_id;
             } else {
-                return 'other_' . $transaction->id;
+                // All other transactions (vay_cong_ty, tra_cong_ty, nop_quy, thu, chi, etc.) 
+                // are grouped together into one single group
+                return 'other';
             }
         })->map(function($group) use ($vehicle) {
-            $totalRevenue = $group->filter(function($t) { return $t->type === 'thu'; })->sum('amount');
-            $totalExpense = $group->filter(function($t) { return $t->type === 'chi'; })->sum('amount');
+            // Determine which transaction types are revenue (positive) vs expense (negative)
+            $revenueTypes = ['thu', 'vay_cong_ty', 'nop_quy'];
+            $expenseTypes = ['chi', 'tra_cong_ty', 'du_kien_chi'];
+            
+            $totalRevenue = $group->filter(function($t) use ($revenueTypes) { 
+                return in_array($t->type, $revenueTypes);
+            })->sum('amount');
+            
+            $totalExpense = $group->filter(function($t) use ($expenseTypes) { 
+                return in_array($t->type, $expenseTypes);
+            })->sum('amount');
+            
             $totalPlannedExpense = $group->filter(function($t) { return $t->type === 'du_kien_chi'; })->sum('amount');
             $totalFundDeposit = $group->filter(function($t) { return $t->type === 'nop_quy'; })->sum('amount');
+            $totalBorrowed = $group->filter(function($t) { return $t->type === 'vay_cong_ty'; })->sum('amount');
             
             // Nộp quỹ được cộng vào revenue nhưng KHÔNG tính phí 15%
-            $netAmount = $totalRevenue - $totalExpense - $totalPlannedExpense + $totalFundDeposit;
+            $netAmount = $totalRevenue - $totalExpense;
             
             $hasOwner = $vehicle->hasOwner();
             
-            // Chỉ tính management fee cho revenue thông thường, không tính cho Nộp quỹ
-            $revenueForFee = $totalRevenue - $totalExpense - $totalPlannedExpense;
+            // Chỉ tính management fee cho revenue thực sự (thu), không tính cho Nộp quỹ và Vay công ty
+            $realRevenue = $group->filter(function($t) { return $t->type === 'thu'; })->sum('amount');
+            $realExpense = $group->filter(function($t) { return $t->type === 'chi'; })->sum('amount');
+            $revenueForFee = $realRevenue - $realExpense - $totalPlannedExpense;
             $managementFee = ($hasOwner && $revenueForFee > 0) ? $revenueForFee * 0.15 : 0;
             $profitAfterFee = $netAmount - $managementFee;
             
@@ -247,29 +266,37 @@ class VehicleController extends Controller
             $totalOwnerMaintenance = (clone $statsQuery)->expense()->where('category', 'bảo_trì_xe_chủ_riêng')->sum('amount');
             $monthOwnerMaintenance = $vehicle->transactions()->expense()->thisMonth()->where('category', 'bảo_trì_xe_chủ_riêng')->sum('amount');
             
-            // Adjust expenses: remove owner maintenance from company expenses
-            $stats['total_expense_company'] = $stats['total_expense'] - $totalOwnerMaintenance;
-            $stats['month_expense_company'] = $stats['month_expense'] - $monthOwnerMaintenance;
+            // BƯỚC 1: Tổng thu = thu + nộp quỹ + vay công ty (TẤT CẢ tiền vào)
+            $totalBorrowed = (clone $statsQuery)->borrowFromCompany()->sum('amount');
+            $monthBorrowed = $vehicle->transactions()->borrowFromCompany()->thisMonth()->sum('amount');
             
-            // Calculate net before owner costs (bao gồm fund deposit)
-            $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense_company'] - $stats['total_planned_expense'] + $stats['total_fund_deposit'];
-            $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense_company'] - $stats['month_planned_expense'] + $stats['month_fund_deposit'];
+            $stats['total_revenue_display'] = $stats['total_revenue'] + $stats['total_fund_deposit'] + $totalBorrowed;
+            $stats['month_revenue_display'] = $stats['month_revenue'] + $stats['month_fund_deposit'] + $monthBorrowed;
             
-            // Calculate management fee (15% of profit BEFORE fund deposit, không tính phí cho Nộp quỹ)
-            $totalNetBeforeFundDeposit = $stats['total_revenue'] - $stats['total_expense_company'] - $stats['total_planned_expense'];
-            $monthNetBeforeFundDeposit = $stats['month_revenue'] - $stats['month_expense_company'] - $stats['month_planned_expense'];
+            // BƯỚC 2: Tổng chi = chi + trả nợ + phí 15% cho công ty (TẤT CẢ tiền ra)
+            $totalReturned = (clone $statsQuery)->returnToCompany()->sum('amount');
+            $monthReturned = $vehicle->transactions()->returnToCompany()->thisMonth()->sum('amount');
             
-            $totalManagementFee = $totalNetBeforeFundDeposit > 0 ? $totalNetBeforeFundDeposit * 0.15 : 0;
-            $monthManagementFee = $monthNetBeforeFundDeposit > 0 ? $monthNetBeforeFundDeposit * 0.15 : 0;
+            // Tính phí 15% cho công ty (từ tổng thu)
+            $companyFee = $stats['total_revenue'] * 0.15;
+            $monthCompanyFee = $stats['month_revenue'] * 0.15;
             
-            $stats['total_management_fee'] = $totalManagementFee;
-            $stats['month_management_fee'] = $monthManagementFee;
+            $stats['total_expense_display'] = $stats['total_expense'] + $totalReturned + $companyFee;
+            $stats['month_expense_display'] = $stats['month_expense'] + $monthReturned + $monthCompanyFee;
             
-            // Profit after fee and owner maintenance
-            $stats['total_profit_after_fee'] = $stats['total_net'] - $totalManagementFee - $totalOwnerMaintenance;
-            $stats['month_profit_after_fee'] = $stats['month_net'] - $monthManagementFee - $monthOwnerMaintenance;
+            // Track company fee separately
+            $stats['total_company_fee'] = $companyFee;
+            $stats['month_company_fee'] = $monthCompanyFee;
             
-            // Track owner maintenance separately
+            // Track net debt for reference
+            $stats['total_borrowed'] = $totalBorrowed - $totalReturned;
+            $stats['month_borrowed'] = $monthBorrowed - $monthReturned;
+            
+            // BƯỚC 3: Lợi nhuận = Tổng thu - Tổng chi (logic đơn giản: tiền vào - tiền ra)
+            $stats['total_profit_after_fee'] = $stats['total_revenue_display'] - $stats['total_expense_display'];
+            $stats['month_profit_after_fee'] = $stats['month_revenue_display'] - $stats['month_expense_display'];
+            
+            // Track owner maintenance separately (for display purposes)
             $stats['total_owner_maintenance'] = $totalOwnerMaintenance;
             $stats['month_owner_maintenance'] = $monthOwnerMaintenance;
         } else {
@@ -489,6 +516,131 @@ class VehicleController extends Controller
         $fileName = 'giao-dich-' . $vehicle->license_plate . '-' . now()->format('Y-m-d-His') . '.xlsx';
         
         return Excel::download(new VehicleTransactionsExport($vehicle->id, $filters), $fileName);
+    }
+
+    /**
+     * Process repayment to company for vehicle owner
+     */
+    public function repayCompany(Request $request, Vehicle $vehicle)
+    {
+        // Validate vehicle has owner
+        if (!$vehicle->hasOwner()) {
+            return redirect()->back()->with('error', 'Xe này không có chủ xe.');
+        }
+
+        // Check permission
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($vehicle->id, $ownedVehicleIds)) {
+                abort(403, 'Bạn không có quyền thao tác trên xe này.');
+            }
+        } elseif (!auth()->user()->can('manage vehicles')) {
+            abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+        }
+
+        // Calculate current debt
+        $totalBorrowed = $vehicle->transactions()->borrowFromCompany()->sum('amount');
+        $totalReturned = $vehicle->transactions()->returnToCompany()->sum('amount');
+        $currentDebt = $totalBorrowed - $totalReturned;
+
+        if ($currentDebt <= 0) {
+            return redirect()->back()->with('error', 'Xe này không có nợ công ty.');
+        }
+
+        // Calculate current balance
+        $totalRevenue = $vehicle->transactions()->revenue()->sum('amount');
+        $totalFundDeposit = $vehicle->transactions()->fundDeposit()->sum('amount');
+        $totalExpense = $vehicle->transactions()->expense()->sum('amount');
+        $currentBalance = $totalRevenue + $totalFundDeposit - $totalExpense + $totalBorrowed - $totalReturned;
+
+        if ($currentBalance <= 0) {
+            return redirect()->back()->with('error', 'Số dư lợi nhuận không đủ để trả nợ.');
+        }
+
+        // Determine repay amount
+        $repayType = $request->input('repay_type', 'full');
+        
+        if ($repayType === 'full') {
+            $repayAmount = min($currentDebt, $currentBalance);
+        } else {
+            $repayAmount = $request->input('amount', 0);
+            
+            // Validate amount
+            if ($repayAmount <= 0) {
+                return redirect()->back()->with('error', 'Số tiền trả phải lớn hơn 0.');
+            }
+            
+            if ($repayAmount > $currentDebt) {
+                return redirect()->back()->with('error', 'Số tiền trả không được vượt quá số nợ hiện tại.');
+            }
+            
+            if ($repayAmount > $currentBalance) {
+                return redirect()->back()->with('error', 'Số dư lợi nhuận không đủ để trả số tiền này.');
+            }
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Create return transaction (deduct from vehicle owner)
+            $returnTransaction = \App\Models\Transaction::create([
+                'vehicle_id' => $vehicle->id,
+                'type' => 'tra_cong_ty',
+                'amount' => $repayAmount,
+                'category' => 'hoàn_trả',
+                'note' => $request->input('note', 'Trả nợ công ty') . ($repayType === 'full' ? ' (trả hết)' : ''),
+                'date' => now(),
+                'recorded_by' => auth()->id(),
+                'method' => 'bank',
+            ]);
+
+            // Create company revenue transaction (add to company fund)
+            $revenueTransaction = \App\Models\Transaction::create([
+                'vehicle_id' => null, // No vehicle_id = company fund
+                'type' => 'thu',
+                'amount' => $repayAmount,
+                'category' => null,
+                'note' => 'Thu từ xe ' . $vehicle->license_plate . ' trả nợ (GD #' . $returnTransaction->id . ')',
+                'date' => now(),
+                'recorded_by' => auth()->id(),
+                'method' => 'bank',
+            ]);
+
+            Log::info('Manual debt repayment', [
+                'vehicle_id' => $vehicle->id,
+                'license_plate' => $vehicle->license_plate,
+                'repay_amount' => $repayAmount,
+                'return_transaction_id' => $returnTransaction->id,
+                'revenue_transaction_id' => $revenueTransaction->id,
+            ]);
+
+            DB::commit();
+
+            $remainingDebt = $currentDebt - $repayAmount;
+            $message = 'Đã trả nợ thành công ' . number_format($repayAmount, 0, ',', '.') . 'đ. ';
+            
+            if ($remainingDebt > 0) {
+                $message .= 'Còn nợ: ' . number_format($remainingDebt, 0, ',', '.') . 'đ.';
+            } else {
+                $message .= 'Đã trả hết nợ công ty! 🎉';
+            }
+
+            return redirect()->back()->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error in repayCompany: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Có lỗi xảy ra khi trả nợ: ' . $e->getMessage());
+        }
     }
 }
 

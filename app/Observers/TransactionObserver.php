@@ -12,6 +12,11 @@ class TransactionObserver
      */
     public function created(Transaction $transaction): void
     {
+        // Auto-repay company debt when vehicle owner deposits funds
+        if ($transaction->type === 'nop_quy' && $transaction->vehicle_id) {
+            $this->autoRepayVehicleDebt($transaction);
+        }
+        
         // Only process for wage payments (chi) with staff_id
         if ($transaction->type === 'chi' && $transaction->staff_id) {
             $this->processDebtPayment($transaction->staff_id);
@@ -21,6 +26,68 @@ class TransactionObserver
                 $this->syncIncidentStaffWage($transaction->incident_id, $transaction->staff_id);
             }
         }
+    }
+
+    /**
+     * Auto-repay company debt when vehicle owner deposits funds
+     * If vehicle has outstanding debt, use fund deposit to repay first
+     */
+    private function autoRepayVehicleDebt(Transaction $fundDeposit): void
+    {
+        $vehicle = $fundDeposit->vehicle;
+        if (!$vehicle || !$vehicle->hasOwner()) {
+            return;
+        }
+
+        // Calculate total borrowed amount
+        $totalBorrowed = Transaction::where('vehicle_id', $vehicle->id)
+            ->where('type', 'vay_cong_ty')
+            ->sum('amount');
+
+        $totalRepaid = Transaction::where('vehicle_id', $vehicle->id)
+            ->where('type', 'tra_cong_ty')
+            ->sum('amount');
+
+        $currentDebt = $totalBorrowed - $totalRepaid;
+
+        if ($currentDebt <= 0) {
+            return; // No debt to repay
+        }
+
+        $depositAmount = $fundDeposit->amount;
+        $repayAmount = min($currentDebt, $depositAmount);
+
+        // Create repayment transaction (deduct from vehicle owner)
+        $repayTransaction = Transaction::create([
+            'vehicle_id' => $vehicle->id,
+            'type' => 'tra_cong_ty',
+            'amount' => $repayAmount,
+            'date' => $fundDeposit->date,
+            'method' => $fundDeposit->method,
+            'note' => "Tự động trả nợ từ nộp quỹ (GD #{$fundDeposit->id})",
+            'recorded_by' => $fundDeposit->recorded_by,
+        ]);
+
+        // Create corresponding revenue transaction for company (no vehicle_id)
+        Transaction::create([
+            'vehicle_id' => null, // Company transaction, not vehicle-specific
+            'type' => 'thu',
+            'amount' => $repayAmount,
+            'date' => $fundDeposit->date,
+            'method' => $fundDeposit->method,
+            'note' => "Thu từ xe {$vehicle->license_plate} trả nợ (GD #{$repayTransaction->id})",
+            'recorded_by' => $fundDeposit->recorded_by,
+        ]);
+
+        \Log::info('Auto-repaid vehicle debt from fund deposit', [
+            'vehicle_id' => $vehicle->id,
+            'vehicle_plate' => $vehicle->license_plate,
+            'fund_deposit_id' => $fundDeposit->id,
+            'fund_deposit_amount' => $depositAmount,
+            'debt_before' => $currentDebt,
+            'repaid_amount' => $repayAmount,
+            'debt_after' => $currentDebt - $repayAmount,
+        ]);
     }
 
     /**

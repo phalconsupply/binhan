@@ -14,6 +14,7 @@ class Transaction extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
+        'code',
         'incident_id',
         'vehicle_id',
         'vehicle_maintenance_id',
@@ -48,6 +49,17 @@ class Transaction extends Model
     protected static function boot()
     {
         parent::boot();
+
+        // Auto-generate transaction code
+        static::creating(function ($transaction) {
+            if (empty($transaction->code)) {
+                // Get the last transaction ID to ensure uniqueness
+                $lastId = static::max('id') ?? 0;
+                $nextId = $lastId + 1;
+                $date = $transaction->date ? $transaction->date->format('Ymd') : now()->format('Ymd');
+                $transaction->code = "GD{$date}-" . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            }
+        });
 
         // When a loan payment transaction is deleted, reverse the loan schedule
         static::deleting(function ($transaction) {
@@ -226,6 +238,16 @@ class Transaction extends Model
         return $query->where('type', 'nop_quy');
     }
 
+    public function scopeBorrowFromCompany($query)
+    {
+        return $query->where('type', 'vay_cong_ty');
+    }
+
+    public function scopeReturnToCompany($query)
+    {
+        return $query->where('type', 'tra_cong_ty');
+    }
+
     public function scopeToday($query)
     {
         return $query->whereDate('date', today());
@@ -270,6 +292,8 @@ class Transaction extends Model
             'chi' => 'Chi',
             'du_kien_chi' => 'Dự kiến chi',
             'nop_quy' => 'Nộp quỹ',
+            'vay_cong_ty' => 'Vay công ty',
+            'tra_cong_ty' => 'Trả công ty',
         ][$this->type] ?? $this->type;
     }
 

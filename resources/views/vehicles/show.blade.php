@@ -115,7 +115,7 @@
             </div>
 
             {{-- Statistics --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-{{ $stats['has_owner'] ? '4' : '5' }} gap-4 mb-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <p class="text-sm text-gray-500">Tổng chuyến đi</p>
@@ -126,17 +126,31 @@
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <p class="text-sm text-gray-500">Tổng thu</p>
-                        <p class="text-xl font-bold text-green-600">{{ number_format($stats['total_revenue'], 0, ',', '.') }}đ</p>
-                        <p class="text-xs text-gray-500">{{ number_format($stats['month_revenue'], 0, ',', '.') }}đ tháng này</p>
+                        @if($stats['has_owner'])
+                            <p class="text-xl font-bold text-green-600">{{ number_format($stats['total_revenue_display'], 0, ',', '.') }}đ</p>
+                            <p class="text-xs text-gray-500">{{ number_format($stats['month_revenue_display'], 0, ',', '.') }}đ tháng này</p>
+                            <p class="text-xs text-green-600 mt-1">(Thu + Nộp quỹ + Vay)</p>
+                        @else
+                            <p class="text-xl font-bold text-green-600">{{ number_format($stats['total_revenue'], 0, ',', '.') }}đ</p>
+                            <p class="text-xs text-gray-500">{{ number_format($stats['month_revenue'], 0, ',', '.') }}đ tháng này</p>
+                        @endif
                     </div>
                 </div>
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <p class="text-sm text-gray-500">Tổng chi</p>
-                        <p class="text-xl font-bold text-red-600">{{ number_format($stats['total_expense'], 0, ',', '.') }}đ</p>
-                        <p class="text-xs text-gray-500">{{ number_format($stats['month_expense'], 0, ',', '.') }}đ tháng này</p>
+                        @if($stats['has_owner'])
+                            <p class="text-xl font-bold text-red-600">{{ number_format($stats['total_expense_display'], 0, ',', '.') }}đ</p>
+                            <p class="text-xs text-gray-500">{{ number_format($stats['month_expense_display'], 0, ',', '.') }}đ tháng này</p>
+                            <p class="text-xs text-red-600 mt-1">(Chi + Trả nợ + Phí 15%)</p>
+                        @else
+                            <p class="text-xl font-bold text-red-600">{{ number_format($stats['total_expense'], 0, ',', '.') }}đ</p>
+                            <p class="text-xs text-gray-500">{{ number_format($stats['month_expense'], 0, ',', '.') }}đ tháng này</p>
+                        @endif
                     </div>
                 </div>
+                @if(!$stats['has_owner'])
+                {{-- Chỉ hiển thị riêng cho xe công ty, xe có chủ đã gộp vào Tổng thu --}}
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <p class="text-sm text-gray-500">Nộp quỹ</p>
@@ -145,6 +159,7 @@
                         <p class="text-xs text-blue-500 mt-1">(Không tính phí 15%)</p>
                     </div>
                 </div>
+                @endif
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <p class="text-sm text-gray-500">Lợi nhuận</p>
@@ -155,14 +170,9 @@
                             <p class="text-xs {{ $stats['month_profit_after_fee'] >= 0 ? 'text-blue-600' : 'text-red-600' }}">
                                 {{ number_format($stats['month_profit_after_fee'], 0, ',', '.') }}đ tháng này
                             </p>
-                            <p class="text-xs text-orange-500 mt-1">
-                                (Sau phí 15% & bảo trì)
+                            <p class="text-xs text-green-500 mt-1">
+                                (Thu - Chi)
                             </p>
-                            @if($stats['total_owner_maintenance'] > 0)
-                            <p class="text-xs text-gray-500 mt-1">
-                                🔧 Bảo trì: {{ number_format($stats['total_owner_maintenance'], 0, ',', '.') }}đ
-                            </p>
-                            @endif
                         @else
                             <p class="text-xl font-bold {{ $stats['total_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                 {{ number_format($stats['total_net'], 0, ',', '.') }}đ
@@ -174,6 +184,48 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Borrowed Amount Alert (for vehicle owners) --}}
+            @if($stats['has_owner'] && isset($stats['total_borrowed']) && $stats['total_borrowed'] > 0)
+            <div class="bg-orange-50 border-l-4 border-orange-500 p-4 mb-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center flex-1">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <h3 class="text-sm font-medium text-orange-800">
+                                Đang vay từ công ty: <span class="font-bold">{{ number_format($stats['total_borrowed'], 0, ',', '.') }}đ</span>
+                            </h3>
+                            <div class="mt-2 text-sm text-orange-700">
+                                <p>Chủ xe đang mượn tiền từ công ty để chi trả. Số tiền này cần được hoàn trả lại.</p>
+                                @if($stats['month_borrowed'] != 0)
+                                <p class="mt-1">Tháng này: 
+                                    <span class="{{ $stats['month_borrowed'] > 0 ? 'text-red-600' : 'text-green-600' }} font-semibold">
+                                        {{ $stats['month_borrowed'] > 0 ? '+' : '' }}{{ number_format($stats['month_borrowed'], 0, ',', '.') }}đ
+                                    </span>
+                                </p>
+                                @endif
+                                @if($stats['total_profit_after_fee'] > 0)
+                                <p class="mt-2 text-xs text-gray-600">
+                                    💰 Số dư hiện tại: {{ number_format($stats['total_profit_after_fee'], 0, ',', '.') }}đ
+                                </p>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    @if($stats['total_profit_after_fee'] > 0)
+                    <div class="ml-4">
+                        <button onclick="openRepayModal()" class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            💳 Trả nợ
+                        </button>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @endif
 
             {{-- Loan Management Section --}}
             @php
@@ -861,6 +913,7 @@
                                             <table class="w-full text-sm">
                                                 <thead class="text-xs text-gray-500 uppercase border-b">
                                                     <tr>
+                                                        <th class="py-2 text-left">Mã GD</th>
                                                         <th class="py-2 text-left">Loại</th>
                                                         <th class="py-2 text-left">Tên khoản</th>
                                                         <th class="py-2 text-right">Số tiền</th>
@@ -871,6 +924,9 @@
                                                 <tbody class="divide-y divide-gray-100">
                                                     @foreach($group['transactions'] as $transaction)
                                                     <tr class="hover:bg-gray-50 {{ $transaction->category == 'điều_chỉnh_lương' ? 'bg-blue-50' : '' }} {{ $transaction->vehicle_maintenance_id ? 'bg-green-50' : '' }} {{ $transaction->type == 'nop_quy' ? 'bg-blue-50' : '' }}">
+                                                        <td class="py-2 text-gray-500 text-xs font-mono">
+                                                            {{ $transaction->code ?? 'N/A' }}
+                                                        </td>
                                                         <td class="py-2">
                                                             <span class="px-2 py-1 text-xs rounded-full {{ $transaction->type == 'thu' || $transaction->type == 'nop_quy' ? 'bg-green-100 text-green-800' : ($transaction->type == 'du_kien_chi' ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800') }}">
                                                                 {{ $transaction->type_label }}
@@ -1282,6 +1338,118 @@
         @csrf
         @method('DELETE')
     </form>
+    @endif
+
+    {{-- Repay Company Modal --}}
+    @if($stats['has_owner'] && isset($stats['total_borrowed']) && $stats['total_borrowed'] > 0)
+    <div id="repayModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">💳 Trả nợ công ty</h3>
+                <button type="button" onclick="closeRepayModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form method="POST" action="{{ route('vehicles.repay', $vehicle) }}">
+                @csrf
+                <div class="space-y-4">
+                    <div class="bg-blue-50 rounded-lg p-3 space-y-1">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Đang nợ:</span>
+                            <span class="font-bold text-orange-600">{{ number_format($stats['total_borrowed'], 0, ',', '.') }}đ</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Số dư hiện tại:</span>
+                            <span class="font-bold text-green-600">{{ number_format($stats['total_profit_after_fee'], 0, ',', '.') }}đ</span>
+                        </div>
+                        <div class="flex justify-between text-sm pt-2 border-t border-blue-200">
+                            <span class="text-gray-600">Có thể trả tối đa:</span>
+                            <span class="font-bold text-blue-600">{{ number_format(min($stats['total_borrowed'], $stats['total_profit_after_fee']), 0, ',', '.') }}đ</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Chọn cách trả</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                <input type="radio" name="repay_type" value="full" onchange="updateRepayAmount()" class="mr-3" checked>
+                                <div class="flex-1">
+                                    <span class="font-medium">Trả hết</span>
+                                    <p class="text-xs text-gray-500">Trả toàn bộ số nợ</p>
+                                </div>
+                            </label>
+                            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                <input type="radio" name="repay_type" value="partial" onchange="updateRepayAmount()" class="mr-3">
+                                <div class="flex-1">
+                                    <span class="font-medium">Trả một phần</span>
+                                    <p class="text-xs text-gray-500">Tự nhập số tiền muốn trả</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="partial_repay_section" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Số tiền muốn trả <span class="text-red-500">*</span></label>
+                        <input type="number" name="amount" id="repay_amount" min="1000" step="1000" 
+                               max="{{ min($stats['total_borrowed'], $stats['total_profit_after_fee']) }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500" 
+                               placeholder="Nhập số tiền...">
+                        <p class="text-xs text-gray-500 mt-1">Tối thiểu: 1.000đ | Tối đa: {{ number_format(min($stats['total_borrowed'], $stats['total_profit_after_fee']), 0, ',', '.') }}đ</p>
+                    </div>
+                    <input type="hidden" name="full_amount" value="{{ min($stats['total_borrowed'], $stats['total_profit_after_fee']) }}">
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                        <textarea name="note" rows="2" placeholder="Lý do trả nợ..." class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"></textarea>
+                    </div>
+
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <p class="text-xs text-green-700">
+                            ✓ Tiền sẽ được trừ khỏi lợi nhuận chủ xe<br>
+                            ✓ Tiền sẽ được cộng vào lợi nhuận công ty<br>
+                            ✓ Giảm số nợ đang vay
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeRepayModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">Hủy</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Xác nhận trả nợ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openRepayModal() {
+            document.getElementById('repayModal').classList.remove('hidden');
+            updateRepayAmount();
+        }
+
+        function closeRepayModal() {
+            document.getElementById('repayModal').classList.add('hidden');
+        }
+
+        function updateRepayAmount() {
+            const repayType = document.querySelector('input[name="repay_type"]:checked').value;
+            const partialSection = document.getElementById('partial_repay_section');
+            
+            if (repayType === 'partial') {
+                partialSection.classList.remove('hidden');
+            } else {
+                partialSection.classList.add('hidden');
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('repayModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeRepayModal();
+            }
+        });
+    </script>
     @endif
 
 </x-app-layout>

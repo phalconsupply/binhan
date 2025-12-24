@@ -74,7 +74,7 @@
                     <form method="GET" action="{{ route('transactions.index') }}" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                             <div>
-                                <input type="text" name="search" value="{{ request('search') }}" placeholder="Tìm kiếm..." class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <input type="text" name="search" value="{{ request('search') }}" placeholder="Tìm mã GD hoặc ghi chú..." class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                             </div>
                             <div>
                                 <select name="type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -192,26 +192,6 @@
                                                 <div class="text-red-600 font-semibold">-{{ number_format($group['total_expense'], 0, ',', '.') }}đ</div>
                                                 <div class="text-xs text-gray-500">Chi</div>
                                             </div>
-                                            <div class="text-right min-w-[120px]">
-                                                <div class="text-lg font-bold {{ $group['net_amount'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                                    {{ $group['net_amount'] >= 0 ? '+' : '' }}{{ number_format($group['net_amount'], 0, ',', '.') }}đ
-                                                </div>
-                                                <div class="text-xs text-gray-500">Lợi nhuận</div>
-                                            </div>
-                                            @if($group['has_owner'] && $group['management_fee'] > 0)
-                                            <div class="text-right min-w-[120px]">
-                                                <div class="text-base font-semibold text-orange-600">
-                                                    {{ number_format($group['management_fee'], 0, ',', '.') }}đ
-                                                </div>
-                                                <div class="text-xs text-gray-500">Phí 15%</div>
-                                            </div>
-                                            <div class="text-right min-w-[120px]">
-                                                <div class="text-lg font-bold text-blue-600">
-                                                    +{{ number_format($group['profit_after_fee'], 0, ',', '.') }}đ
-                                                </div>
-                                                <div class="text-xs text-gray-500">Cho chủ xe</div>
-                                            </div>
-                                            @endif
                                             
                                             {{-- Nút xóa hết --}}
                                             @if($group['incident'])
@@ -236,18 +216,22 @@
                                             <thead class="text-xs text-gray-500 uppercase border-b">
                                                 <tr>
                                                     @if(!$group['incident'] && !($group['is_dividend'] ?? false) && !($group['is_maintenance'] ?? false) && !($group['is_fund_deposit'] ?? false))
+                                                        <th class="py-2 text-left">Mã GD</th>
                                                         <th class="py-2 text-left">Ngày</th>
                                                         <th class="py-2 text-left">Nguồn</th>
                                                     @endif
                                                     @if($group['is_dividend'] ?? false)
+                                                        <th class="py-2 text-left">Mã GD</th>
                                                         <th class="py-2 text-left">Ngày</th>
                                                         <th class="py-2 text-left">Cổ đông</th>
                                                     @endif
                                                     @if($group['is_maintenance'] ?? false)
+                                                        <th class="py-2 text-left">Mã GD</th>
                                                         <th class="py-2 text-left">Ngày</th>
                                                         <th class="py-2 text-left">Xe</th>
                                                     @endif
                                                     @if($group['is_fund_deposit'] ?? false)
+                                                        <th class="py-2 text-left">Mã GD</th>
                                                         <th class="py-2 text-left">Ngày</th>
                                                         <th class="py-2 text-left">Xe/Nguồn</th>
                                                     @endif
@@ -262,6 +246,9 @@
                                                 @foreach($group['transactions'] as $transaction)
                                                 <tr class="hover:bg-gray-50 {{ $transaction->category == 'điều_chỉnh_lương' ? 'bg-blue-50' : '' }} {{ ($group['is_dividend'] ?? false) ? 'bg-purple-50' : '' }} {{ ($group['is_maintenance'] ?? false) ? 'bg-orange-50' : '' }} {{ ($group['is_fund_deposit'] ?? false) ? 'bg-blue-50' : '' }}">
                                                     @if($group['is_dividend'] ?? false)
+                                                        <td class="py-2 text-gray-500 text-xs font-mono">
+                                                            {{ $transaction->code ?? 'N/A' }}
+                                                        </td>
                                                         <td class="py-2 text-gray-600">
                                                             {{ \Carbon\Carbon::parse($transaction->date)->format('d/m/Y') }}
                                                         </td>
@@ -275,6 +262,9 @@
                                                         </td>
                                                     @endif
                                                     @if($group['is_maintenance'] ?? false)
+                                                        <td class="py-2 text-gray-500 text-xs font-mono">
+                                                            {{ $transaction->code ?? 'N/A' }}
+                                                        </td>
                                                         <td class="py-2 text-gray-600">
                                                             {{ \Carbon\Carbon::parse($transaction->date)->format('d/m/Y') }}
                                                         </td>
@@ -292,6 +282,9 @@
                                                         </td>
                                                     @endif
                                                     @if($group['is_fund_deposit'] ?? false)
+                                                        <td class="py-2 text-gray-500 text-xs font-mono">
+                                                            {{ $transaction->code ?? 'N/A' }}
+                                                        </td>
                                                         <td class="py-2 text-gray-600">
                                                             {{ \Carbon\Carbon::parse($transaction->date)->format('d/m/Y') }}
                                                         </td>
@@ -311,6 +304,9 @@
                                                         </td>
                                                     @endif
                                                     @if(!$group['incident'] && !($group['is_dividend'] ?? false) && !($group['is_maintenance'] ?? false) && !($group['is_fund_deposit'] ?? false))
+                                                        <td class="py-2 text-gray-500 text-xs font-mono">
+                                                            {{ $transaction->code ?? 'N/A' }}
+                                                        </td>
                                                         <td class="py-2 text-gray-600">
                                                             {{ \Carbon\Carbon::parse($transaction->date)->format('d/m/Y') }}
                                                         </td>
@@ -329,7 +325,15 @@
                                                         </td>
                                                     @endif
                                                     <td class="py-2">
-                                                        <span class="px-2 py-1 text-xs rounded-full {{ $transaction->type == 'thu' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                                        <span class="px-2 py-1 text-xs rounded-full 
+                                                            @if($transaction->type == 'vay_cong_ty' || $transaction->type == 'nop_quy')
+                                                                bg-green-100 text-green-800
+                                                            @elseif($transaction->type == 'tra_cong_ty')
+                                                                bg-red-100 text-red-800
+                                                            @else
+                                                                {{ $transaction->type == 'thu' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}
+                                                            @endif
+                                                        ">
                                                             {{ $transaction->type_label }}
                                                         </span>
                                                         @if($transaction->category == 'điều_chỉnh_lương')
@@ -344,8 +348,22 @@
                                                             <span class="text-xs text-orange-600">(từ quỹ công ty)</span>
                                                         @endif
                                                     </td>
-                                                    <td class="py-2 text-right font-semibold {{ $transaction->type == 'thu' ? 'text-green-600' : 'text-red-600' }}">
-                                                        {{ $transaction->type == 'thu' ? '+' : '-' }}{{ number_format($transaction->amount, 0, ',', '.') }}đ
+                                                    <td class="py-2 text-right font-semibold 
+                                                        @if($transaction->type == 'vay_cong_ty' || $transaction->type == 'nop_quy')
+                                                            text-green-600
+                                                        @elseif($transaction->type == 'tra_cong_ty')
+                                                            text-red-600
+                                                        @else
+                                                            {{ $transaction->type == 'thu' ? 'text-green-600' : 'text-red-600' }}
+                                                        @endif
+                                                    ">
+                                                        @if($transaction->type == 'vay_cong_ty' || $transaction->type == 'nop_quy')
+                                                            +{{ number_format($transaction->amount, 0, ',', '.') }}đ
+                                                        @elseif($transaction->type == 'tra_cong_ty')
+                                                            -{{ number_format($transaction->amount, 0, ',', '.') }}đ
+                                                        @else
+                                                            {{ $transaction->type == 'thu' ? '+' : '-' }}{{ number_format($transaction->amount, 0, ',', '.') }}đ
+                                                        @endif
                                                     </td>
                                                     <td class="py-2">{{ $transaction->method_label }}</td>
                                                     <td class="py-2 text-right space-x-2">
@@ -361,6 +379,38 @@
                                                         @endcan
                                                     </td>
                                                 </tr>
+                                                @if(in_array($transaction->type, ['vay_cong_ty', 'tra_cong_ty']) && (auth()->user()->hasRole('admin') || auth()->user()->hasRole('accountant')))
+                                                <!-- Hiển thị góc nhìn đối ứng cho admin và accountant -->
+                                                <tr class="border-t border-gray-100 bg-gray-50">
+                                                    <td class="py-2 text-gray-600">
+                                                        {{ \Carbon\Carbon::parse($transaction->date)->format('d/m/Y') }}
+                                                    </td>
+                                                    <td class="py-2">
+                                                        @if($transaction->type == 'vay_cong_ty')
+                                                            <span class="text-red-600 font-medium">🏢 Quỹ công ty</span>
+                                                            <span class="text-xs text-gray-500 ml-1">(góc nhìn công ty)</span>
+                                                        @else
+                                                            <span class="text-green-600 font-medium">🏢 Quỹ công ty</span>
+                                                            <span class="text-xs text-gray-500 ml-1">(góc nhìn công ty)</span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="py-2">
+                                                        <span class="px-2 py-1 text-xs rounded-full {{ $transaction->type == 'vay_cong_ty' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
+                                                            {{ $transaction->type == 'vay_cong_ty' ? 'Chi cho xe' : 'Thu từ xe' }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="py-2">
+                                                        {{ $transaction->type == 'vay_cong_ty' ? 'Cho xe vay tiền' : 'Xe trả nợ' }}
+                                                    </td>
+                                                    <td class="py-2 text-right font-semibold {{ $transaction->type == 'vay_cong_ty' ? 'text-red-600' : 'text-green-600' }}">
+                                                        {{ $transaction->type == 'vay_cong_ty' ? '-' : '+' }}{{ number_format($transaction->amount, 0, ',', '.') }}đ
+                                                    </td>
+                                                    <td class="py-2">{{ $transaction->method_label }}</td>
+                                                    <td class="py-2 text-right">
+                                                        <span class="text-xs text-gray-500 italic">Đối ứng</span>
+                                                    </td>
+                                                </tr>
+                                                @endif
                                                 @endforeach
                                             </tbody>
                                         </table>
