@@ -251,11 +251,15 @@ class VehicleController extends Controller
         $stats = [
             'total_incidents' => $vehicle->incidents()->count(),
             'this_month_incidents' => $vehicle->incidents()->thisMonth()->count(),
-            'total_revenue' => (clone $statsQuery)->revenue()->sum('amount'),
+            'total_revenue' => (clone $statsQuery)->revenue()->where(function($q) {
+                $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
+            })->sum('amount'),
             'total_expense' => (clone $statsQuery)->expense()->sum('amount'),
             'total_planned_expense' => (clone $statsQuery)->plannedExpense()->sum('amount'),
             'total_fund_deposit' => (clone $statsQuery)->fundDeposit()->sum('amount'),
-            'month_revenue' => $vehicle->transactions()->revenue()->thisMonth()->sum('amount'),
+            'month_revenue' => $vehicle->transactions()->revenue()->thisMonth()->where(function($q) {
+                $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
+            })->sum('amount'),
             'month_expense' => $vehicle->transactions()->expense()->thisMonth()->sum('amount'),
             'month_planned_expense' => $vehicle->transactions()->plannedExpense()->thisMonth()->sum('amount'),
             'month_fund_deposit' => $vehicle->transactions()->fundDeposit()->thisMonth()->sum('amount'),
