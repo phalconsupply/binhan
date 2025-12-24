@@ -7,10 +7,26 @@ $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
 use Illuminate\Support\Facades\DB;
 
-$backupFile = __DIR__ . '/database/backup_before_clean_49B08879_20251225_012250.sql';
+// Try multiple possible locations
+$possibleLocations = [
+    __DIR__ . '/backup_before_clean_49B08879_20251225_012250',
+    __DIR__ . '/backup_before_clean_49B08879_20251225_012250.sql',
+    __DIR__ . '/database/backup_before_clean_49B08879_20251225_012250.sql',
+];
 
-if (!file_exists($backupFile)) {
-    echo "❌ Backup file not found!\n";
+$backupFile = null;
+foreach ($possibleLocations as $location) {
+    if (file_exists($location)) {
+        $backupFile = $location;
+        break;
+    }
+}
+
+if (!$backupFile) {
+    echo "❌ Backup file not found! Tried:\n";
+    foreach ($possibleLocations as $location) {
+        echo "   - $location\n";
+    }
     exit(1);
 }
 
