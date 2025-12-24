@@ -3,6 +3,10 @@
 
 SET FOREIGN_KEY_CHECKS=0;
 
+-- Delete existing data for vehicle 49B08879 first
+DELETE FROM transactions WHERE vehicle_id = 4;
+DELETE FROM incidents WHERE vehicle_id = 4;
+
 -- Restore 29 incidents
 INSERT INTO `incidents` VALUES
 (28,4,23,'2025-11-17 18:37:00',1,NULL,25,26,NULL,NULL,NULL,NULL,'2025-11-22 11:41:05','2025-11-22 11:41:05'),
