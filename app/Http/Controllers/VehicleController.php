@@ -268,18 +268,21 @@ class VehicleController extends Controller
             $totalOwnerMaintenance = (clone $statsQuery)->expense()->where('category', 'bảo_trì_xe_chủ_riêng')->sum('amount');
             $monthOwnerMaintenance = $vehicle->transactions()->expense()->thisMonth()->where('category', 'bảo_trì_xe_chủ_riêng')->sum('amount');
             
-            // BƯỚC 1: Tổng thu = thu + nộp quỹ + vay công ty (TẤT CẢ tiền vào)
+            // BƯỚC 1: Tính khoản vay và phí
             $totalBorrowed = (clone $statsQuery)->borrowFromCompany()->sum('amount');
             $monthBorrowed = $vehicle->transactions()->borrowFromCompany()->thisMonth()->sum('amount');
-            
-            $stats['total_revenue_display'] = $stats['total_revenue'] + $stats['total_fund_deposit'] + $totalBorrowed;
-            $stats['month_revenue_display'] = $stats['month_revenue'] + $stats['month_fund_deposit'] + $monthBorrowed;
-            
-            // BƯỚC 2: Tổng chi = chi + trả nợ + phí 15% cho công ty (TẤT CẢ tiền ra)
             $totalReturned = (clone $statsQuery)->returnToCompany()->sum('amount');
             $monthReturned = $vehicle->transactions()->returnToCompany()->thisMonth()->sum('amount');
             
-            // Tính phí 15% cho công ty (từ tổng thu, LOẠI TRỪ thu từ vay)
+            // Khoản đang vay (nợ)
+            $currentDebt = $totalBorrowed - $totalReturned;
+            $monthDebt = $monthBorrowed - $monthReturned;
+            
+            // BƯỚC 2: Tổng thu HIỂN THỊ = thu + nộp quỹ (KHÔNG bao gồm vay)
+            $stats['total_revenue_display'] = $stats['total_revenue'] + $stats['total_fund_deposit'];
+            $stats['month_revenue_display'] = $stats['month_revenue'] + $stats['month_fund_deposit'];
+            
+            // BƯỚC 3: Tính phí 15% cho công ty (từ thu thực tế, LOẠI TRỪ thu từ vay)
             $totalRevenueForFee = (clone $statsQuery)->revenue()
                 ->where(function($q) {
                     $q->where('category', '!=', 'vay_từ_công_ty')
@@ -294,20 +297,25 @@ class VehicleController extends Controller
             $companyFee = $totalRevenueForFee * 0.15;
             $monthCompanyFee = $monthRevenueForFee * 0.15;
             
-            $stats['total_expense_display'] = $stats['total_expense'] + $totalReturned + $companyFee;
-            $stats['month_expense_display'] = $stats['month_expense'] + $monthReturned + $monthCompanyFee;
+            // BƯỚC 4: Tổng chi HIỂN THỊ = chi + phí 15% (KHÔNG bao gồm trả nợ)
+            $stats['total_expense_display'] = $stats['total_expense'] + $companyFee;
+            $stats['month_expense_display'] = $stats['month_expense'] + $monthCompanyFee;
             
             // Track company fee separately
             $stats['total_company_fee'] = $companyFee;
             $stats['month_company_fee'] = $monthCompanyFee;
             
-            // Track net debt for reference
-            $stats['total_borrowed'] = $totalBorrowed - $totalReturned;
-            $stats['month_borrowed'] = $monthBorrowed - $monthReturned;
+            // Track borrowed amounts
+            $stats['total_borrowed'] = $currentDebt;
+            $stats['month_borrowed'] = $monthDebt;
             
-            // BƯỚC 3: Lợi nhuận = Tổng thu - Tổng chi (logic đơn giản: tiền vào - tiền ra)
-            $stats['total_profit_after_fee'] = $stats['total_revenue_display'] - $stats['total_expense_display'];
-            $stats['month_profit_after_fee'] = $stats['month_revenue_display'] - $stats['month_expense_display'];
+            // BƯỚC 5: Lợi nhuận = Thu - Chi - Khoản đang vay
+            $stats['total_profit_after_fee'] = $stats['total_revenue_display'] - $stats['total_expense_display'] - $currentDebt;
+            $stats['month_profit_after_fee'] = $stats['month_revenue_display'] - $stats['month_expense_display'] - $monthDebt;
+            
+            // Số dư = Thu + Vay - Chi - Trả nợ (dùng cho kiểm tra có thể trả nợ không)
+            $stats['total_balance'] = $stats['total_revenue_display'] + $totalBorrowed - $stats['total_expense_display'] - $totalReturned;
+            $stats['month_balance'] = $stats['month_revenue_display'] + $monthBorrowed - $stats['month_expense_display'] - $monthReturned;
             
             // Track owner maintenance separately (for display purposes)
             $stats['total_owner_maintenance'] = $totalOwnerMaintenance;

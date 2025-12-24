@@ -129,7 +129,7 @@
                         @if($stats['has_owner'])
                             <p class="text-xl font-bold text-green-600">{{ number_format($stats['total_revenue_display'], 0, ',', '.') }}đ</p>
                             <p class="text-xs text-gray-500">{{ number_format($stats['month_revenue_display'], 0, ',', '.') }}đ tháng này</p>
-                            <p class="text-xs text-green-600 mt-1">(Thu + Nộp quỹ + Vay)</p>
+                            <p class="text-xs text-green-600 mt-1">(Thu + Nộp quỹ)</p>
                         @else
                             <p class="text-xl font-bold text-green-600">{{ number_format($stats['total_revenue'], 0, ',', '.') }}đ</p>
                             <p class="text-xs text-gray-500">{{ number_format($stats['month_revenue'], 0, ',', '.') }}đ tháng này</p>
@@ -142,7 +142,7 @@
                         @if($stats['has_owner'])
                             <p class="text-xl font-bold text-red-600">{{ number_format($stats['total_expense_display'], 0, ',', '.') }}đ</p>
                             <p class="text-xs text-gray-500">{{ number_format($stats['month_expense_display'], 0, ',', '.') }}đ tháng này</p>
-                            <p class="text-xs text-red-600 mt-1">(Chi + Trả nợ + Phí 15%)</p>
+                            <p class="text-xs text-red-600 mt-1">(Chi + Phí 15%)</p>
                         @else
                             <p class="text-xl font-bold text-red-600">{{ number_format($stats['total_expense'], 0, ',', '.') }}đ</p>
                             <p class="text-xs text-gray-500">{{ number_format($stats['month_expense'], 0, ',', '.') }}đ tháng này</p>
@@ -160,6 +160,17 @@
                     </div>
                 </div>
                 @endif
+                @if($stats['has_owner'] && isset($stats['total_borrowed']) && $stats['total_borrowed'] > 0)
+                {{-- Hiển thị khoản đang vay cho xe có chủ --}}
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-l-4 border-orange-500">
+                    <div class="p-6">
+                        <p class="text-sm text-gray-500">Khoản đang vay</p>
+                        <p class="text-xl font-bold text-orange-600">{{ number_format($stats['total_borrowed'], 0, ',', '.') }}đ</p>
+                        <p class="text-xs text-gray-500">{{ number_format($stats['month_borrowed'], 0, ',', '.') }}đ tháng này</p>
+                        <p class="text-xs text-orange-500 mt-1">(Trừ vào lợi nhuận)</p>
+                    </div>
+                </div>
+                @endif
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <p class="text-sm text-gray-500">Lợi nhuận</p>
@@ -171,7 +182,7 @@
                                 {{ number_format($stats['month_profit_after_fee'], 0, ',', '.') }}đ tháng này
                             </p>
                             <p class="text-xs text-green-500 mt-1">
-                                (Thu - Chi)
+                                (Thu - Chi - Khoản vay)
                             </p>
                         @else
                             <p class="text-xl font-bold {{ $stats['total_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
