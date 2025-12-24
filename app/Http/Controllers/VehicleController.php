@@ -198,8 +198,10 @@ class VehicleController extends Controller
             
             $hasOwner = $vehicle->hasOwner();
             
-            // Chỉ tính management fee cho revenue thực sự (thu), không tính cho Nộp quỹ và Vay công ty
-            $realRevenue = $group->filter(function($t) { return $t->type === 'thu'; })->sum('amount');
+            // Chỉ tính management fee cho revenue thực sự (thu), không tính cho Nộp quỹ, Vay công ty và thu từ vay
+            $realRevenue = $group->filter(function($t) { 
+                return $t->type === 'thu' && $t->category !== 'vay_từ_công_ty'; 
+            })->sum('amount');
             $realExpense = $group->filter(function($t) { return $t->type === 'chi'; })->sum('amount');
             $revenueForFee = $realRevenue - $realExpense - $totalPlannedExpense;
             $managementFee = ($hasOwner && $revenueForFee > 0) ? $revenueForFee * 0.15 : 0;
@@ -277,9 +279,20 @@ class VehicleController extends Controller
             $totalReturned = (clone $statsQuery)->returnToCompany()->sum('amount');
             $monthReturned = $vehicle->transactions()->returnToCompany()->thisMonth()->sum('amount');
             
-            // Tính phí 15% cho công ty (từ tổng thu)
-            $companyFee = $stats['total_revenue'] * 0.15;
-            $monthCompanyFee = $stats['month_revenue'] * 0.15;
+            // Tính phí 15% cho công ty (từ tổng thu, LOẠI TRỪ thu từ vay)
+            $totalRevenueForFee = (clone $statsQuery)->revenue()
+                ->where(function($q) {
+                    $q->where('category', '!=', 'vay_từ_công_ty')
+                      ->orWhereNull('category');
+                })->sum('amount');
+            $monthRevenueForFee = $vehicle->transactions()->revenue()->thisMonth()
+                ->where(function($q) {
+                    $q->where('category', '!=', 'vay_từ_công_ty')
+                      ->orWhereNull('category');
+                })->sum('amount');
+                
+            $companyFee = $totalRevenueForFee * 0.15;
+            $monthCompanyFee = $monthRevenueForFee * 0.15;
             
             $stats['total_expense_display'] = $stats['total_expense'] + $totalReturned + $companyFee;
             $stats['month_expense_display'] = $stats['month_expense'] + $monthReturned + $monthCompanyFee;

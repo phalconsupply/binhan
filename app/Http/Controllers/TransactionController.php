@@ -128,8 +128,10 @@ class TransactionController extends Controller
             $vehicle = $group->first()->vehicle;
             $hasOwner = $vehicle && $vehicle->hasOwner();
             
-            // Only calculate management fee on real revenue (thu), not on borrowed or deposited funds
-            $realRevenue = $group->where('type', 'thu')->sum('amount');
+            // Only calculate management fee on real revenue (thu), excluding borrowed funds (vay_từ_công_ty)
+            $realRevenue = $group->filter(function($t) { 
+                return $t->type === 'thu' && $t->category !== 'vay_từ_công_ty'; 
+            })->sum('amount');
             $realExpense = $group->where('type', 'chi')->sum('amount');
             $revenueForFee = $realRevenue - $realExpense - $totalPlannedExpense;
             $managementFee = ($hasOwner && $revenueForFee > 0) ? $revenueForFee * 0.15 : 0;
@@ -406,7 +408,7 @@ class TransactionController extends Controller
         $validated = $request->validate([
             'incident_id' => 'nullable|exists:incidents,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
-            'type' => 'required|in:thu,chi,du_kien_chi,nop_quy',
+            'type' => 'required|in:thu,chi,du_kien_chi,nop_quy,vay_cong_ty,tra_cong_ty',
             'amount' => 'required|numeric|min:0',
             'method' => 'required|in:cash,bank,other',
             'date' => 'required|date',
@@ -426,6 +428,53 @@ class TransactionController extends Controller
                 } else {
                     $validated['note'] = 'Nộp quỹ - Tổng công ty';
                 }
+            }
+        }
+        
+        // Xử lý giao dịch VAY: tạo 2 giao dịch (chi công ty + thu xe)
+        if ($validated['type'] === 'vay_cong_ty') {
+            if (empty($validated['vehicle_id'])) {
+                return redirect()->back()->withErrors(['vehicle_id' => 'Phải chọn xe khi tạo giao dịch vay'])->withInput();
+            }
+            
+            $vehicle = Vehicle::find($validated['vehicle_id']);
+            $validated['incident_id'] = null;
+            $validated['recorded_by'] = auth()->id();
+            
+            \DB::beginTransaction();
+            try {
+                // 1. Tạo giao dịch CHI từ công ty (trừ lợi nhuận công ty)
+                $companyExpense = Transaction::create([
+                    'vehicle_id' => null, // Công ty
+                    'type' => 'chi',
+                    'amount' => $validated['amount'],
+                    'category' => 'cho_vay_xe',
+                    'note' => 'Cho xe ' . $vehicle->license_plate . ' vay' . (!empty($validated['note']) ? ' - ' . $validated['note'] : ''),
+                    'date' => $validated['date'],
+                    'method' => $validated['method'],
+                    'recorded_by' => $validated['recorded_by'],
+                ]);
+                
+                // 2. Tạo giao dịch THU cho xe (cộng vào thu xe, KHÔNG tính phí 15%)
+                $vehicleRevenue = Transaction::create([
+                    'vehicle_id' => $validated['vehicle_id'],
+                    'type' => 'thu',
+                    'amount' => $validated['amount'],
+                    'category' => 'vay_từ_công_ty', // Đánh dấu để không tính phí
+                    'note' => 'Vay từ công ty' . (!empty($validated['note']) ? ' - ' . $validated['note'] : ''),
+                    'date' => $validated['date'],
+                    'method' => $validated['method'],
+                    'recorded_by' => $validated['recorded_by'],
+                ]);
+                
+                \DB::commit();
+                
+                return redirect()->route('transactions.index')
+                    ->with('success', "Đã ghi nhận cho vay " . number_format($validated['amount'], 0, ',', '.') . 'đ cho xe ' . $vehicle->license_plate . '!');
+                    
+            } catch (\Exception $e) {
+                \DB::rollBack();
+                return redirect()->back()->withErrors(['error' => 'Lỗi khi tạo giao dịch vay: ' . $e->getMessage()])->withInput();
             }
         }
 
