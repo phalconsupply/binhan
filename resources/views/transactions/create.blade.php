@@ -29,6 +29,8 @@
                                 <option value="chi" {{ old('type') == 'chi' ? 'selected' : '' }}>Chi</option>
                                 <option value="du_kien_chi" {{ old('type') == 'du_kien_chi' ? 'selected' : '' }}>Dự kiến chi</option>
                                 <option value="nop_quy" {{ old('type') == 'nop_quy' ? 'selected' : '' }}>Nộp quỹ</option>
+                                <option value="vay_cong_ty" {{ old('type') == 'vay_cong_ty' ? 'selected' : '' }}>Vay công ty</option>
+                                <option value="tra_cong_ty" {{ old('type') == 'tra_cong_ty' ? 'selected' : '' }}>Trả nợ công ty</option>
                             </select>
                             <p class="mt-1 text-xs text-gray-500" id="type-hint">💡 "Dự kiến chi" sẽ được trừ khỏi lợi nhuận và thống kê riêng là "khoản chưa chi"</p>
                         </div>
@@ -177,15 +179,30 @@
             const incidentContainer = document.getElementById('incident-container');
             const incidentInput = document.getElementById('incident_id');
             const typeHint = document.getElementById('type-hint');
+            const vehicleSelect = document.getElementById('vehicle_id');
             
             if (type === 'nop_quy') {
                 // Ẩn chuyến đi khi chọn Nộp quỹ
                 incidentContainer.style.display = 'none';
                 incidentInput.value = '';
                 typeHint.textContent = '💡 "Nộp quỹ" sẽ cộng tiền vào quỹ. Nếu chọn xe liên quan, tiền sẽ cộng vào số dư xe (không tính phí 15%). Nếu không chọn xe hoặc xe không có chủ, tiền sẽ cộng vào lợi nhuận công ty.';
+                if (vehicleSelect) vehicleSelect.removeAttribute('required');
+            } else if (type === 'vay_cong_ty') {
+                // Ẩn chuyến đi và BẮT BUỘC chọn xe khi vay
+                incidentContainer.style.display = 'none';
+                incidentInput.value = '';
+                typeHint.textContent = '💡 "Vay công ty" sẽ tạo 2 giao dịch: Chi từ công ty (trừ lợi nhuận công ty) và Thu cho xe (không tính phí 15%). Phải chọn xe!';
+                if (vehicleSelect) vehicleSelect.setAttribute('required', 'required');
+            } else if (type === 'tra_cong_ty') {
+                // Ẩn chuyến đi khi trả nợ
+                incidentContainer.style.display = 'none';
+                incidentInput.value = '';
+                typeHint.textContent = '💡 "Trả nợ công ty" sẽ trừ tiền từ xe và cộng vào lợi nhuận công ty. Phải chọn xe!';
+                if (vehicleSelect) vehicleSelect.setAttribute('required', 'required');
             } else {
                 // Hiện lại chuyến đi cho các loại khác
                 incidentContainer.style.display = 'block';
+                if (vehicleSelect) vehicleSelect.removeAttribute('required');
                 if (type === 'du_kien_chi') {
                     typeHint.textContent = '💡 "Dự kiến chi" sẽ được trừ khỏi lợi nhuận và thống kê riêng là "khoản chưa chi"';
                 } else {
@@ -197,8 +214,8 @@
         // Gọi khi load trang nếu đã có giá trị cũ
         document.addEventListener('DOMContentLoaded', function() {
             const typeSelect = document.getElementById('type');
-            if (typeSelect && typeSelect.value === 'nop_quy') {
-                handleTypeChange('nop_quy');
+            if (typeSelect && (typeSelect.value === 'nop_quy' || typeSelect.value === 'vay_cong_ty' || typeSelect.value === 'tra_cong_ty')) {
+                handleTypeChange(typeSelect.value);
             }
         });
     </script>
