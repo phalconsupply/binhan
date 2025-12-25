@@ -347,6 +347,11 @@ class VehicleController extends Controller
     /**
      * Calculate vehicle statistics (reusable method)
      * Returns same stats as show() method
+     * 
+     * Logic:
+     * - Tổng thu = thu + vay_cong_ty + nop_quy + các giao dịch cộng tiền khác
+     * - Tổng chi = chi + du_kien_chi + tra_cong_ty + phí 15% + các giao dịch trừ tiền khác
+     * - Lợi nhuận = Tổng thu - Tổng chi
      */
     public static function calculateVehicleStats(Vehicle $vehicle, $startDate = null, $endDate = null)
     {
@@ -360,69 +365,83 @@ class VehicleController extends Controller
             $statsQuery->whereDate('date', '<=', $endDate);
         }
 
+        // Tổng thu = thu (revenue) + vay (borrow) + nộp quỹ (fund deposit)
+        $totalRevenue = (clone $statsQuery)->revenue()->sum('amount');
+        $totalBorrowed = (clone $statsQuery)->borrowFromCompany()->sum('amount');
+        $totalFundDeposit = (clone $statsQuery)->fundDeposit()->sum('amount');
+        
+        $monthRevenue = $vehicle->transactions()->revenue()->thisMonth()->sum('amount');
+        $monthBorrowed = $vehicle->transactions()->borrowFromCompany()->thisMonth()->sum('amount');
+        $monthFundDeposit = $vehicle->transactions()->fundDeposit()->thisMonth()->sum('amount');
+        
+        // Tổng chi = chi (expense) + dự kiến chi + trả nợ công ty
+        $totalExpense = (clone $statsQuery)->expense()->sum('amount');
+        $totalPlannedExpense = (clone $statsQuery)->plannedExpense()->sum('amount');
+        $totalReturned = (clone $statsQuery)->returnToCompany()->sum('amount');
+        
+        $monthExpense = $vehicle->transactions()->expense()->thisMonth()->sum('amount');
+        $monthPlannedExpense = $vehicle->transactions()->plannedExpense()->thisMonth()->sum('amount');
+        $monthReturned = $vehicle->transactions()->returnToCompany()->thisMonth()->sum('amount');
+
         $stats = [
-            'total_revenue' => (clone $statsQuery)->revenue()->where(function($q) {
-                $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
-            })->sum('amount'),
-            'total_expense' => (clone $statsQuery)->expense()->sum('amount'),
-            'total_planned_expense' => (clone $statsQuery)->plannedExpense()->sum('amount'),
-            'total_fund_deposit' => (clone $statsQuery)->fundDeposit()->sum('amount'),
-            'month_revenue' => $vehicle->transactions()->revenue()->thisMonth()->where(function($q) {
-                $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
-            })->sum('amount'),
-            'month_expense' => $vehicle->transactions()->expense()->thisMonth()->sum('amount'),
-            'month_planned_expense' => $vehicle->transactions()->plannedExpense()->thisMonth()->sum('amount'),
-            'month_fund_deposit' => $vehicle->transactions()->fundDeposit()->thisMonth()->sum('amount'),
+            'total_revenue' => $totalRevenue,
+            'total_expense' => $totalExpense,
+            'total_planned_expense' => $totalPlannedExpense,
+            'total_fund_deposit' => $totalFundDeposit,
+            'month_revenue' => $monthRevenue,
+            'month_expense' => $monthExpense,
+            'month_planned_expense' => $monthPlannedExpense,
+            'month_fund_deposit' => $monthFundDeposit,
         ];
 
-        // For vehicles with owner
+        // For vehicles with owner: calculate 15% company fee
         $stats['has_owner'] = $vehicle->hasOwner();
         if ($stats['has_owner']) {
-            $totalBorrowed = (clone $statsQuery)->borrowFromCompany()->sum('amount');
-            $monthBorrowed = $vehicle->transactions()->borrowFromCompany()->thisMonth()->sum('amount');
-            $totalReturned = (clone $statsQuery)->returnToCompany()->sum('amount');
-            $monthReturned = $vehicle->transactions()->returnToCompany()->thisMonth()->sum('amount');
-            
-            $currentDebt = $totalBorrowed - $totalReturned;
-            $monthDebt = $monthBorrowed - $monthReturned;
-            
-            $stats['total_revenue_display'] = $stats['total_revenue'] + $stats['total_fund_deposit'];
-            $stats['month_revenue_display'] = $stats['month_revenue'] + $stats['month_fund_deposit'];
-            
-            $totalRevenueForFee = (clone $statsQuery)->revenue()
-                ->where(function($q) {
-                    $q->where('category', '!=', 'vay_từ_công_ty')
-                      ->orWhereNull('category');
-                })->sum('amount');
-            $monthRevenueForFee = $vehicle->transactions()->revenue()->thisMonth()
-                ->where(function($q) {
-                    $q->where('category', '!=', 'vay_từ_công_ty')
-                      ->orWhereNull('category');
-                })->sum('amount');
-            
-            $totalProfitForFee = $totalRevenueForFee - $stats['total_expense'] - $stats['total_planned_expense'];
-            $monthProfitForFee = $monthRevenueForFee - $stats['month_expense'] - $stats['month_planned_expense'];
+            // Tính phí 15% dựa trên lợi nhuận thực: revenue - expense - planned_expense (không tính vay/trả nợ)
+            $totalProfitForFee = $totalRevenue - $totalExpense - $totalPlannedExpense;
+            $monthProfitForFee = $monthRevenue - $monthExpense - $monthPlannedExpense;
                 
             $companyFee = ($totalProfitForFee > 0) ? $totalProfitForFee * 0.15 : 0;
             $monthCompanyFee = ($monthProfitForFee > 0) ? $monthProfitForFee * 0.15 : 0;
             
-            $stats['total_expense_display'] = $stats['total_expense'] + $companyFee;
-            $stats['month_expense_display'] = $stats['month_expense'] + $monthCompanyFee;
+            // Tổng thu hiển thị = thu + vay + nộp quỹ
+            $stats['total_revenue_display'] = $totalRevenue + $totalBorrowed + $totalFundDeposit;
+            $stats['month_revenue_display'] = $monthRevenue + $monthBorrowed + $monthFundDeposit;
+            
+            // Tổng chi hiển thị = chi + dự kiến chi + trả nợ + phí 15%
+            $stats['total_expense_display'] = $totalExpense + $totalPlannedExpense + $totalReturned + $companyFee;
+            $stats['month_expense_display'] = $monthExpense + $monthPlannedExpense + $monthReturned + $monthCompanyFee;
             
             $stats['total_company_fee'] = $companyFee;
             $stats['month_company_fee'] = $monthCompanyFee;
             
+            // Nợ hiện tại = vay - trả
+            $currentDebt = $totalBorrowed - $totalReturned;
+            $monthDebt = $monthBorrowed - $monthReturned;
+            
             $stats['total_borrowed'] = $currentDebt;
             $stats['month_borrowed'] = $monthDebt;
             
-            $stats['total_profit_after_fee'] = $stats['total_revenue_display'] - $stats['total_expense_display'] - $currentDebt;
-            $stats['month_profit_after_fee'] = $stats['month_revenue_display'] - $stats['month_expense_display'] - $monthDebt;
+            // Lợi nhuận = Tổng thu - Tổng chi
+            $stats['total_profit_after_fee'] = $stats['total_revenue_display'] - $stats['total_expense_display'];
+            $stats['month_profit_after_fee'] = $stats['month_revenue_display'] - $stats['month_expense_display'];
             
-            $stats['total_balance'] = $stats['total_revenue_display'] + $totalBorrowed - $stats['total_expense_display'] - $totalReturned;
-            $stats['month_balance'] = $stats['month_revenue_display'] + $monthBorrowed - $stats['month_expense_display'] - $monthReturned;
+            // Balance (số dư) giữ nguyên như cũ
+            $stats['total_balance'] = $stats['total_profit_after_fee'];
+            $stats['month_balance'] = $stats['month_profit_after_fee'];
         } else {
-            $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'] - $stats['total_planned_expense'] + $stats['total_fund_deposit'];
-            $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'] + $stats['month_fund_deposit'];
+            // For vehicles without owner (company vehicles)
+            // Tổng thu = thu + vay + nộp quỹ
+            $stats['total_revenue_display'] = $totalRevenue + $totalBorrowed + $totalFundDeposit;
+            $stats['month_revenue_display'] = $monthRevenue + $monthBorrowed + $monthFundDeposit;
+            
+            // Tổng chi = chi + dự kiến chi + trả nợ (không có phí 15%)
+            $stats['total_expense_display'] = $totalExpense + $totalPlannedExpense + $totalReturned;
+            $stats['month_expense_display'] = $monthExpense + $monthPlannedExpense + $monthReturned;
+            
+            // Lợi nhuận = Tổng thu - Tổng chi
+            $stats['total_net'] = $stats['total_revenue_display'] - $stats['total_expense_display'];
+            $stats['month_net'] = $stats['month_revenue_display'] - $stats['month_expense_display'];
         }
 
         return $stats;
