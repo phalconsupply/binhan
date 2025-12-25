@@ -20,29 +20,21 @@ class TransactionController extends Controller
 
     /**
      * Display a listing of the resource.
+     * For admin/accountant only - owners redirected to OwnerTransactionController
      */
     public function index(Request $request)
     {
-        // Check if user is vehicle owner
+        // Check if user is vehicle owner - redirect to dedicated page
         $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
             ->where('staff_type', 'vehicle_owner')
             ->exists();
         
-        $ownedVehicleIds = [];
         if ($isVehicleOwner) {
-            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
-                ->where('staff_type', 'vehicle_owner')
-                ->pluck('vehicle_id')
-                ->filter()
-                ->toArray();
+            return redirect()->route('owner.transactions');
         }
-
+        
+        // Admin/accountant view - show all transactions
         $query = Transaction::with(['vehicle', 'incident.patient', 'recorder', 'vehicleMaintenance.maintenanceService']);
-
-        // Scope to owner's vehicles if owner
-        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
-            $query->whereIn('vehicle_id', $ownedVehicleIds);
-        }
 
         // Search
         if ($request->has('search')) {
@@ -263,119 +255,53 @@ class TransactionController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        // Get vehicles for filter dropdown (scoped to owner's vehicles if owner)
-        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
-            $vehicles = Vehicle::whereIn('id', $ownedVehicleIds)->orderBy('license_plate')->get();
-        } else {
-            $vehicles = Vehicle::orderBy('license_plate')->get();
-        }
+        // Get all vehicles for filter dropdown (admin view)
+        $vehicles = Vehicle::orderBy('license_plate')->get();
 
-        // Statistics (scoped to owner's vehicles if owner)
+        // Statistics for admin - all transactions
         $statsQuery = Transaction::query();
-        if ($isVehicleOwner && !empty($ownedVehicleIds)) {
-            $statsQuery->whereIn('vehicle_id', $ownedVehicleIds);
-        }
-
-        $totalRevenue = (clone $statsQuery)->revenue()->sum('amount');
+        
+        // Exclude borrowed funds from revenue (type='thu' with category='vay_từ_công_ty')
+        $totalRevenue = (clone $statsQuery)->revenue()->where(function($q) {
+            $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
+        })->sum('amount');
         $totalExpense = (clone $statsQuery)->expense()->sum('amount');
         $totalPlannedExpense = (clone $statsQuery)->plannedExpense()->sum('amount');
-        $monthRevenue = (clone $statsQuery)->revenue()->thisMonth()->sum('amount');
+        $monthRevenue = (clone $statsQuery)->revenue()->thisMonth()->where(function($q) {
+            $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
+        })->sum('amount');
         $monthExpense = (clone $statsQuery)->expense()->thisMonth()->sum('amount');
         $monthPlannedExpense = (clone $statsQuery)->plannedExpense()->thisMonth()->sum('amount');
         
-        // Calculate "Chi từ công ty" for vehicle owners
-        // NEW LOGIC: Chi từ công ty = Actual borrowed amount from company (vay_cong_ty - tra_cong_ty)
-        // FALLBACK: If no borrow transactions exist, calculate deficit (Chi - Thu)
-        if ($isVehicleOwner) {
-            $totalBorrowed = (clone $statsQuery)->borrowFromCompany()->sum('amount');
-            $totalReturned = (clone $statsQuery)->returnToCompany()->sum('amount');
-            $currentDebt = $totalBorrowed - $totalReturned;
-            
-            // If there are actual borrow transactions, use them; otherwise calculate deficit
-            if ($totalBorrowed > 0) {
-                $companyExpense = $currentDebt;
-                $monthBorrowed = (clone $statsQuery)->borrowFromCompany()->thisMonth()->sum('amount');
-                $monthReturned = (clone $statsQuery)->returnToCompany()->thisMonth()->sum('amount');
-                $companyMonthExpense = $monthBorrowed - $monthReturned;
-            } else {
-                // Legacy calculation: amount company had to cover when owner didn't have enough
-                $companyExpense = max(0, $totalExpense - $totalRevenue);
-                $companyMonthExpense = max(0, $monthExpense - $monthRevenue);
-            }
-            $companyPlannedExpense = (clone $statsQuery)->plannedExpense()->whereNull('incident_id')->sum('amount');
-        } else {
-            // For admin: show expenses without incident_id (company's own expenses)
-            $companyExpense = (clone $statsQuery)->expense()->whereNull('incident_id')->sum('amount');
-            $companyMonthExpense = (clone $statsQuery)->expense()->whereNull('incident_id')->thisMonth()->sum('amount');
-            $companyPlannedExpense = (clone $statsQuery)->plannedExpense()->whereNull('incident_id')->sum('amount');
-        }
+        // Fund deposits
+        $totalFundDeposit = (clone $statsQuery)->fundDeposit()->sum('amount');
+        $monthFundDeposit = (clone $statsQuery)->fundDeposit()->thisMonth()->sum('amount');
+        
+        // Company expenses (without incident_id)
+        $companyExpense = (clone $statsQuery)->expense()->whereNull('incident_id')->sum('amount');
+        $companyMonthExpense = (clone $statsQuery)->expense()->whereNull('incident_id')->thisMonth()->sum('amount');
+        $companyPlannedExpense = (clone $statsQuery)->plannedExpense()->whereNull('incident_id')->sum('amount');
         
         $stats = [
+            'total_revenue_display' => $totalRevenue + $totalFundDeposit,
+            'month_revenue_display' => $monthRevenue + $monthFundDeposit,
             'total_revenue' => $totalRevenue,
-            'total_expense' => $totalExpense,
-            'total_planned_expense' => $totalPlannedExpense,
-            'today_revenue' => (clone $statsQuery)->revenue()->today()->sum('amount'),
-            'today_expense' => (clone $statsQuery)->expense()->today()->sum('amount'),
-            'today_planned_expense' => (clone $statsQuery)->plannedExpense()->today()->sum('amount'),
             'month_revenue' => $monthRevenue,
+            'total_expense' => $totalExpense,
             'month_expense' => $monthExpense,
+            'total_planned_expense' => $totalPlannedExpense,
             'month_planned_expense' => $monthPlannedExpense,
+            'total_fund_deposit' => $totalFundDeposit,
+            'month_fund_deposit' => $monthFundDeposit,
+            'today_revenue' => (clone $statsQuery)->revenue()->whereDate('date', date('Y-m-d'))->where(function($q) {
+                $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
+            })->sum('amount'),
+            'today_expense' => (clone $statsQuery)->expense()->whereDate('date', date('Y-m-d'))->sum('amount'),
             'company_expense' => $companyExpense,
             'company_month_expense' => $companyMonthExpense,
             'company_planned_expense' => $companyPlannedExpense,
         ];
-        
-        // Calculate profit (different for owner vs company)
-        if ($isVehicleOwner) {
-            // For vehicle owner: simple calculation
-            // Owner's profit = Total Revenue - Total Expense (excluding owner maintenance) - Total Planned Expense + Fund Deposit
-            // Need to exclude "bảo_trì_xe_chủ_riêng" from expense calculation (deducted separately, not from company)
-            
-            // Get owner maintenance costs (these are deducted from vehicle profit, not company expense)
-            $totalOwnerMaintenance = (clone $statsQuery)->expense()->where('category', 'bảo_trì_xe_chủ_riêng')->sum('amount');
-            $todayOwnerMaintenance = (clone $statsQuery)->expense()->today()->where('category', 'bảo_trì_xe_chủ_riêng')->sum('amount');
-            $monthOwnerMaintenance = (clone $statsQuery)->expense()->thisMonth()->where('category', 'bảo_trì_xe_chủ_riêng')->sum('amount');
-            
-            // Calculate company expenses (excluding owner maintenance)
-            $totalExpenseCompany = $stats['total_expense'] - $totalOwnerMaintenance;
-            $todayExpenseCompany = $stats['today_expense'] - $todayOwnerMaintenance;
-            $monthExpenseCompany = $stats['month_expense'] - $monthOwnerMaintenance;
-            
-            // Include fund deposits for the owner's vehicle
-            $totalFundDeposit = (clone $statsQuery)->fundDeposit()->sum('amount');
-            $todayFundDeposit = (clone $statsQuery)->fundDeposit()->today()->sum('amount');
-            $monthFundDeposit = (clone $statsQuery)->fundDeposit()->whereMonth('date', now()->month)->whereYear('date', now()->year)->sum('amount');
-            
-            // Calculate net profit (before management fee and owner maintenance)
-            $totalNet = $stats['total_revenue'] - $totalExpenseCompany - $stats['total_planned_expense'] + $totalFundDeposit;
-            $todayNet = $stats['today_revenue'] - $todayExpenseCompany - $stats['today_planned_expense'] + $todayFundDeposit;
-            $monthNet = $stats['month_revenue'] - $monthExpenseCompany - $stats['month_planned_expense'] + $monthFundDeposit;
-            
-            // Calculate management fee (15% of net BEFORE fund deposit)
-            $totalNetBeforeFundDeposit = $stats['total_revenue'] - $totalExpenseCompany - $stats['total_planned_expense'];
-            $todayNetBeforeFundDeposit = $stats['today_revenue'] - $todayExpenseCompany - $stats['today_planned_expense'];
-            $monthNetBeforeFundDeposit = $stats['month_revenue'] - $monthExpenseCompany - $stats['month_planned_expense'];
-            
-            $totalManagementFee = $totalNetBeforeFundDeposit > 0 ? $totalNetBeforeFundDeposit * 0.15 : 0;
-            $todayManagementFee = $todayNetBeforeFundDeposit > 0 ? $todayNetBeforeFundDeposit * 0.15 : 0;
-            $monthManagementFee = $monthNetBeforeFundDeposit > 0 ? $monthNetBeforeFundDeposit * 0.15 : 0;
-            
-            // Final profit after management fee and owner maintenance
-            $companyProfit = $totalNet - $totalManagementFee - $totalOwnerMaintenance;
-            $companyTodayProfit = $todayNet - $todayManagementFee - $todayOwnerMaintenance;
-            $companyMonthProfit = $monthNet - $monthManagementFee - $monthOwnerMaintenance;
-        } else {
-            // For company/admin: Simplified calculation
-            // Lợi nhuận = Tổng thu - Tổng chi - Dự kiến chi (tất cả giao dịch)
-            
-            $companyProfit = $totalRevenue - $totalExpense - $totalPlannedExpense;
-            $companyTodayProfit = $stats['today_revenue'] - $stats['today_expense'] - $stats['today_planned_expense'];
-            $companyMonthProfit = $monthRevenue - $monthExpense - $monthPlannedExpense;
-        }
-        
-        $stats['total_net'] = $companyProfit;
-        $stats['today_net'] = $companyTodayProfit;
-        $stats['month_net'] = $companyMonthProfit;
+
 
         return view('transactions.index', compact('transactions', 'vehicles', 'stats'));
     }
