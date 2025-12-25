@@ -478,8 +478,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="flex items-center justify-between">
                     <div class="w-full">
                         <p class="text-sm text-gray-600 mb-1">Lợi nhuận ${isCurrentMonth ? 'tháng này' : monthLabel}</p>
-                        <p class="text-xs ${stats.month_profit > 0 ? 'text-blue-600' : 'text-red-600'} mb-2">(Sau khi trừ 15%)</p>
-                        <p class="text-3xl font-bold ${stats.month_profit > 0 ? 'text-blue-600' : 'text-red-600'}">${formatNumber(stats.month_profit)}đ</p>
+                        <p class="text-3xl font-bold ${stats.month_profit > 0 ? 'text-blue-600' : 'text-red-600'} mt-4">${formatNumber(stats.month_profit)}đ</p>
                         <p class="text-xs text-gray-400 mt-1">${monthLabel}</p>
                         <div class="mt-3 pt-3 border-t border-gray-200">
                             <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
