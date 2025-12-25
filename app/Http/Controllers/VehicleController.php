@@ -286,7 +286,7 @@ class VehicleController extends Controller
             $stats['total_revenue_display'] = $stats['total_revenue'] + $stats['total_fund_deposit'];
             $stats['month_revenue_display'] = $stats['month_revenue'] + $stats['month_fund_deposit'];
             
-            // BƯỚC 3: Tính phí 15% cho công ty (từ thu thực tế, LOẠI TRỪ thu từ vay)
+            // BƯỚC 3: Tính phí 15% cho công ty (từ lợi nhuận = thu - chi, LOẠI TRỪ thu từ vay)
             $totalRevenueForFee = (clone $statsQuery)->revenue()
                 ->where(function($q) {
                     $q->where('category', '!=', 'vay_từ_công_ty')
@@ -297,9 +297,13 @@ class VehicleController extends Controller
                     $q->where('category', '!=', 'vay_từ_công_ty')
                       ->orWhereNull('category');
                 })->sum('amount');
+            
+            // Phí 15% tính trên lợi nhuận thuần (revenue - expense - planned), không tính trên tổng thu
+            $totalProfitForFee = $totalRevenueForFee - $stats['total_expense'] - $stats['total_planned_expense'];
+            $monthProfitForFee = $monthRevenueForFee - $stats['month_expense'] - $stats['month_planned_expense'];
                 
-            $companyFee = $totalRevenueForFee * 0.15;
-            $monthCompanyFee = $monthRevenueForFee * 0.15;
+            $companyFee = ($totalProfitForFee > 0) ? $totalProfitForFee * 0.15 : 0;
+            $monthCompanyFee = ($monthProfitForFee > 0) ? $monthProfitForFee * 0.15 : 0;
             
             // BƯỚC 4: Tổng chi HIỂN THỊ = chi + phí 15% (KHÔNG bao gồm trả nợ)
             $stats['total_expense_display'] = $stats['total_expense'] + $companyFee;
