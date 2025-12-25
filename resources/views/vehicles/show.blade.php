@@ -1448,6 +1448,7 @@
         const vehicleId = {{ $vehicle->id }};
         const hasOwner = {{ $stats['has_owner'] ? 'true' : 'false' }};
         const currentMonth = '{{ date("m/Y") }}';
+        const baseUrl = '{{ url("/") }}';
 
         // Format number
         function formatNumber(num) {
@@ -1578,7 +1579,7 @@
             loadingIndicator.classList.remove('hidden');
             
             try {
-                const response = await fetch(`/vehicle-stats/${vehicleId}?month=${month}`);
+                const response = await fetch(`${baseUrl}/vehicle-stats/${vehicleId}?month=${month}`);
                 const stats = await response.json();
                 
                 if (response.ok) {

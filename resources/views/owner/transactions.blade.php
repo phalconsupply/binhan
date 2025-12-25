@@ -409,6 +409,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const monthSelector = document.getElementById('ownerMonthSelector');
     const loadingIndicator = document.getElementById('ownerLoadingIndicator');
     const statsContainer = document.getElementById('ownerStatsContainer');
+    const baseUrl = '{{ url("/") }}';
     
     const totalRevenueDisplay = {{ $stats['total_revenue_display'] }};
     const totalExpenseDisplay = {{ $stats['total_expense_display'] }};
@@ -508,7 +509,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadingIndicator.classList.remove('hidden');
         
         try {
-            const response = await fetch(`/my-transactions/stats?month=${month}`);
+            const response = await fetch(`${baseUrl}/my-transactions/stats?month=${month}`);
             
             if (!response.ok) {
                 throw new Error('Failed to load statistics');
