@@ -111,22 +111,35 @@ class VehicleMaintenanceController extends Controller
 
         $validated['user_id'] = auth()->id();
 
-        $maintenance = VehicleMaintenance::create($validated);
-        $vehicle = $maintenance->vehicle;
+        // Use database transaction to ensure atomicity
+        \DB::beginTransaction();
+        try {
+            $maintenance = VehicleMaintenance::create($validated);
+            $vehicle = $maintenance->vehicle;
 
-        // Create transaction for this maintenance
-        $maintenance->createTransaction();
+            // Create transaction for this maintenance
+            $transaction = $maintenance->createTransaction();
+            
+            if (!$transaction) {
+                throw new \Exception('Failed to create transaction for maintenance');
+            }
 
-        $message = "Đã thêm lịch sử bảo trì cho xe {$vehicle->license_plate} thành công!";
+            \DB::commit();
 
-        // Check action type
-        if ($request->input('action') === 'save_and_continue') {
-            return redirect()->route('vehicle-maintenances.create', ['vehicle_id' => $vehicle->id])
+            $message = "Đã thêm lịch sử bảo trì cho xe {$vehicle->license_plate} thành công!";
+
+            // Check action type
+            if ($request->input('action') === 'save_and_continue') {
+                return redirect()->route('vehicle-maintenances.create', ['vehicle_id' => $vehicle->id])
+                    ->with('success', $message);
+            }
+
+            return redirect()->route('vehicle-maintenances.index', ['vehicle_id' => $vehicle->id])
                 ->with('success', $message);
+        } catch (\Exception $e) {
+            \DB::rollback();
+            return back()->withInput()->withErrors(['error' => 'Lỗi khi tạo bảo trì: ' . $e->getMessage()]);
         }
-
-        return redirect()->route('vehicle-maintenances.index', ['vehicle_id' => $vehicle->id])
-            ->with('success', $message);
     }
 
     public function edit(VehicleMaintenance $vehicleMaintenance)
