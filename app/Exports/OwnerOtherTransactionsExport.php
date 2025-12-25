@@ -66,8 +66,8 @@ class OwnerOtherTransactionsExport implements FromCollection, WithHeadings, With
             $typeLabels[$transaction->type] ?? $transaction->type,
             $transaction->category ?? '-',
             $transaction->notes ?? '-',
-            $isRevenue ? number_format($transaction->amount, 0, ',', '.') : '-',
-            !$isRevenue ? number_format($transaction->amount, 0, ',', '.') : '-',
+            $isRevenue ? $transaction->amount : 0, // Raw number for Excel
+            !$isRevenue ? $transaction->amount : 0, // Raw number for Excel
         ];
     }
 
@@ -130,6 +130,9 @@ class OwnerOtherTransactionsExport implements FromCollection, WithHeadings, With
 
         // Right align numbers
         $sheet->getStyle("G2:H{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+        // Format currency columns G, H with thousand separator
+        $sheet->getStyle("G2:H{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
 
         $sheet->getRowDimension(1)->setRowHeight(25);
 

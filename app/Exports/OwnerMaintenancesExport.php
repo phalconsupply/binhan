@@ -52,7 +52,7 @@ class OwnerMaintenancesExport implements FromCollection, WithHeadings, WithMappi
             $group['maintenance']->maintenanceService->name ?? '-',
             $group['maintenance']->partner->name ?? '-',
             $group['count'],
-            number_format($group['total_expense'], 0, ',', '.'),
+            $group['total_expense'], // Raw number for Excel
         ];
     }
 
@@ -113,6 +113,9 @@ class OwnerMaintenancesExport implements FromCollection, WithHeadings, WithMappi
 
         // Right align numbers
         $sheet->getStyle("E2:F{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+        // Format currency column F with thousand separator
+        $sheet->getStyle("F2:F{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
 
         $sheet->getRowDimension(1)->setRowHeight(25);
 

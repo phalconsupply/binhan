@@ -55,10 +55,10 @@ class OwnerIncidentsExport implements FromCollection, WithHeadings, WithMapping,
             '#' . $group['incident']->id,
             $group['incident']->patient->name ?? '-',
             $group['count'],
-            number_format($group['total_revenue'], 0, ',', '.'),
-            number_format($group['total_expense'], 0, ',', '.'),
-            number_format($group['management_fee'] ?? 0, 0, ',', '.'),
-            number_format($group['profit_after_fee'] ?? $group['net_amount'], 0, ',', '.'),
+            $group['total_revenue'], // Raw number for Excel
+            $group['total_expense'], // Raw number for Excel
+            $group['management_fee'] ?? 0, // Raw number for Excel
+            $group['profit_after_fee'] ?? $group['net_amount'], // Raw number for Excel
         ];
     }
 
@@ -122,6 +122,9 @@ class OwnerIncidentsExport implements FromCollection, WithHeadings, WithMapping,
 
         // Right align numbers
         $sheet->getStyle("E2:I{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+        // Format currency columns (F, G, H, I) with thousand separator
+        $sheet->getStyle("F2:I{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
 
         $sheet->getRowDimension(1)->setRowHeight(25);
 
