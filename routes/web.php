@@ -107,6 +107,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Owner transactions (trang riêng cho chủ xe)
     Route::get('my-transactions', [App\Http\Controllers\OwnerTransactionController::class, 'index'])->name('owner.transactions');
+    Route::get('my-transactions/{vehicle}/export-incidents', [App\Http\Controllers\OwnerTransactionController::class, 'exportIncidents'])->name('owner.transactions.export-incidents');
+    Route::get('my-transactions/{vehicle}/export-maintenances', [App\Http\Controllers\OwnerTransactionController::class, 'exportMaintenances'])->name('owner.transactions.export-maintenances');
+    Route::get('my-transactions/{vehicle}/export-others', [App\Http\Controllers\OwnerTransactionController::class, 'exportOthers'])->name('owner.transactions.export-others');
     
     Route::resource('transactions', TransactionController::class);
 });

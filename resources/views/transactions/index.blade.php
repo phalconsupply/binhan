@@ -38,8 +38,9 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                     <p class="text-sm text-gray-500">Tổng thu</p>
-                    <p class="text-2xl font-bold text-green-600">{{ number_format($stats['total_revenue'], 0, ',', '.') }}đ</p>
-                    <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['month_revenue'], 0, ',', '.') }}đ</p>
+                    <p class="text-2xl font-bold text-green-600">{{ number_format($stats['total_revenue_display'], 0, ',', '.') }}đ</p>
+                    <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['month_revenue_display'], 0, ',', '.') }}đ</p>
+                    <p class="text-xs text-green-600 mt-1">(Thu + Nộp quỹ)</p>
                 </div>
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                     <p class="text-sm text-gray-500">Tổng chi</p>

@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\OwnerIncidentsExport;
+use App\Exports\OwnerMaintenancesExport;
+use App\Exports\OwnerOtherTransactionsExport;
 
 class OwnerTransactionController extends Controller
 {
@@ -232,5 +236,182 @@ class OwnerTransactionController extends Controller
         }
         
         return view('owner.transactions', compact('vehicleStats', 'stats', 'transactionsByVehicle', 'vehicles'));
+    }
+
+    /**
+     * Export incidents to Excel
+     */
+    public function exportIncidents(Request $request, $vehicleId)
+    {
+        $vehicle = Vehicle::findOrFail($vehicleId);
+        
+        // Check if user owns this vehicle
+        $isOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->where('vehicle_id', $vehicleId)
+            ->exists();
+        
+        if (!$isOwner) {
+            abort(403, 'Bạn không có quyền xuất dữ liệu xe này.');
+        }
+
+        // Get all incidents for this vehicle
+        $allTransactions = Transaction::with(['vehicle', 'incident.patient'])
+            ->where('vehicle_id', $vehicleId)
+            ->orderBy('date', 'desc')
+            ->get();
+
+        $incidents = $allTransactions->groupBy(function($transaction) {
+            if ($transaction->incident_id) {
+                return 'incident_' . $transaction->incident_id;
+            }
+            return null;
+        })->filter(function($group, $key) {
+            return $key !== null && strpos($key, 'incident_') === 0;
+        })->map(function($group) use ($vehicle) {
+            $revenueTypes = ['thu', 'vay_cong_ty', 'nop_quy'];
+            $expenseTypes = ['chi', 'tra_cong_ty', 'du_kien_chi'];
+            
+            $totalRevenue = $group->filter(function($t) use ($revenueTypes) { 
+                return in_array($t->type, $revenueTypes);
+            })->sum('amount');
+            
+            $totalExpense = $group->filter(function($t) use ($expenseTypes) { 
+                return in_array($t->type, $expenseTypes);
+            })->sum('amount');
+            
+            $totalPlannedExpense = $group->filter(function($t) { return $t->type === 'du_kien_chi'; })->sum('amount');
+            $netAmount = $totalRevenue - $totalExpense;
+            
+            // Calculate management fee
+            $hasOwner = $vehicle->hasOwner();
+            $managementFee = 0;
+            $profitAfterFee = $netAmount;
+            
+            $firstTransaction = $group->first();
+            if ($firstTransaction->incident_id && $hasOwner) {
+                $realRevenue = $group->filter(function($t) { 
+                    return $t->type === 'thu' && $t->category !== 'vay_từ_công_ty'; 
+                })->sum('amount');
+                $realExpense = $group->filter(function($t) { return $t->type === 'chi'; })->sum('amount');
+                $revenueForFee = $realRevenue - $realExpense - $totalPlannedExpense;
+                $managementFee = ($revenueForFee > 0) ? $revenueForFee * 0.15 : 0;
+                $profitAfterFee = $netAmount - $managementFee;
+            }
+            
+            return [
+                'incident' => $firstTransaction->incident,
+                'date' => $firstTransaction->date,
+                'transactions' => $group,
+                'total_revenue' => $totalRevenue,
+                'total_expense' => $totalExpense,
+                'net_amount' => $netAmount,
+                'management_fee' => $managementFee,
+                'profit_after_fee' => $profitAfterFee,
+                'count' => $group->count(),
+            ];
+        })->sortByDesc('date')->values();
+
+        return Excel::download(
+            new OwnerIncidentsExport($incidents, $vehicle->license_plate),
+            'chuyen-di-' . $vehicle->license_plate . '-' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    /**
+     * Export maintenances to Excel
+     */
+    public function exportMaintenances(Request $request, $vehicleId)
+    {
+        $vehicle = Vehicle::findOrFail($vehicleId);
+        
+        // Check if user owns this vehicle
+        $isOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->where('vehicle_id', $vehicleId)
+            ->exists();
+        
+        if (!$isOwner) {
+            abort(403, 'Bạn không có quyền xuất dữ liệu xe này.');
+        }
+
+        // Get all maintenances for this vehicle
+        $allTransactions = Transaction::with(['vehicle', 'vehicleMaintenance.maintenanceService', 'vehicleMaintenance.partner'])
+            ->where('vehicle_id', $vehicleId)
+            ->orderBy('date', 'desc')
+            ->get();
+
+        $maintenances = $allTransactions->groupBy(function($transaction) {
+            if ($transaction->vehicle_maintenance_id) {
+                return 'maintenance_' . $transaction->vehicle_maintenance_id;
+            }
+            return null;
+        })->filter(function($group, $key) {
+            return $key !== null && strpos($key, 'maintenance_') === 0;
+        })->map(function($group) {
+            $expenseTypes = ['chi', 'tra_cong_ty', 'du_kien_chi'];
+            
+            $totalExpense = $group->filter(function($t) use ($expenseTypes) { 
+                return in_array($t->type, $expenseTypes);
+            })->sum('amount');
+            
+            $firstTransaction = $group->first();
+            
+            return [
+                'maintenance' => $firstTransaction->vehicleMaintenance,
+                'date' => $firstTransaction->date,
+                'transactions' => $group,
+                'total_expense' => $totalExpense,
+                'count' => $group->count(),
+            ];
+        })->sortByDesc('date')->values();
+
+        return Excel::download(
+            new OwnerMaintenancesExport($maintenances, $vehicle->license_plate),
+            'bao-tri-' . $vehicle->license_plate . '-' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    /**
+     * Export other transactions to Excel
+     */
+    public function exportOthers(Request $request, $vehicleId)
+    {
+        $vehicle = Vehicle::findOrFail($vehicleId);
+        
+        // Check if user owns this vehicle
+        $isOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->where('vehicle_id', $vehicleId)
+            ->exists();
+        
+        if (!$isOwner) {
+            abort(403, 'Bạn không có quyền xuất dữ liệu xe này.');
+        }
+
+        // Get all other transactions for this vehicle
+        $allTransactions = Transaction::with(['vehicle'])
+            ->where('vehicle_id', $vehicleId)
+            ->orderBy('date', 'desc')
+            ->get();
+
+        $others = $allTransactions->groupBy(function($transaction) {
+            if (!$transaction->incident_id && !$transaction->vehicle_maintenance_id) {
+                return 'other_' . $transaction->id;
+            }
+            return null;
+        })->filter(function($group, $key) {
+            return $key !== null && strpos($key, 'other_') === 0;
+        })->map(function($group) {
+            return [
+                'date' => $group->first()->date,
+                'transactions' => $group,
+            ];
+        })->sortByDesc('date')->values();
+
+        return Excel::download(
+            new OwnerOtherTransactionsExport($others, $vehicle->license_plate),
+            'giao-dich-khac-' . $vehicle->license_plate . '-' . now()->format('Y-m-d') . '.xlsx'
+        );
     }
 }

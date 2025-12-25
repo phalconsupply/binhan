@@ -73,7 +73,6 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Biển số xe</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng thu</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng chi</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Phí 15%</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Khoản vay</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Lợi nhuận</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tháng này</th>
@@ -92,9 +91,6 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-red-600">
                             {{ number_format($vStats['total_expense_display'], 0, ',', '.') }}đ
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-orange-600">
-                            {{ number_format($vStats['total_company_fee'], 0, ',', '.') }}đ
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right {{ $vStats['total_debt'] > 0 ? 'text-orange-600' : 'text-gray-400' }}">
                             {{ number_format($vStats['total_debt'], 0, ',', '.') }}đ
@@ -130,7 +126,16 @@
         {{-- Chuyến đi --}}
         @if($vehicleData['incidents']->count() > 0)
         <div class="px-6 py-4 border-b transaction-table-container" data-table-id="incidents-{{ $vehicleData['vehicle']->id }}">
-            <h3 class="text-md font-semibold text-gray-700 mb-3">Chuyến đi ({{ $vehicleData['incidents']->total() }})</h3>
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-md font-semibold text-gray-700">Chuyến đi ({{ $vehicleData['incidents']->total() }})</h3>
+                <a href="{{ route('owner.transactions.export-incidents', $vehicleData['vehicle']->id) }}" 
+                   class="inline-flex items-center px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Excel
+                </a>
+            </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -189,7 +194,16 @@
         {{-- Bảo trì xe --}}
         @if($vehicleData['maintenances']->count() > 0)
         <div class="px-6 py-4 border-b transaction-table-container" data-table-id="maintenances-{{ $vehicleData['vehicle']->id }}">
-            <h3 class="text-md font-semibold text-gray-700 mb-3">Bảo trì xe ({{ $vehicleData['maintenances']->total() }})</h3>
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-md font-semibold text-gray-700">Bảo trì xe ({{ $vehicleData['maintenances']->total() }})</h3>
+                <a href="{{ route('owner.transactions.export-maintenances', $vehicleData['vehicle']->id) }}" 
+                   class="inline-flex items-center px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Excel
+                </a>
+            </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -235,7 +249,16 @@
         {{-- Giao dịch khác --}}
         @if($vehicleData['others']->count() > 0)
         <div class="px-6 py-4 transaction-table-container" data-table-id="others-{{ $vehicleData['vehicle']->id }}">
-            <h3 class="text-md font-semibold text-gray-700 mb-3">Giao dịch khác ({{ $vehicleData['others']->total() }})</h3>
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-md font-semibold text-gray-700">Giao dịch khác ({{ $vehicleData['others']->total() }})</h3>
+                <a href="{{ route('owner.transactions.export-others', $vehicleData['vehicle']->id) }}" 
+                   class="inline-flex items-center px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Excel
+                </a>
+            </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">

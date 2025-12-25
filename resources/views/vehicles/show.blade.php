@@ -595,26 +595,10 @@
 
                         <!-- Statistics Section -->
                         <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <h4 class="text-sm font-medium text-gray-600 mb-1">Tổng chi phí bảo trì</h4>
-                                    <p class="text-2xl font-bold text-orange-600">{{ number_format($totalMaintenanceCost, 0, ',', '.') }} đ</p>
-                                    <p class="text-xs text-gray-500 mt-1">Xe: {{ $vehicle->license_plate }}</p>
-                                </div>
-                                <div class="flex gap-2">
-                                    <a href="{{ route('vehicles.export-maintenances-pdf', $vehicle) }}" class="inline-flex items-center px-3 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                                        </svg>
-                                        In PDF
-                                    </a>
-                                    <a href="{{ route('vehicles.export-maintenances-excel', $vehicle) }}" class="inline-flex items-center px-3 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                        </svg>
-                                        Xuất Excel
-                                    </a>
-                                </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-600 mb-1">Tổng chi phí bảo trì</h4>
+                                <p class="text-2xl font-bold text-orange-600">{{ number_format($totalMaintenanceCost, 0, ',', '.') }} đ</p>
+                                <p class="text-xs text-gray-500 mt-1">Xe: {{ $vehicle->license_plate }}</p>
                             </div>
                         </div>
                         
@@ -766,64 +750,6 @@
                                 <span class="text-sm font-normal text-gray-500">(gần đây)</span>
                                 @endif
                             </h3>
-                            
-                            {{-- Export Button with Dropdown --}}
-                            <div x-data="{ open: false }" class="relative">
-                                <button @click="open = !open" type="button" class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
-                                    Xuất Excel
-                                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                    </svg>
-                                </button>
-
-                                {{-- Export Dropdown --}}
-                                <div x-show="open" @click.away="open = false" x-cloak
-                                    class="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                                    <form action="{{ route('vehicles.export-transactions', $vehicle) }}" method="GET" class="p-4">
-                                        <h4 class="font-semibold text-gray-800 mb-3">Tùy chọn xuất file</h4>
-                                        
-                                        {{-- Date Range --}}
-                                        <div class="mb-4">
-                                            <label class="block text-sm font-medium text-gray-700 mb-2">Khoảng thời gian</label>
-                                            <div class="grid grid-cols-2 gap-2">
-                                                <div>
-                                                    <input type="date" name="date_from" value="{{ request('start_date') }}"
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                                                    <label class="text-xs text-gray-500">Từ ngày</label>
-                                                </div>
-                                                <div>
-                                                    <input type="date" name="date_to" value="{{ request('end_date') }}"
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                                                    <label class="text-xs text-gray-500">Đến ngày</label>
-                                                </div>
-                                            </div>
-                                            <p class="text-xs text-gray-500 mt-1">Để trống để xuất toàn bộ</p>
-                                        </div>
-
-                                        {{-- Transaction Type --}}
-                                        <div class="mb-4">
-                                            <label class="block text-sm font-medium text-gray-700 mb-2">Loại giao dịch</label>
-                                            <select name="transaction_type" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                                                <option value="">Tất cả loại giao dịch</option>
-                                                <option value="chuyen">Chuyến xe (có mã chuyến)</option>
-                                                <option value="nop_quy">Nộp quỹ</option>
-                                                <option value="khac">Giao dịch khác</option>
-                                            </select>
-                                        </div>
-
-                                        {{-- Submit Button --}}
-                                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition">
-                                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                            </svg>
-                                            Xuất file Excel
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
                         </div>
                         
                         @if($transactions->isEmpty())
