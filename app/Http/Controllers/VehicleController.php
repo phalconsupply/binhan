@@ -345,6 +345,90 @@ class VehicleController extends Controller
     }
 
     /**
+     * Calculate vehicle statistics (reusable method)
+     * Returns same stats as show() method
+     */
+    public static function calculateVehicleStats(Vehicle $vehicle, $startDate = null, $endDate = null)
+    {
+        $statsQuery = $vehicle->transactions();
+        
+        if ($startDate) {
+            $statsQuery->whereDate('date', '>=', $startDate);
+        }
+        
+        if ($endDate) {
+            $statsQuery->whereDate('date', '<=', $endDate);
+        }
+
+        $stats = [
+            'total_revenue' => (clone $statsQuery)->revenue()->where(function($q) {
+                $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
+            })->sum('amount'),
+            'total_expense' => (clone $statsQuery)->expense()->sum('amount'),
+            'total_planned_expense' => (clone $statsQuery)->plannedExpense()->sum('amount'),
+            'total_fund_deposit' => (clone $statsQuery)->fundDeposit()->sum('amount'),
+            'month_revenue' => $vehicle->transactions()->revenue()->thisMonth()->where(function($q) {
+                $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
+            })->sum('amount'),
+            'month_expense' => $vehicle->transactions()->expense()->thisMonth()->sum('amount'),
+            'month_planned_expense' => $vehicle->transactions()->plannedExpense()->thisMonth()->sum('amount'),
+            'month_fund_deposit' => $vehicle->transactions()->fundDeposit()->thisMonth()->sum('amount'),
+        ];
+
+        // For vehicles with owner
+        $stats['has_owner'] = $vehicle->hasOwner();
+        if ($stats['has_owner']) {
+            $totalBorrowed = (clone $statsQuery)->borrowFromCompany()->sum('amount');
+            $monthBorrowed = $vehicle->transactions()->borrowFromCompany()->thisMonth()->sum('amount');
+            $totalReturned = (clone $statsQuery)->returnToCompany()->sum('amount');
+            $monthReturned = $vehicle->transactions()->returnToCompany()->thisMonth()->sum('amount');
+            
+            $currentDebt = $totalBorrowed - $totalReturned;
+            $monthDebt = $monthBorrowed - $monthReturned;
+            
+            $stats['total_revenue_display'] = $stats['total_revenue'] + $stats['total_fund_deposit'];
+            $stats['month_revenue_display'] = $stats['month_revenue'] + $stats['month_fund_deposit'];
+            
+            $totalRevenueForFee = (clone $statsQuery)->revenue()
+                ->where(function($q) {
+                    $q->where('category', '!=', 'vay_từ_công_ty')
+                      ->orWhereNull('category');
+                })->sum('amount');
+            $monthRevenueForFee = $vehicle->transactions()->revenue()->thisMonth()
+                ->where(function($q) {
+                    $q->where('category', '!=', 'vay_từ_công_ty')
+                      ->orWhereNull('category');
+                })->sum('amount');
+            
+            $totalProfitForFee = $totalRevenueForFee - $stats['total_expense'] - $stats['total_planned_expense'];
+            $monthProfitForFee = $monthRevenueForFee - $stats['month_expense'] - $stats['month_planned_expense'];
+                
+            $companyFee = ($totalProfitForFee > 0) ? $totalProfitForFee * 0.15 : 0;
+            $monthCompanyFee = ($monthProfitForFee > 0) ? $monthProfitForFee * 0.15 : 0;
+            
+            $stats['total_expense_display'] = $stats['total_expense'] + $companyFee;
+            $stats['month_expense_display'] = $stats['month_expense'] + $monthCompanyFee;
+            
+            $stats['total_company_fee'] = $companyFee;
+            $stats['month_company_fee'] = $monthCompanyFee;
+            
+            $stats['total_borrowed'] = $currentDebt;
+            $stats['month_borrowed'] = $monthDebt;
+            
+            $stats['total_profit_after_fee'] = $stats['total_revenue_display'] - $stats['total_expense_display'] - $currentDebt;
+            $stats['month_profit_after_fee'] = $stats['month_revenue_display'] - $stats['month_expense_display'] - $monthDebt;
+            
+            $stats['total_balance'] = $stats['total_revenue_display'] + $totalBorrowed - $stats['total_expense_display'] - $totalReturned;
+            $stats['month_balance'] = $stats['month_revenue_display'] + $monthBorrowed - $stats['month_expense_display'] - $monthReturned;
+        } else {
+            $stats['total_net'] = $stats['total_revenue'] - $stats['total_expense'] - $stats['total_planned_expense'] + $stats['total_fund_deposit'];
+            $stats['month_net'] = $stats['month_revenue'] - $stats['month_expense'] - $stats['month_planned_expense'] + $stats['month_fund_deposit'];
+        }
+
+        return $stats;
+    }
+
+    /**
      * Show the form for editing the specified resource.
      */
     public function edit(Vehicle $vehicle)
