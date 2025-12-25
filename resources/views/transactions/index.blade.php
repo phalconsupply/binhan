@@ -54,11 +54,6 @@
                     <p class="text-xs text-gray-500">Công ty: {{ number_format($stats['company_planned_expense'], 0, ',', '.') }}đ</p>
                 </div>
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                    <p class="text-sm text-gray-500">Chi từ công ty</p>
-                    <p class="text-2xl font-bold text-purple-600">{{ number_format($stats['company_expense'], 0, ',', '.') }}đ</p>
-                    <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['company_month_expense'], 0, ',', '.') }}đ</p>
-                </div>
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                     <p class="text-sm text-gray-500">Lợi nhuận</p>
                     <p class="text-2xl font-bold {{ $stats['total_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                         {{ number_format($stats['total_net'], 0, ',', '.') }}đ
@@ -66,6 +61,30 @@
                     <p class="text-xs {{ $stats['month_net'] >= 0 ? 'text-green-600' : 'text-red-600' }} mt-1">
                         Tháng: {{ number_format($stats['month_net'], 0, ',', '.') }}đ
                     </p>
+                </div>
+            </div>
+
+            {{-- Account Balances Summary --}}
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="p-6">
+                    <h3 class="text-lg font-semibold mb-4">💰 Số dư tài khoản</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="border rounded-lg p-4">
+                            <p class="text-sm text-gray-600">🏢 Quỹ công ty</p>
+                            <p class="text-xl font-bold text-blue-600">{{ number_format($balances['company_fund'], 0, ',', '.') }}đ</p>
+                        </div>
+                        <div class="border rounded-lg p-4">
+                            <p class="text-sm text-gray-600">📊 Quỹ dự kiến chi</p>
+                            <p class="text-xl font-bold text-orange-600">{{ number_format($balances['company_reserved'], 0, ',', '.') }}đ</p>
+                        </div>
+                        <div class="border rounded-lg p-4 {{ $balances['company_available'] >= 0 ? 'bg-green-50' : 'bg-red-50' }}">
+                            <p class="text-sm text-gray-600">💵 Khả dụng công ty</p>
+                            <p class="text-xl font-bold {{ $balances['company_available'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                {{ number_format($balances['company_available'], 0, ',', '.') }}đ
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">(Quỹ - Dự kiến chi)</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -344,7 +363,17 @@
                                                         @endif
                                                     </td>
                                                     <td class="py-2">
-                                                        {{ $transaction->note ?? '-' }}
+                                                        <div>{{ $transaction->note ?? '-' }}</div>
+                                                        @if($transaction->from_account && $transaction->to_account)
+                                                            <div class="text-xs text-gray-500 mt-1">
+                                                                <span class="font-medium">Luồng:</span> {{ $transaction->account_flow_display }}
+                                                            </div>
+                                                            @if($transaction->to_balance_after !== null)
+                                                                <div class="text-xs text-blue-600 mt-0.5">
+                                                                    Số dư sau: {{ number_format($transaction->to_balance_after, 0, ',', '.') }}đ
+                                                                </div>
+                                                            @endif
+                                                        @endif
                                                         @if($transaction->category == 'điều_chỉnh_lương' && !$transaction->incident_id)
                                                             <span class="text-xs text-orange-600">(từ quỹ công ty)</span>
                                                         @endif

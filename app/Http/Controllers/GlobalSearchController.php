@@ -15,6 +15,7 @@ class GlobalSearchController extends Controller
     {
         $query = $request->get('q');
         $type = $request->get('type', 'all');
+        $user = auth()->user();
 
         if (empty($query)) {
             return view('search.index', [
@@ -26,7 +27,8 @@ class GlobalSearchController extends Controller
 
         $results = [];
 
-        if ($type === 'all' || $type === 'vehicles') {
+        // Search vehicles - only if user has permission
+        if (($type === 'all' || $type === 'vehicles') && $user->can('search vehicles')) {
             $results['vehicles'] = Vehicle::where('license_plate', 'like', "%{$query}%")
                 ->orWhere('model', 'like', "%{$query}%")
                 ->orWhere('driver_name', 'like', "%{$query}%")
@@ -35,7 +37,8 @@ class GlobalSearchController extends Controller
                 ->get();
         }
 
-        if ($type === 'all' || $type === 'patients') {
+        // Search patients - only if user has permission
+        if (($type === 'all' || $type === 'patients') && $user->can('search patients')) {
             $results['patients'] = Patient::where('name', 'like', "%{$query}%")
                 ->orWhere('phone', 'like', "%{$query}%")
                 ->orWhere('address', 'like', "%{$query}%")
@@ -43,7 +46,8 @@ class GlobalSearchController extends Controller
                 ->get();
         }
 
-        if ($type === 'all' || $type === 'incidents') {
+        // Search incidents - only if user has permission
+        if (($type === 'all' || $type === 'incidents') && $user->can('search incidents')) {
             $results['incidents'] = Incident::with(['vehicle', 'patient', 'dispatcher'])
                 ->where('destination', 'like', "%{$query}%")
                 ->orWhere('summary', 'like', "%{$query}%")
@@ -58,7 +62,8 @@ class GlobalSearchController extends Controller
                 ->get();
         }
 
-        if ($type === 'all' || $type === 'transactions') {
+        // Search transactions - only if user has permission
+        if (($type === 'all' || $type === 'transactions') && $user->can('search transactions')) {
             $results['transactions'] = Transaction::with(['vehicle', 'incident'])
                 ->where('note', 'like', "%{$query}%")
                 ->orWhereHas('vehicle', function($q) use ($query) {
@@ -69,7 +74,8 @@ class GlobalSearchController extends Controller
                 ->get();
         }
 
-        if ($type === 'all' || $type === 'notes') {
+        // Search notes - only if user has permission
+        if (($type === 'all' || $type === 'notes') && $user->can('search notes')) {
             $results['notes'] = Note::with(['user', 'vehicle', 'incident'])
                 ->where('note', 'like', "%{$query}%")
                 ->latest()
@@ -88,6 +94,7 @@ class GlobalSearchController extends Controller
     {
         $query = $request->get('q');
         $type = $request->get('type', 'all');
+        $user = auth()->user();
 
         if (empty($query)) {
             return response()->json([]);
@@ -95,7 +102,8 @@ class GlobalSearchController extends Controller
 
         $results = [];
 
-        if ($type === 'vehicles' || $type === 'all') {
+        // Search vehicles via API - only if user has permission
+        if (($type === 'vehicles' || $type === 'all') && $user->can('search vehicles')) {
             $vehicles = Vehicle::where('license_plate', 'like', "%{$query}%")
                 ->orWhere('driver_name', 'like', "%{$query}%")
                 ->limit(5)
@@ -112,7 +120,8 @@ class GlobalSearchController extends Controller
             $results = array_merge($results, $vehicles->toArray());
         }
 
-        if ($type === 'patients' || $type === 'all') {
+        // Search patients via API - only if user has permission
+        if (($type === 'patients' || $type === 'all') && $user->can('search patients')) {
             $patients = Patient::where('name', 'like', "%{$query}%")
                 ->orWhere('phone', 'like', "%{$query}%")
                 ->limit(5)
@@ -129,7 +138,8 @@ class GlobalSearchController extends Controller
             $results = array_merge($results, $patients->toArray());
         }
 
-        if ($type === 'incidents' || $type === 'all') {
+        // Search incidents via API - only if user has permission
+        if (($type === 'incidents' || $type === 'all') && $user->can('search incidents')) {
             $incidents = Incident::with(['vehicle', 'patient'])
                 ->where('destination', 'like', "%{$query}%")
                 ->orWhereHas('vehicle', function($q) use ($query) {

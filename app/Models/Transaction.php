@@ -32,10 +32,20 @@ class Transaction extends Model
         'replaced_by',
         'edited_at',
         'edited_by',
+        'from_account',
+        'to_account',
+        'from_balance_before',
+        'from_balance_after',
+        'to_balance_before',
+        'to_balance_after',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'from_balance_before' => 'decimal:2',
+        'from_balance_after' => 'decimal:2',
+        'to_balance_before' => 'decimal:2',
+        'to_balance_after' => 'decimal:2',
         'date' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -59,6 +69,11 @@ class Transaction extends Model
                 $date = $transaction->date ? $transaction->date->format('Ymd') : now()->format('Ymd');
                 $transaction->code = "GD{$date}-" . str_pad($nextId, 4, '0', STR_PAD_LEFT);
             }
+        });
+
+        // Auto-update account balances after creating
+        static::created(function ($transaction) {
+            \App\Services\AccountBalanceService::updateTransactionBalances($transaction);
         });
 
         // When a loan payment transaction is deleted, reverse the loan schedule
@@ -309,5 +324,23 @@ class Transaction extends Model
     public function getFormattedAmountAttribute()
     {
         return number_format($this->amount, 0, ',', '.') . ' đ';
+    }
+
+    public function getFromAccountDisplayAttribute()
+    {
+        return $this->from_account ? \App\Services\AccountBalanceService::getAccountDisplayName($this->from_account) : '-';
+    }
+
+    public function getToAccountDisplayAttribute()
+    {
+        return $this->to_account ? \App\Services\AccountBalanceService::getAccountDisplayName($this->to_account) : '-';
+    }
+
+    public function getAccountFlowDisplayAttribute()
+    {
+        if (!$this->from_account || !$this->to_account) {
+            return '-';
+        }
+        return $this->from_account_display . ' → ' . $this->to_account_display;
     }
 }

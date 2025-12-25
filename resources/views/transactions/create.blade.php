@@ -35,6 +35,21 @@
                             <p class="mt-1 text-xs text-gray-500" id="type-hint">💡 "Dự kiến chi" sẽ được trừ khỏi lợi nhuận và thống kê riêng là "khoản chưa chi"</p>
                         </div>
 
+                        {{-- Source Account for "Chi" transactions --}}
+                        <div id="source-account-container" style="display: none;">
+                            <label for="category" class="block text-sm font-medium text-gray-700">
+                                Nguồn chi <span class="text-red-500">*</span>
+                            </label>
+                            <select id="category" name="category" 
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">-- Từ tài khoản xe --</option>
+                                <option value="chi_từ_dự_kiến">💰 Từ quỹ dự kiến chi</option>
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">
+                                💡 Nếu chọn "Từ quỹ dự kiến chi", số tiền sẽ được trừ từ quỹ dự kiến chi của công ty
+                            </p>
+                        </div>
+
                         {{-- Vehicle --}}
                         <div>
                             <label for="vehicle_id" class="block text-sm font-medium text-gray-700">
@@ -180,6 +195,14 @@
             const incidentInput = document.getElementById('incident_id');
             const typeHint = document.getElementById('type-hint');
             const vehicleSelect = document.getElementById('vehicle_id');
+            const sourceAccountContainer = document.getElementById('source-account-container');
+            
+            // Show source account selection only for "chi" type
+            if (type === 'chi') {
+                sourceAccountContainer.style.display = 'block';
+            } else {
+                sourceAccountContainer.style.display = 'none';
+            }
             
             if (type === 'nop_quy') {
                 // Ẩn chuyến đi khi chọn Nộp quỹ

@@ -42,6 +42,13 @@ class RoleSeeder extends Seeder
             'view audits',
             'manage users',
             'manage settings',
+            
+            // Search permissions
+            'search vehicles',
+            'search incidents',
+            'search transactions',
+            'search patients',
+            'search notes',
         ];
 
         foreach ($permissions as $permission) {
@@ -68,6 +75,11 @@ class RoleSeeder extends Seeder
             'edit patients',
             'view reports',
             'manage settings',
+            'search vehicles',
+            'search incidents',
+            'search patients',
+            'search transactions',
+            'search notes',
         ]);
 
         // Accountant - manage transactions & export reports
@@ -82,6 +94,10 @@ class RoleSeeder extends Seeder
             'view reports',
             'export reports',
             'manage settings',
+            'search vehicles',
+            'search incidents',
+            'search transactions',
+            'search patients',
         ]);
 
         // Driver - view only own vehicle and create incidents
@@ -91,6 +107,8 @@ class RoleSeeder extends Seeder
             'view incidents',
             'create incidents',
             'view transactions',
+            'search vehicles',
+            'search incidents',
         ]);
 
         // Medical Staff - similar to driver
@@ -100,6 +118,9 @@ class RoleSeeder extends Seeder
             'view incidents',
             'view transactions',
             'view patients',
+            'search vehicles',
+            'search incidents',
+            'search patients',
         ]);
 
         // Manager - broader access
@@ -111,6 +132,11 @@ class RoleSeeder extends Seeder
             'view patients',
             'view reports',
             'export reports',
+            'search vehicles',
+            'search incidents',
+            'search transactions',
+            'search patients',
+            'search notes',
         ]);
 
         // Investor - view reports only
@@ -126,6 +152,8 @@ class RoleSeeder extends Seeder
             'view incidents',
             'view transactions',
             'view reports',
+            'search vehicles',
+            'search incidents',
         ]);
 
         $this->command->info('Roles and permissions created successfully!');

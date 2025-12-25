@@ -21,11 +21,21 @@
                             <div class="w-48">
                                 <select name="type" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                     <option value="all" {{ $type == 'all' ? 'selected' : '' }}>Tất cả</option>
+                                    @can('search vehicles')
                                     <option value="vehicles" {{ $type == 'vehicles' ? 'selected' : '' }}>Xe</option>
+                                    @endcan
+                                    @can('search patients')
                                     <option value="patients" {{ $type == 'patients' ? 'selected' : '' }}>Bệnh nhân</option>
+                                    @endcan
+                                    @can('search incidents')
                                     <option value="incidents" {{ $type == 'incidents' ? 'selected' : '' }}>Chuyến đi</option>
+                                    @endcan
+                                    @can('search transactions')
                                     <option value="transactions" {{ $type == 'transactions' ? 'selected' : '' }}>Giao dịch</option>
+                                    @endcan
+                                    @can('search notes')
                                     <option value="notes" {{ $type == 'notes' ? 'selected' : '' }}>Ghi chú</option>
+                                    @endcan
                                 </select>
                             </div>
                             <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
@@ -33,6 +43,23 @@
                             </button>
                         </div>
                     </form>
+
+                    <!-- Permission Info -->
+                    @if(!auth()->user()->can('search vehicles') || !auth()->user()->can('search patients') || !auth()->user()->can('search incidents') || !auth()->user()->can('search transactions') || !auth()->user()->can('search notes'))
+                    <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <p class="text-sm text-blue-700">
+                            <svg class="inline w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                            </svg>
+                            Bạn có quyền tìm kiếm: 
+                            @can('search vehicles')<span class="font-semibold">Xe</span>@endcan
+                            @can('search patients')@can('search vehicles'), @endcan<span class="font-semibold">Bệnh nhân</span>@endcan
+                            @can('search incidents')@if(auth()->user()->can('search vehicles') || auth()->user()->can('search patients')), @endif<span class="font-semibold">Chuyến đi</span>@endcan
+                            @can('search transactions')@if(auth()->user()->can('search vehicles') || auth()->user()->can('search patients') || auth()->user()->can('search incidents')), @endif<span class="font-semibold">Giao dịch</span>@endcan
+                            @can('search notes')@if(auth()->user()->can('search vehicles') || auth()->user()->can('search patients') || auth()->user()->can('search incidents') || auth()->user()->can('search transactions')), @endif<span class="font-semibold">Ghi chú</span>@endcan
+                        </p>
+                    </div>
+                    @endif
                 </div>
             </div>
 
@@ -40,6 +67,7 @@
             <!-- Search Results -->
             <div class="space-y-6">
                 <!-- Vehicles -->
+                @can('search vehicles')
                 @if(isset($results['vehicles']) && $results['vehicles']->count() > 0)
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
@@ -62,8 +90,10 @@
                     </div>
                 </div>
                 @endif
+                @endcan
 
                 <!-- Patients -->
+                @can('search patients')
                 @if(isset($results['patients']) && $results['patients']->count() > 0)
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
@@ -86,8 +116,10 @@
                     </div>
                 </div>
                 @endif
+                @endcan
 
                 <!-- Incidents -->
+                @can('search incidents')
                 @if(isset($results['incidents']) && $results['incidents']->count() > 0)
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
@@ -120,8 +152,10 @@
                     </div>
                 </div>
                 @endif
+                @endcan
 
                 <!-- Transactions -->
+                @can('search transactions')
                 @if(isset($results['transactions']) && $results['transactions']->count() > 0)
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
@@ -153,8 +187,10 @@
                     </div>
                 </div>
                 @endif
+                @endcan
 
                 <!-- Notes -->
+                @can('search notes')
                 @if(isset($results['notes']) && $results['notes']->count() > 0)
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
@@ -191,6 +227,7 @@
                     </div>
                 </div>
                 @endif
+                @endcan
 
                 @if(empty($results) || collect($results)->sum(fn($r) => $r->count()) == 0)
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">

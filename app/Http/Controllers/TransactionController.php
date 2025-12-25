@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Models\Vehicle;
 use App\Models\Incident;
+use App\Services\AccountBalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -277,9 +278,7 @@ class TransactionController extends Controller
         $totalFundDeposit = (clone $statsQuery)->fundDeposit()->sum('amount');
         $monthFundDeposit = (clone $statsQuery)->fundDeposit()->thisMonth()->sum('amount');
         
-        // Company expenses (without incident_id)
-        $companyExpense = (clone $statsQuery)->expense()->whereNull('incident_id')->sum('amount');
-        $companyMonthExpense = (clone $statsQuery)->expense()->whereNull('incident_id')->thisMonth()->sum('amount');
+        // Company planned expense (for dự kiến chi display only)
         $companyPlannedExpense = (clone $statsQuery)->plannedExpense()->whereNull('incident_id')->sum('amount');
         
         $stats = [
@@ -297,13 +296,15 @@ class TransactionController extends Controller
                 $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
             })->sum('amount'),
             'today_expense' => (clone $statsQuery)->expense()->whereDate('date', date('Y-m-d'))->sum('amount'),
-            'company_expense' => $companyExpense,
-            'company_month_expense' => $companyMonthExpense,
             'company_planned_expense' => $companyPlannedExpense,
+            'total_net' => $totalRevenue - $totalExpense,
+            'month_net' => $monthRevenue - $monthExpense,
         ];
 
+        // Get account balances summary
+        $balances = AccountBalanceService::getBalancesSummary();
 
-        return view('transactions.index', compact('transactions', 'vehicles', 'stats'));
+        return view('transactions.index', compact('transactions', 'vehicles', 'stats', 'balances'));
     }
 
     /**
