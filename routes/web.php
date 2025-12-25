@@ -81,6 +81,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('vehicles/{vehicle}/export-maintenances-pdf', [VehicleController::class, 'exportMaintenancesPdf'])->name('vehicles.export-maintenances-pdf');
     Route::get('vehicles/{vehicle}/export-transactions', [VehicleController::class, 'exportTransactions'])->name('vehicles.export-transactions');
     Route::post('vehicles/{vehicle}/repay', [VehicleController::class, 'repayCompany'])->name('vehicles.repay');
+    Route::get('vehicles/{vehicle}/stats', [VehicleController::class, 'getMonthStats'])->name('vehicles.month-stats');
     Route::resource('vehicles', VehicleController::class);
     
     // Loan routes
@@ -107,6 +108,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Owner transactions (trang riêng cho chủ xe)
     Route::get('my-transactions', [App\Http\Controllers\OwnerTransactionController::class, 'index'])->name('owner.transactions');
+    Route::get('my-transactions/stats', [App\Http\Controllers\OwnerTransactionController::class, 'getMonthStats'])->name('owner.transactions.month-stats');
     Route::get('my-transactions/{vehicle}/export-incidents', [App\Http\Controllers\OwnerTransactionController::class, 'exportIncidents'])->name('owner.transactions.export-incidents');
     Route::get('my-transactions/{vehicle}/export-maintenances', [App\Http\Controllers\OwnerTransactionController::class, 'exportMaintenances'])->name('owner.transactions.export-maintenances');
     Route::get('my-transactions/{vehicle}/export-others', [App\Http\Controllers\OwnerTransactionController::class, 'exportOthers'])->name('owner.transactions.export-others');

@@ -365,6 +365,90 @@ class VehicleController extends Controller
     }
 
     /**
+     * Get vehicle statistics for a specific month (AJAX endpoint)
+     */
+    public function getMonthStats(Request $request, Vehicle $vehicle)
+    {
+        // Check if user is vehicle owner and has access to this vehicle
+        $isVehicleOwner = \App\Models\Staff::where('user_id', auth()->id())
+            ->where('staff_type', 'vehicle_owner')
+            ->exists();
+        
+        if ($isVehicleOwner) {
+            $ownedVehicleIds = \App\Models\Staff::where('user_id', auth()->id())
+                ->where('staff_type', 'vehicle_owner')
+                ->pluck('vehicle_id')
+                ->filter()
+                ->toArray();
+            
+            if (!in_array($vehicle->id, $ownedVehicleIds)) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+        }
+
+        $month = $request->input('month'); // Format: YYYY-MM
+        
+        if (!$month) {
+            return response()->json(['error' => 'Month is required'], 400);
+        }
+
+        // Parse month
+        $date = \Carbon\Carbon::parse($month . '-01');
+        $startDate = $date->copy()->startOfMonth();
+        $endDate = $date->copy()->endOfMonth();
+
+        // Get stats for the month
+        $statsQuery = $vehicle->transactions()
+            ->whereDate('date', '>=', $startDate)
+            ->whereDate('date', '<=', $endDate);
+
+        $stats = [
+            'month_incidents' => $vehicle->incidents()
+                ->whereYear('date', $date->year)
+                ->whereMonth('date', $date->month)
+                ->count(),
+            'month_revenue' => (clone $statsQuery)->revenue()->sum('amount'),
+            'month_expense' => (clone $statsQuery)->expense()->sum('amount'),
+            'month_planned_expense' => (clone $statsQuery)->plannedExpense()->sum('amount'),
+            'month_fund_deposit' => (clone $statsQuery)->fundDeposit()->sum('amount'),
+        ];
+
+        $stats['has_owner'] = $vehicle->hasOwner();
+        
+        if ($stats['has_owner']) {
+            $monthBorrowed = (clone $statsQuery)->borrowFromCompany()->sum('amount');
+            $monthReturned = (clone $statsQuery)->returnToCompany()->sum('amount');
+            $monthDebt = $monthBorrowed - $monthReturned;
+
+            // Chi chuyến đi (không bao gồm bảo trì)
+            $monthIncidentExpense = (clone $statsQuery)->where('type', 'chi')
+                ->where(function($q) {
+                    $q->whereNull('vehicle_maintenance_id')
+                      ->where(function($q2) {
+                          $q2->whereNull('category')
+                             ->orWhere('category', '!=', 'bảo_trì_xe_chủ_riêng');
+                      });
+                })->sum('amount');
+
+            // Phí 15% CHỈ tính trên lợi nhuận chuyến đi
+            $monthProfitForFee = $stats['month_revenue'] - $monthIncidentExpense;
+            $monthCompanyFee = ($monthProfitForFee > 0) ? $monthProfitForFee * 0.15 : 0;
+
+            $stats['month_revenue_display'] = $stats['month_revenue'] + $monthBorrowed + $stats['month_fund_deposit'];
+            $stats['month_expense_display'] = $stats['month_expense'] + $stats['month_planned_expense'] + $monthReturned + $monthCompanyFee;
+            $stats['month_company_fee'] = $monthCompanyFee;
+            $stats['month_borrowed'] = $monthDebt;
+            $stats['month_profit_after_fee'] = $stats['month_revenue_display'] - $stats['month_expense_display'];
+        } else {
+            $stats['month_revenue_display'] = $stats['month_revenue'] + $stats['month_fund_deposit'];
+            $stats['month_expense_display'] = $stats['month_expense'] + $stats['month_planned_expense'];
+            $stats['month_net'] = $stats['month_revenue_display'] - $stats['month_expense_display'];
+        }
+
+        return response()->json($stats);
+    }
+
+    /**
      * Calculate vehicle statistics (reusable method)
      * Returns same stats as show() method
      * 

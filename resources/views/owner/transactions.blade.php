@@ -7,8 +7,23 @@
         <p class="text-gray-600">Tổng hợp giao dịch từ {{ count($vehicleStats) }} xe</p>
     </div>
 
+    <!-- Month Selector -->
+    <div class="bg-white rounded-lg shadow p-4 mb-6">
+        <div class="flex items-center gap-4">
+            <label for="ownerMonthSelector" class="text-sm font-medium text-gray-700">Xem thống kê tháng:</label>
+            <input type="month" id="ownerMonthSelector" value="{{ date('Y-m') }}" 
+                   class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            <div id="ownerLoadingIndicator" class="hidden ml-2">
+                <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
+
     <!-- Summary Statistics -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div id="ownerStatsContainer" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <!-- Total Revenue -->
         <div class="bg-white rounded-lg shadow p-4">
             <div class="flex items-center justify-between">
@@ -387,6 +402,129 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+});
+
+// Month selector for owner statistics
+document.addEventListener('DOMContentLoaded', function() {
+    const monthSelector = document.getElementById('ownerMonthSelector');
+    const loadingIndicator = document.getElementById('ownerLoadingIndicator');
+    const statsContainer = document.getElementById('ownerStatsContainer');
+    
+    const totalRevenueDisplay = {{ $stats['total_revenue_display'] }};
+    const totalExpenseDisplay = {{ $stats['total_expense_display'] }};
+    const totalDebt = {{ $stats['total_debt'] }};
+    const totalProfit = {{ $stats['total_profit'] }};
+    
+    function formatNumber(num) {
+        return new Intl.NumberFormat('vi-VN').format(num);
+    }
+    
+    function renderStats(stats, selectedMonth) {
+        const isCurrentMonth = selectedMonth === '{{ date("Y-m") }}';
+        const monthLabel = isCurrentMonth ? 'tháng {{ date("m/Y") }}' : 'tháng ' + selectedMonth.split('-').reverse().join('/');
+        
+        return `
+            <!-- Total Revenue -->
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div class="w-full">
+                        <p class="text-sm text-gray-600 mb-1">Tổng thu ${isCurrentMonth ? 'tháng này' : monthLabel}</p>
+                        <p class="text-xs text-green-600 mb-2">(Thu + Vay + Nộp quỹ)</p>
+                        <p class="text-3xl font-bold text-green-600">${formatNumber(stats.month_revenue_display)}đ</p>
+                        <p class="text-xs text-gray-400 mt-1">${monthLabel}</p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                            <p class="text-lg font-semibold text-green-700">${formatNumber(totalRevenueDisplay)}đ</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Expense -->
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div class="w-full">
+                        <p class="text-sm text-gray-600 mb-1">Tổng chi ${isCurrentMonth ? 'tháng này' : monthLabel}</p>
+                        <p class="text-xs text-red-600 mb-2">(Chi + Trả nợ + Phí 15%)</p>
+                        <p class="text-3xl font-bold text-red-600">${formatNumber(stats.month_expense_display)}đ</p>
+                        <p class="text-xs text-gray-400 mt-1">${monthLabel}</p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                            <p class="text-lg font-semibold text-red-700">${formatNumber(totalExpenseDisplay)}đ</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Outstanding Debt -->
+            <div class="bg-white rounded-lg shadow p-4 border-l-4 ${stats.month_debt > 0 ? 'border-orange-500' : 'border-green-500'}">
+                <div class="flex items-center justify-between">
+                    <div class="w-full">
+                        <p class="text-sm text-gray-600 mb-1">Đang vay ${isCurrentMonth ? 'tháng này' : monthLabel}</p>
+                        <p class="text-xs ${stats.month_debt > 0 ? 'text-orange-600' : 'text-green-600'} mb-2">(Chưa trả)</p>
+                        <p class="text-3xl font-bold ${stats.month_debt > 0 ? 'text-orange-600' : 'text-green-600'}">${formatNumber(stats.month_debt)}đ</p>
+                        <p class="text-xs text-gray-400 mt-1">${monthLabel}</p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                            <p class="text-lg font-semibold ${totalDebt > 0 ? 'text-orange-700' : 'text-green-700'}">${formatNumber(totalDebt)}đ</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Net Profit -->
+            <div class="bg-white rounded-lg shadow p-4 border-l-4 ${stats.month_profit > 0 ? 'border-blue-500' : 'border-red-500'}">
+                <div class="flex items-center justify-between">
+                    <div class="w-full">
+                        <p class="text-sm text-gray-600 mb-1">Lợi nhuận ${isCurrentMonth ? 'tháng này' : monthLabel}</p>
+                        <p class="text-xs ${stats.month_profit > 0 ? 'text-blue-600' : 'text-red-600'} mb-2">(Sau khi trừ 15%)</p>
+                        <p class="text-3xl font-bold ${stats.month_profit > 0 ? 'text-blue-600' : 'text-red-600'}">${formatNumber(stats.month_profit)}đ</p>
+                        <p class="text-xs text-gray-400 mt-1">${monthLabel}</p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                            <p class="text-lg font-semibold ${totalProfit > 0 ? 'text-blue-700' : 'text-red-700'}">${formatNumber(totalProfit)}đ</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Initial render with server data
+    statsContainer.innerHTML = renderStats({
+        month_revenue_display: {{ $stats['month_revenue_display'] }},
+        month_expense_display: {{ $stats['month_expense_display'] }},
+        month_debt: {{ $stats['month_debt'] }},
+        month_profit: {{ $stats['month_profit'] }}
+    }, '{{ date("Y-m") }}');
+    
+    // Handle month selector change
+    monthSelector.addEventListener('change', function() {
+        const selectedMonth = this.value;
+        loadMonthStats(selectedMonth);
+    });
+    
+    async function loadMonthStats(month) {
+        loadingIndicator.classList.remove('hidden');
+        
+        try {
+            const response = await fetch(`/my-transactions/stats?month=${month}`);
+            
+            if (!response.ok) {
+                throw new Error('Failed to load statistics');
+            }
+            
+            const stats = await response.json();
+            
+            // Update the stats container
+            statsContainer.innerHTML = renderStats(stats, month);
+        } catch (error) {
+            console.error('Error loading statistics:', error);
+            alert('Có lỗi xảy ra khi tải thống kê. Vui lòng thử lại.');
+        } finally {
+            loadingIndicator.classList.add('hidden');
+        }
+    }
 });
 </script>
 @endpush

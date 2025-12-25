@@ -114,8 +114,29 @@
                 </div>
             </div>
 
+            {{-- Month Selector --}}
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="p-4 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <label for="monthSelector" class="text-sm font-medium text-gray-700">Xem thống kê tháng:</label>
+                        <input 
+                            type="month" 
+                            id="monthSelector" 
+                            class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                            value="{{ date('Y-m') }}"
+                        >
+                    </div>
+                    <div id="loadingIndicator" class="hidden">
+                        <svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
             {{-- Statistics --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-{{ $stats['has_owner'] ? '4' : '5' }} gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-{{ $stats['has_owner'] ? '4' : '5' }} gap-4 mb-6" id="statsContainer">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <p class="text-sm text-gray-600 mb-2">Chuyến đi tháng này</p>
@@ -1421,5 +1442,185 @@
         });
     </script>
     @endif
+
+    {{-- Month Selector AJAX --}}
+    <script>
+        const vehicleId = {{ $vehicle->id }};
+        const hasOwner = {{ $stats['has_owner'] ? 'true' : 'false' }};
+        const currentMonth = '{{ date("m/Y") }}';
+
+        // Format number
+        function formatNumber(num) {
+            return new Intl.NumberFormat('vi-VN').format(Math.round(num));
+        }
+
+        // Render stats HTML
+        function renderStats(stats, selectedMonth) {
+            const isCurrentMonth = selectedMonth === currentMonth;
+            const monthLabel = isCurrentMonth ? 'tháng này' : 'tháng ' + selectedMonth;
+            
+            let html = '';
+            
+            // Chuyến đi
+            html += `
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <p class="text-sm text-gray-600 mb-2">${isCurrentMonth ? 'Chuyến đi tháng này' : 'Chuyến đi'}</p>
+                        <p class="text-3xl font-bold text-gray-800">${stats.month_incidents || 0}</p>
+                        <p class="text-xs text-gray-400 mt-1">${monthLabel}</p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                            <p class="text-lg font-semibold text-gray-600">{{ $stats['total_incidents'] }} <span class="text-sm font-normal">chuyến</span></p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Tổng thu
+            html += `
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <p class="text-sm text-gray-600 mb-1">${isCurrentMonth ? 'Tổng thu tháng này' : 'Tổng thu'}</p>
+                        ${hasOwner ? '<p class="text-xs text-green-600 mb-2">(Thu + Vay + Nộp quỹ)</p>' : '<div class="mb-4"></div>'}
+                        <p class="text-3xl font-bold text-green-600">${formatNumber(stats.month_revenue_display || stats.month_revenue || 0)}đ</p>
+                        <p class="text-xs text-gray-400 mt-1">${monthLabel}</p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                            <p class="text-lg font-semibold text-green-700">${formatNumber({{ $stats['total_revenue_display'] ?? $stats['total_revenue'] }})}đ</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Tổng chi
+            html += `
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <p class="text-sm text-gray-600 mb-1">${isCurrentMonth ? 'Tổng chi tháng này' : 'Tổng chi'}</p>
+                        ${hasOwner ? '<p class="text-xs text-red-600 mb-2">(Chi + Trả nợ + Phí 15%)</p>' : '<div class="mb-4"></div>'}
+                        <p class="text-3xl font-bold text-red-600">${formatNumber(stats.month_expense_display || stats.month_expense || 0)}đ</p>
+                        <p class="text-xs text-gray-400 mt-1">${monthLabel}</p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                            <p class="text-lg font-semibold text-red-700">${formatNumber({{ $stats['total_expense_display'] ?? $stats['total_expense'] }})}đ</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Nộp quỹ (nếu xe công ty)
+            if (!hasOwner) {
+                html += `
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="p-6">
+                            <p class="text-sm text-gray-600 mb-1">${isCurrentMonth ? 'Nộp quỹ tháng này' : 'Nộp quỹ'}</p>
+                            <p class="text-xs text-blue-600 mb-2">(Không tính phí 15%)</p>
+                            <p class="text-3xl font-bold text-blue-600">${formatNumber(stats.month_fund_deposit || 0)}đ</p>
+                            <p class="text-xs text-gray-400 mt-1">${monthLabel}</p>
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                                <p class="text-lg font-semibold text-blue-700">${formatNumber({{ $stats['total_fund_deposit'] ?? 0 }})}đ</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Khoản vay (nếu có)
+            @if($stats['has_owner'] && isset($stats['total_borrowed']) && $stats['total_borrowed'] > 0)
+            if (hasOwner) {
+                html += `
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-l-4 border-orange-500">
+                        <div class="p-6">
+                            <p class="text-sm text-gray-600 mb-1">${isCurrentMonth ? 'Đang vay tháng này' : 'Đang vay'}</p>
+                            <p class="text-xs text-orange-600 mb-2">(Chưa trả)</p>
+                            <p class="text-3xl font-bold text-orange-600">${formatNumber(stats.month_borrowed || 0)}đ</p>
+                            <p class="text-xs text-gray-400 mt-1">${monthLabel}</p>
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                                <p class="text-lg font-semibold text-orange-700">${formatNumber({{ $stats['total_borrowed'] ?? 0 }})}đ</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            @endif
+            
+            // Lợi nhuận
+            const profit = stats.month_profit_after_fee ?? stats.month_net ?? 0;
+            const profitClass = profit >= 0 ? (hasOwner ? 'text-blue-600' : 'text-green-600') : 'text-red-600';
+            const totalProfit = {{ $stats['total_profit_after_fee'] ?? $stats['total_net'] ?? 0 }};
+            const totalProfitClass = totalProfit >= 0 ? (hasOwner ? 'text-blue-700' : 'text-green-700') : 'text-red-700';
+            
+            html += `
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <p class="text-sm text-gray-600 mb-1">${isCurrentMonth ? 'Lợi nhuận tháng này' : 'Lợi nhuận'}</p>
+                        ${hasOwner ? '<p class="text-xs text-blue-600 mb-2">(Thu - Chi)</p>' : '<div class="mb-4"></div>'}
+                        <p class="text-3xl font-bold ${profitClass}">${formatNumber(profit)}đ</p>
+                        <p class="text-xs text-gray-400 mt-1">${monthLabel}</p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                            <p class="text-lg font-semibold ${totalProfitClass}">${formatNumber(totalProfit)}đ</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return html;
+        }
+
+        // Load stats for selected month
+        async function loadMonthStats(month) {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const statsContainer = document.getElementById('statsContainer');
+            
+            loadingIndicator.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(`/vehicles/${vehicleId}/stats?month=${month}`);
+                const stats = await response.json();
+                
+                if (response.ok) {
+                    const [year, monthNum] = month.split('-');
+                    const selectedMonth = monthNum + '/' + year;
+                    statsContainer.innerHTML = renderStats(stats, selectedMonth);
+                } else {
+                    alert('Không thể tải dữ liệu thống kê');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi tải dữ liệu');
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            const monthSelector = document.getElementById('monthSelector');
+            const statsContainer = document.getElementById('statsContainer');
+            
+            // Render initial stats
+            const initialStats = {
+                month_incidents: {{ $stats['this_month_incidents'] ?? 0 }},
+                month_revenue: {{ $stats['month_revenue'] ?? 0 }},
+                month_revenue_display: {{ $stats['month_revenue_display'] ?? 0 }},
+                month_expense: {{ $stats['month_expense'] ?? 0 }},
+                month_expense_display: {{ $stats['month_expense_display'] ?? 0 }},
+                month_fund_deposit: {{ $stats['month_fund_deposit'] ?? 0 }},
+                month_borrowed: {{ $stats['month_borrowed'] ?? 0 }},
+                month_profit_after_fee: {{ $stats['month_profit_after_fee'] ?? 0 }},
+                month_net: {{ $stats['month_net'] ?? 0 }}
+            };
+            statsContainer.innerHTML = renderStats(initialStats, currentMonth);
+            
+            // Listen for month change
+            monthSelector.addEventListener('change', function() {
+                const selectedMonth = this.value;
+                loadMonthStats(selectedMonth);
+            });
+        });
+    </script>
 
 </x-app-layout>

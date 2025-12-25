@@ -239,6 +239,111 @@ class OwnerTransactionController extends Controller
     }
 
     /**
+     * Get month statistics for owner (AJAX endpoint)
+     */
+    public function getMonthStats(Request $request)
+    {
+        $user = auth()->user();
+        
+        $ownedVehicleIds = \App\Models\Staff::where('user_id', $user->id)
+            ->where('staff_type', 'vehicle_owner')
+            ->pluck('vehicle_id')
+            ->filter()
+            ->toArray();
+        
+        if (empty($ownedVehicleIds)) {
+            return response()->json(['error' => 'No vehicles found'], 404);
+        }
+
+        $month = $request->input('month'); // Format: YYYY-MM
+        
+        if (!$month) {
+            return response()->json(['error' => 'Month is required'], 400);
+        }
+
+        // Parse month
+        $date = \Carbon\Carbon::parse($month . '-01');
+        $startDate = $date->copy()->startOfMonth();
+        $endDate = $date->copy()->endOfMonth();
+        
+        $vehicles = Vehicle::whereIn('id', $ownedVehicleIds)
+            ->with('owner')
+            ->orderBy('license_plate')
+            ->get();
+        
+        // Initialize aggregated stats
+        $monthRevenueDisplay = 0;
+        $monthExpenseDisplay = 0;
+        $monthCompanyFee = 0;
+        $monthDebt = 0;
+        $monthProfit = 0;
+        
+        // Calculate stats for each vehicle
+        foreach ($vehicles as $vehicle) {
+            $monthRevenue = $vehicle->transactions()
+                ->whereDate('date', '>=', $startDate)
+                ->whereDate('date', '<=', $endDate)
+                ->revenue()->sum('amount');
+            
+            $monthExpense = $vehicle->transactions()
+                ->whereDate('date', '>=', $startDate)
+                ->whereDate('date', '<=', $endDate)
+                ->expense()->sum('amount');
+            
+            $monthPlannedExpense = $vehicle->transactions()
+                ->whereDate('date', '>=', $startDate)
+                ->whereDate('date', '<=', $endDate)
+                ->plannedExpense()->sum('amount');
+            
+            $monthFundDeposit = $vehicle->transactions()
+                ->whereDate('date', '>=', $startDate)
+                ->whereDate('date', '<=', $endDate)
+                ->fundDeposit()->sum('amount');
+            
+            $monthBorrowed = $vehicle->transactions()
+                ->whereDate('date', '>=', $startDate)
+                ->whereDate('date', '<=', $endDate)
+                ->borrowFromCompany()->sum('amount');
+            
+            $monthReturned = $vehicle->transactions()
+                ->whereDate('date', '>=', $startDate)
+                ->whereDate('date', '<=', $endDate)
+                ->returnToCompany()->sum('amount');
+            
+            // Chi chuyến đi (không bao gồm bảo trì)
+            $monthIncidentExpense = $vehicle->transactions()
+                ->whereDate('date', '>=', $startDate)
+                ->whereDate('date', '<=', $endDate)
+                ->where('type', 'chi')
+                ->where(function($q) {
+                    $q->whereNull('vehicle_maintenance_id')
+                      ->where(function($q2) {
+                          $q2->whereNull('category')
+                             ->orWhere('category', '!=', 'bảo_trì_xe_chủ_riêng');
+                      });
+                })->sum('amount');
+            
+            // Phí 15% CHỈ tính trên lợi nhuận chuyến đi
+            $monthProfitForFee = $monthRevenue - $monthIncidentExpense;
+            $companyFee = ($monthProfitForFee > 0) ? $monthProfitForFee * 0.15 : 0;
+            
+            $monthRevenueDisplay += $monthRevenue + $monthBorrowed + $monthFundDeposit;
+            $monthExpenseDisplay += $monthExpense + $monthPlannedExpense + $monthReturned + $companyFee;
+            $monthCompanyFee += $companyFee;
+            $monthDebt += ($monthBorrowed - $monthReturned);
+            $monthProfit += ($monthRevenue + $monthBorrowed + $monthFundDeposit) - ($monthExpense + $monthPlannedExpense + $monthReturned + $companyFee);
+        }
+        
+        return response()->json([
+            'month_revenue_display' => $monthRevenueDisplay,
+            'month_expense_display' => $monthExpenseDisplay,
+            'month_company_fee' => $monthCompanyFee,
+            'month_debt' => $monthDebt,
+            'month_profit' => $monthProfit,
+        ]);
+    }
+
+    /**
      * Export incidents to Excel
      */
     public function exportIncidents(Request $request, $vehicleId)
