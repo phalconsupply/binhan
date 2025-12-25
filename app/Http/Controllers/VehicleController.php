@@ -397,9 +397,29 @@ class VehicleController extends Controller
         // For vehicles with owner: calculate 15% company fee
         $stats['has_owner'] = $vehicle->hasOwner();
         if ($stats['has_owner']) {
-            // Tính phí 15% dựa trên lợi nhuận thực: revenue - expense - planned_expense (không tính vay/trả nợ)
-            $totalProfitForFee = $totalRevenue - $totalExpense - $totalPlannedExpense;
-            $monthProfitForFee = $monthRevenue - $monthExpense - $monthPlannedExpense;
+            // Tách chi phí chuyến đi và bảo trì để tính phí 15% CHỈ trên lợi nhuận chuyến đi
+            $totalIncidentExpense = (clone $statsQuery)->where('type', 'chi')
+                ->where(function($q) {
+                    $q->whereNull('vehicle_maintenance_id')
+                      ->where(function($q2) {
+                          $q2->whereNull('category')
+                             ->orWhere('category', '!=', 'bảo_trì_xe_chủ_riêng');
+                      });
+                })->sum('amount');
+            
+            $monthIncidentExpense = $vehicle->transactions()->where('type', 'chi')
+                ->thisMonth()
+                ->where(function($q) {
+                    $q->whereNull('vehicle_maintenance_id')
+                      ->where(function($q2) {
+                          $q2->whereNull('category')
+                             ->orWhere('category', '!=', 'bảo_trì_xe_chủ_riêng');
+                      });
+                })->sum('amount');
+            
+            // Phí 15% CHỈ tính trên lợi nhuận chuyến đi (thu - chi chuyến đi)
+            $totalProfitForFee = $totalRevenue - $totalIncidentExpense;
+            $monthProfitForFee = $monthRevenue - $monthIncidentExpense;
                 
             $companyFee = ($totalProfitForFee > 0) ? $totalProfitForFee * 0.15 : 0;
             $monthCompanyFee = ($monthProfitForFee > 0) ? $monthProfitForFee * 0.15 : 0;
