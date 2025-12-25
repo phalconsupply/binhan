@@ -17,7 +17,10 @@
                     <p class="text-xs text-green-600 mb-2">(Thu + Vay + Nộp quỹ)</p>
                     <p class="text-3xl font-bold text-green-600">{{ number_format($stats['month_revenue_display'], 0, ',', '.') }}đ</p>
                     <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
-                    <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_revenue_display'], 0, ',', '.') }}đ</p>
+                    <div class="mt-3 pt-3 border-t border-gray-200">
+                        <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                        <p class="text-lg font-semibold text-green-700">{{ number_format($stats['total_revenue_display'], 0, ',', '.') }}đ</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -30,7 +33,10 @@
                     <p class="text-xs text-red-600 mb-2">(Chi + Trả nợ + Phí 15%)</p>
                     <p class="text-3xl font-bold text-red-600">{{ number_format($stats['month_expense_display'], 0, ',', '.') }}đ</p>
                     <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
-                    <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_expense_display'], 0, ',', '.') }}đ</p>
+                    <div class="mt-3 pt-3 border-t border-gray-200">
+                        <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                        <p class="text-lg font-semibold text-red-700">{{ number_format($stats['total_expense_display'], 0, ',', '.') }}đ</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -43,7 +49,10 @@
                     <p class="text-xs {{ $stats['month_debt'] > 0 ? 'text-orange-600' : 'text-green-600' }} mb-2">(Chưa trả)</p>
                     <p class="text-3xl font-bold {{ $stats['month_debt'] > 0 ? 'text-orange-600' : 'text-green-600' }}">{{ number_format($stats['month_debt'], 0, ',', '.') }}đ</p>
                     <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
-                    <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_debt'], 0, ',', '.') }}đ</p>
+                    <div class="mt-3 pt-3 border-t border-gray-200">
+                        <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                        <p class="text-lg font-semibold {{ $stats['total_debt'] > 0 ? 'text-orange-700' : 'text-green-700' }}">{{ number_format($stats['total_debt'], 0, ',', '.') }}đ</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -56,7 +65,10 @@
                     <p class="text-xs text-blue-600 mb-2">(Thu - Chi)</p>
                     <p class="text-3xl font-bold {{ $stats['month_profit'] >= 0 ? 'text-blue-600' : 'text-red-600' }}">{{ number_format($stats['month_profit'], 0, ',', '.') }}đ</p>
                     <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
-                    <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_profit'], 0, ',', '.') }}đ</p>
+                    <div class="mt-3 pt-3 border-t border-gray-200">
+                        <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                        <p class="text-lg font-semibold {{ $stats['total_profit'] >= 0 ? 'text-blue-700' : 'text-red-700' }}">{{ number_format($stats['total_profit'], 0, ',', '.') }}đ</p>
+                    </div>
                 </div>
             </div>
         </div>

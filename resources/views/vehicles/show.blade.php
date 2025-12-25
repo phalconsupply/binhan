@@ -121,7 +121,10 @@
                         <p class="text-sm text-gray-600 mb-2">Chuyến đi tháng này</p>
                         <p class="text-3xl font-bold text-gray-800">{{ $stats['this_month_incidents'] }}</p>
                         <p class="text-xs text-gray-400 mt-1">chuyến</p>
-                        <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ $stats['total_incidents'] }} chuyến</p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                            <p class="text-lg font-semibold text-gray-600">{{ $stats['total_incidents'] }} <span class="text-sm font-normal">chuyến</span></p>
+                        </div>
                     </div>
                 </div>
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -131,12 +134,18 @@
                             <p class="text-xs text-green-600 mb-2">(Thu + Vay + Nộp quỹ)</p>
                             <p class="text-3xl font-bold text-green-600">{{ number_format($stats['month_revenue_display'], 0, ',', '.') }}đ</p>
                             <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
-                            <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_revenue_display'], 0, ',', '.') }}đ</p>
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                                <p class="text-lg font-semibold text-green-700">{{ number_format($stats['total_revenue_display'], 0, ',', '.') }}đ</p>
+                            </div>
                         @else
                             <p class="text-sm text-gray-600 mb-4">Tổng thu tháng này</p>
                             <p class="text-3xl font-bold text-green-600">{{ number_format($stats['month_revenue'], 0, ',', '.') }}đ</p>
                             <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
-                            <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_revenue'], 0, ',', '.') }}đ</p>
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                                <p class="text-lg font-semibold text-green-700">{{ number_format($stats['total_revenue'], 0, ',', '.') }}đ</p>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -147,12 +156,18 @@
                             <p class="text-xs text-red-600 mb-2">(Chi + Trả nợ + Phí 15%)</p>
                             <p class="text-3xl font-bold text-red-600">{{ number_format($stats['month_expense_display'], 0, ',', '.') }}đ</p>
                             <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
-                            <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_expense_display'], 0, ',', '.') }}đ</p>
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                                <p class="text-lg font-semibold text-red-700">{{ number_format($stats['total_expense_display'], 0, ',', '.') }}đ</p>
+                            </div>
                         @else
                             <p class="text-sm text-gray-600 mb-4">Tổng chi tháng này</p>
                             <p class="text-3xl font-bold text-red-600">{{ number_format($stats['month_expense'], 0, ',', '.') }}đ</p>
                             <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
-                            <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_expense'], 0, ',', '.') }}đ</p>
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                                <p class="text-lg font-semibold text-red-700">{{ number_format($stats['total_expense'], 0, ',', '.') }}đ</p>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -164,7 +179,10 @@
                         <p class="text-xs text-blue-600 mb-2">(Không tính phí 15%)</p>
                         <p class="text-3xl font-bold text-blue-600">{{ number_format($stats['month_fund_deposit'], 0, ',', '.') }}đ</p>
                         <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
-                        <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_fund_deposit'], 0, ',', '.') }}đ</p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                            <p class="text-lg font-semibold text-blue-700">{{ number_format($stats['total_fund_deposit'], 0, ',', '.') }}đ</p>
+                        </div>
                     </div>
                 </div>
                 @endif
@@ -176,7 +194,10 @@
                         <p class="text-xs text-orange-600 mb-2">(Chưa trả)</p>
                         <p class="text-3xl font-bold text-orange-600">{{ number_format($stats['month_borrowed'], 0, ',', '.') }}đ</p>
                         <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
-                        <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_borrowed'], 0, ',', '.') }}đ</p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                            <p class="text-lg font-semibold text-orange-700">{{ number_format($stats['total_borrowed'], 0, ',', '.') }}đ</p>
+                        </div>
                     </div>
                 </div>
                 @endif
@@ -189,14 +210,20 @@
                                 {{ number_format($stats['month_profit_after_fee'], 0, ',', '.') }}đ
                             </p>
                             <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
-                            <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_profit_after_fee'], 0, ',', '.') }}đ</p>
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                                <p class="text-lg font-semibold {{ $stats['total_profit_after_fee'] >= 0 ? 'text-blue-700' : 'text-red-700' }}">{{ number_format($stats['total_profit_after_fee'], 0, ',', '.') }}đ</p>
+                            </div>
                         @else
                             <p class="text-sm text-gray-600 mb-4">Lợi nhuận tháng này</p>
                             <p class="text-3xl font-bold {{ $stats['month_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                 {{ number_format($stats['month_net'], 0, ',', '.') }}đ
                             </p>
                             <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
-                            <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_net'], 0, ',', '.') }}đ</p>
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <p class="text-xs text-gray-400 mb-1">Toàn thời gian</p>
+                                <p class="text-lg font-semibold {{ $stats['total_net'] >= 0 ? 'text-green-700' : 'text-red-700' }}">{{ number_format($stats['total_net'], 0, ',', '.') }}đ</p>
+                            </div>
                         @endif
                     </div>
                 </div>
