@@ -282,11 +282,11 @@ class VehicleController extends Controller
             $currentDebt = $totalBorrowed - $totalReturned;
             $monthDebt = $monthBorrowed - $monthReturned;
             
-            // BƯỚC 2: Tổng thu HIỂN THỊ = thu + nộp quỹ (KHÔNG bao gồm vay)
-            $stats['total_revenue_display'] = $stats['total_revenue'] + $stats['total_fund_deposit'];
-            $stats['month_revenue_display'] = $stats['month_revenue'] + $stats['month_fund_deposit'];
+            // BƯỚC 2: Tổng thu HIỂN THỊ = thu + vay + nộp quỹ
+            $stats['total_revenue_display'] = $stats['total_revenue'] + $totalBorrowed + $stats['total_fund_deposit'];
+            $stats['month_revenue_display'] = $stats['month_revenue'] + $monthBorrowed + $stats['month_fund_deposit'];
             
-            // BƯỚC 3: Tính phí 15% cho công ty (từ lợi nhuận = thu - chi, LOẠI TRỪ thu từ vay)
+            // BƯỚC 3: Tính phí 15% CHỈ trên lợi nhuận chuyến đi (thu - chi chuyến đi, KHÔNG bao gồm chi bảo trì)
             $totalRevenueForFee = (clone $statsQuery)->revenue()
                 ->where(function($q) {
                     $q->where('category', '!=', 'vay_từ_công_ty')
@@ -298,16 +298,36 @@ class VehicleController extends Controller
                       ->orWhereNull('category');
                 })->sum('amount');
             
-            // Phí 15% tính trên lợi nhuận thuần (revenue - expense - planned), không tính trên tổng thu
-            $totalProfitForFee = $totalRevenueForFee - $stats['total_expense'] - $stats['total_planned_expense'];
-            $monthProfitForFee = $monthRevenueForFee - $stats['month_expense'] - $stats['month_planned_expense'];
+            // Chi chuyến đi (không bao gồm bảo trì)
+            $totalIncidentExpense = (clone $statsQuery)->where('type', 'chi')
+                ->where(function($q) {
+                    $q->whereNull('vehicle_maintenance_id')
+                      ->where(function($q2) {
+                          $q2->whereNull('category')
+                             ->orWhere('category', '!=', 'bảo_trì_xe_chủ_riêng');
+                      });
+                })->sum('amount');
+            
+            $monthIncidentExpense = $vehicle->transactions()->where('type', 'chi')
+                ->thisMonth()
+                ->where(function($q) {
+                    $q->whereNull('vehicle_maintenance_id')
+                      ->where(function($q2) {
+                          $q2->whereNull('category')
+                             ->orWhere('category', '!=', 'bảo_trì_xe_chủ_riêng');
+                      });
+                })->sum('amount');
+            
+            // Phí 15% CHỈ tính trên lợi nhuận chuyến đi (thu - chi chuyến đi)
+            $totalProfitForFee = $totalRevenueForFee - $totalIncidentExpense;
+            $monthProfitForFee = $monthRevenueForFee - $monthIncidentExpense;
                 
             $companyFee = ($totalProfitForFee > 0) ? $totalProfitForFee * 0.15 : 0;
             $monthCompanyFee = ($monthProfitForFee > 0) ? $monthProfitForFee * 0.15 : 0;
             
-            // BƯỚC 4: Tổng chi HIỂN THỊ = chi + phí 15% (KHÔNG bao gồm trả nợ)
-            $stats['total_expense_display'] = $stats['total_expense'] + $companyFee;
-            $stats['month_expense_display'] = $stats['month_expense'] + $monthCompanyFee;
+            // BƯỚC 4: Tổng chi HIỂN THỊ = chi + dự kiến chi + trả nợ + phí 15%
+            $stats['total_expense_display'] = $stats['total_expense'] + $stats['total_planned_expense'] + $totalReturned + $companyFee;
+            $stats['month_expense_display'] = $stats['month_expense'] + $stats['month_planned_expense'] + $monthReturned + $monthCompanyFee;
             
             // Track company fee separately
             $stats['total_company_fee'] = $companyFee;
@@ -317,13 +337,13 @@ class VehicleController extends Controller
             $stats['total_borrowed'] = $currentDebt;
             $stats['month_borrowed'] = $monthDebt;
             
-            // BƯỚC 5: Lợi nhuận = Thu - Chi - Khoản đang vay
-            $stats['total_profit_after_fee'] = $stats['total_revenue_display'] - $stats['total_expense_display'] - $currentDebt;
-            $stats['month_profit_after_fee'] = $stats['month_revenue_display'] - $stats['month_expense_display'] - $monthDebt;
+            // BƯỚC 5: Lợi nhuận = Tổng thu - Tổng chi
+            $stats['total_profit_after_fee'] = $stats['total_revenue_display'] - $stats['total_expense_display'];
+            $stats['month_profit_after_fee'] = $stats['month_revenue_display'] - $stats['month_expense_display'];
             
-            // Số dư = Thu + Vay - Chi - Trả nợ (dùng cho kiểm tra có thể trả nợ không)
-            $stats['total_balance'] = $stats['total_revenue_display'] + $totalBorrowed - $stats['total_expense_display'] - $totalReturned;
-            $stats['month_balance'] = $stats['month_revenue_display'] + $monthBorrowed - $stats['month_expense_display'] - $monthReturned;
+            // Số dư giống lợi nhuận (theo công thức mới)
+            $stats['total_balance'] = $stats['total_profit_after_fee'];
+            $stats['month_balance'] = $stats['month_profit_after_fee'];
             
             // Track owner maintenance separately (for display purposes)
             $stats['total_owner_maintenance'] = $totalOwnerMaintenance;
