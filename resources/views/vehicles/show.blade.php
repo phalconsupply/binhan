@@ -118,39 +118,41 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-{{ $stats['has_owner'] ? '4' : '5' }} gap-4 mb-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <p class="text-sm text-gray-600 mb-4">Tổng chuyến đi</p>
+                        <p class="text-sm text-gray-600 mb-2">Chuyến đi tháng này</p>
                         <p class="text-3xl font-bold text-gray-800">{{ $stats['this_month_incidents'] }}</p>
-                        <p class="text-xs text-gray-400 mt-1">Tháng này</p>
-                        <p class="text-sm text-gray-500 mt-2">Tổng: {{ $stats['total_incidents'] }} chuyến</p>
+                        <p class="text-xs text-gray-400 mt-1">chuyến</p>
+                        <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ $stats['total_incidents'] }} chuyến</p>
                     </div>
                 </div>
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <p class="text-sm text-gray-600 mb-1">Tổng thu</p>
                         @if($stats['has_owner'])
-                            <p class="text-xs text-green-600 mb-3">(Thu + Nộp quỹ)</p>
+                            <p class="text-sm text-gray-600 mb-1">Tổng thu tháng này</p>
+                            <p class="text-xs text-green-600 mb-2">(Thu + Vay + Nộp quỹ)</p>
                             <p class="text-3xl font-bold text-green-600">{{ number_format($stats['month_revenue_display'], 0, ',', '.') }}đ</p>
-                            <p class="text-xs text-gray-400 mt-1">Tháng này</p>
-                            <p class="text-sm text-gray-500 mt-2">Tổng: {{ number_format($stats['total_revenue_display'], 0, ',', '.') }}đ</p>
+                            <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
+                            <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_revenue_display'], 0, ',', '.') }}đ</p>
                         @else
-                            <p class="text-3xl font-bold text-green-600 mt-4">{{ number_format($stats['month_revenue'], 0, ',', '.') }}đ</p>
-                            <p class="text-xs text-gray-400 mt-1">Tháng này</p>
-                            <p class="text-sm text-gray-500 mt-2">Tổng: {{ number_format($stats['total_revenue'], 0, ',', '.') }}đ</p>
+                            <p class="text-sm text-gray-600 mb-4">Tổng thu tháng này</p>
+                            <p class="text-3xl font-bold text-green-600">{{ number_format($stats['month_revenue'], 0, ',', '.') }}đ</p>
+                            <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
+                            <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_revenue'], 0, ',', '.') }}đ</p>
                         @endif
                     </div>
                 </div>
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <p class="text-sm text-gray-600 mb-1">Tổng chi</p>
                         @if($stats['has_owner'])
-                            <p class="text-xs text-red-600 mb-3">(Chi + Phí 15%)</p>
+                            <p class="text-sm text-gray-600 mb-1">Tổng chi tháng này</p>
+                            <p class="text-xs text-red-600 mb-2">(Chi + Trả nợ + Phí 15%)</p>
                             <p class="text-3xl font-bold text-red-600">{{ number_format($stats['month_expense_display'], 0, ',', '.') }}đ</p>
-                            <p class="text-xs text-gray-400 mt-1">Tháng này</p>
-                            <p class="text-sm text-gray-500 mt-2">Tổng: {{ number_format($stats['total_expense_display'], 0, ',', '.') }}đ</p>
+                            <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
+                            <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_expense_display'], 0, ',', '.') }}đ</p>
                         @else
-                            <p class="text-3xl font-bold text-red-600 mt-4">{{ number_format($stats['month_expense'], 0, ',', '.') }}đ</p>
-                            <p class="text-xs text-gray-400 mt-1">Tháng này</p>
-                            <p class="text-sm text-gray-500 mt-2">Tổng: {{ number_format($stats['total_expense'], 0, ',', '.') }}đ</p>
+                            <p class="text-sm text-gray-600 mb-4">Tổng chi tháng này</p>
+                            <p class="text-3xl font-bold text-red-600">{{ number_format($stats['month_expense'], 0, ',', '.') }}đ</p>
+                            <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
+                            <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_expense'], 0, ',', '.') }}đ</p>
                         @endif
                     </div>
                 </div>
@@ -158,11 +160,11 @@
                 {{-- Chỉ hiển thị riêng cho xe công ty, xe có chủ đã gộp vào Tổng thu --}}
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <p class="text-sm text-gray-600 mb-1">Nộp quỹ</p>
-                        <p class="text-xs text-blue-600 mb-3">(Không tính phí 15%)</p>
+                        <p class="text-sm text-gray-600 mb-1">Nộp quỹ tháng này</p>
+                        <p class="text-xs text-blue-600 mb-2">(Không tính phí 15%)</p>
                         <p class="text-3xl font-bold text-blue-600">{{ number_format($stats['month_fund_deposit'], 0, ',', '.') }}đ</p>
-                        <p class="text-xs text-gray-400 mt-1">Tháng này</p>
-                        <p class="text-sm text-gray-500 mt-2">Tổng: {{ number_format($stats['total_fund_deposit'], 0, ',', '.') }}đ</p>
+                        <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
+                        <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_fund_deposit'], 0, ',', '.') }}đ</p>
                     </div>
                 </div>
                 @endif
@@ -170,30 +172,31 @@
                 {{-- Hiển thị khoản đang vay cho xe có chủ --}}
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-l-4 border-orange-500">
                     <div class="p-6">
-                        <p class="text-sm text-gray-600 mb-1">Khoản đang vay</p>
-                        <p class="text-xs text-orange-600 mb-3">(Trừ vào lợi nhuận)</p>
+                        <p class="text-sm text-gray-600 mb-1">Đang vay tháng này</p>
+                        <p class="text-xs text-orange-600 mb-2">(Chưa trả)</p>
                         <p class="text-3xl font-bold text-orange-600">{{ number_format($stats['month_borrowed'], 0, ',', '.') }}đ</p>
-                        <p class="text-xs text-gray-400 mt-1">Tháng này</p>
-                        <p class="text-sm text-gray-500 mt-2">Tổng: {{ number_format($stats['total_borrowed'], 0, ',', '.') }}đ</p>
+                        <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
+                        <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_borrowed'], 0, ',', '.') }}đ</p>
                     </div>
                 </div>
                 @endif
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <p class="text-sm text-gray-600 mb-1">Lợi nhuận</p>
                         @if($stats['has_owner'])
-                            <p class="text-xs text-blue-600 mb-3">(Thu - Chi - Khoản vay)</p>
+                            <p class="text-sm text-gray-600 mb-1">Lợi nhuận tháng này</p>
+                            <p class="text-xs text-blue-600 mb-2">(Thu - Chi)</p>
                             <p class="text-3xl font-bold {{ $stats['month_profit_after_fee'] >= 0 ? 'text-blue-600' : 'text-red-600' }}">
                                 {{ number_format($stats['month_profit_after_fee'], 0, ',', '.') }}đ
                             </p>
-                            <p class="text-xs text-gray-400 mt-1">Tháng này</p>
-                            <p class="text-sm text-gray-500 mt-2">Tổng: {{ number_format($stats['total_profit_after_fee'], 0, ',', '.') }}đ</p>
+                            <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
+                            <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_profit_after_fee'], 0, ',', '.') }}đ</p>
                         @else
-                            <p class="text-3xl font-bold {{ $stats['month_net'] >= 0 ? 'text-green-600' : 'text-red-600' }} mt-4">
+                            <p class="text-sm text-gray-600 mb-4">Lợi nhuận tháng này</p>
+                            <p class="text-3xl font-bold {{ $stats['month_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                 {{ number_format($stats['month_net'], 0, ',', '.') }}đ
                             </p>
-                            <p class="text-xs text-gray-400 mt-1">Tháng này</p>
-                            <p class="text-sm text-gray-500 mt-2">Tổng: {{ number_format($stats['total_net'], 0, ',', '.') }}đ</p>
+                            <p class="text-xs text-gray-400 mt-1">tháng {{ date('m/Y') }}</p>
+                            <p class="text-sm text-gray-500 mt-2">Toàn thời gian: {{ number_format($stats['total_net'], 0, ',', '.') }}đ</p>
                         @endif
                     </div>
                 </div>
