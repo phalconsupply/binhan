@@ -104,6 +104,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('transactions/incident/{incident}', [TransactionController::class, 'destroyByIncident'])->name('transactions.destroyByIncident');
     Route::post('transactions/distribute-dividend', [TransactionController::class, 'distributeDividend'])->name('transactions.distribute-dividend')->middleware('permission:manage settings');
+    
+    // Owner transactions (trang riêng cho chủ xe)
+    Route::get('my-transactions', [App\Http\Controllers\OwnerTransactionController::class, 'index'])->name('owner.transactions');
+    
     Route::resource('transactions', TransactionController::class);
 });
 
