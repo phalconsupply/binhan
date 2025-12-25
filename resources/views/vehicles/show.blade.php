@@ -1578,7 +1578,7 @@
             loadingIndicator.classList.remove('hidden');
             
             try {
-                const response = await fetch(`/vehicles/${vehicleId}/stats?month=${month}`);
+                const response = await fetch(`/vehicle-stats/${vehicleId}?month=${month}`);
                 const stats = await response.json();
                 
                 if (response.ok) {

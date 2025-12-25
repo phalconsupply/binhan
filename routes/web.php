@@ -81,7 +81,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('vehicles/{vehicle}/export-maintenances-pdf', [VehicleController::class, 'exportMaintenancesPdf'])->name('vehicles.export-maintenances-pdf');
     Route::get('vehicles/{vehicle}/export-transactions', [VehicleController::class, 'exportTransactions'])->name('vehicles.export-transactions');
     Route::post('vehicles/{vehicle}/repay', [VehicleController::class, 'repayCompany'])->name('vehicles.repay');
-    Route::get('vehicles/{vehicle}/stats', [VehicleController::class, 'getMonthStats'])->name('vehicles.month-stats');
+    Route::get('vehicle-stats/{vehicle}', [VehicleController::class, 'getMonthStats'])->name('vehicles.month-stats');
     Route::resource('vehicles', VehicleController::class);
     
     // Loan routes
