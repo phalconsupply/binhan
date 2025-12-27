@@ -16,4 +16,13 @@ npm-debug.log
 yarn-error.log
 /.fleet
 /.idea
-/.vscode
+# Allow .vscode but exclude sensitive files
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/README.md
+!.vscode/launch.json
+!.vscode/tasks.json
+# Allow .continue but exclude API keys in config
+.continue/*
+!.continue/config.json

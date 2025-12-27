@@ -1,0 +1,95 @@
+{
+  "models": [
+    {
+      "title": "Claude 3.5 Sonnet",
+      "provider": "anthropic",
+      "model": "claude-3-5-sonnet-20241022",
+      "apiKey": "",
+      "contextLength": 200000,
+      "systemMessage": "You are an expert software developer and helpful assistant."
+    },
+    {
+      "title": "Claude Sonnet 4.5",
+      "provider": "anthropic", 
+      "model": "claude-sonnet-4.5-20241022",
+      "apiKey": "",
+      "contextLength": 200000,
+      "systemMessage": "You are an expert software developer and helpful assistant."
+    },
+    {
+      "title": "Claude 3 Opus",
+      "provider": "anthropic",
+      "model": "claude-3-opus-20240229",
+      "apiKey": "",
+      "contextLength": 200000
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "Claude 3.5 Sonnet",
+    "provider": "anthropic",
+    "model": "claude-3-5-sonnet-20241022",
+    "apiKey": ""
+  },
+  "embeddingsProvider": {
+    "provider": "openai",
+    "model": "text-embedding-3-small",
+    "apiKey": ""
+  },
+  "slashCommands": [
+    {
+      "name": "edit",
+      "description": "Edit selected code"
+    },
+    {
+      "name": "comment",
+      "description": "Write comments for the selected code"
+    },
+    {
+      "name": "share",
+      "description": "Export the current chat session to markdown"
+    },
+    {
+      "name": "cmd",
+      "description": "Generate a shell command"
+    }
+  ],
+  "customCommands": [
+    {
+      "name": "test",
+      "prompt": "Write a comprehensive test suite for the selected code using PHPUnit",
+      "description": "Generate tests"
+    }
+  ],
+  "contextProviders": [
+    {
+      "name": "code",
+      "params": {}
+    },
+    {
+      "name": "docs",
+      "params": {}
+    },
+    {
+      "name": "diff",
+      "params": {}
+    },
+    {
+      "name": "terminal",
+      "params": {}
+    },
+    {
+      "name": "problems",
+      "params": {}
+    },
+    {
+      "name": "folder",
+      "params": {}
+    },
+    {
+      "name": "codebase",
+      "params": {}
+    }
+  ],
+  "allowAnonymousTelemetry": false,
+  "docs": []
+}
