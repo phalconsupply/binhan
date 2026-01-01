@@ -235,7 +235,11 @@
                                         <table class="w-full text-sm">
                                             <thead class="text-xs text-gray-500 uppercase border-b">
                                                 <tr>
-                                                    @if(!$group['incident'] && !($group['is_dividend'] ?? false) && !($group['is_maintenance'] ?? false) && !($group['is_fund_deposit'] ?? false))
+                                                    @if($group['incident'])
+                                                        <th class="py-2 text-left">Mã GD</th>
+                                                        <th class="py-2 text-left">Ngày</th>
+                                                        <th class="py-2 text-left">Chi tiết</th>
+                                                    @elseif(!($group['is_dividend'] ?? false) && !($group['is_maintenance'] ?? false) && !($group['is_fund_deposit'] ?? false))
                                                         <th class="py-2 text-left">Mã GD</th>
                                                         <th class="py-2 text-left">Ngày</th>
                                                         <th class="py-2 text-left">Nguồn</th>
@@ -265,7 +269,25 @@
                                             <tbody class="divide-y divide-gray-100">
                                                 @foreach($group['transactions'] as $transaction)
                                                 <tr class="hover:bg-gray-50 {{ $transaction->category == 'điều_chỉnh_lương' ? 'bg-blue-50' : '' }} {{ ($group['is_dividend'] ?? false) ? 'bg-purple-50' : '' }} {{ ($group['is_maintenance'] ?? false) ? 'bg-orange-50' : '' }} {{ ($group['is_fund_deposit'] ?? false) ? 'bg-blue-50' : '' }}">
-                                                    @if($group['is_dividend'] ?? false)
+                                                    @if($group['incident'])
+                                                        <td class="py-2 text-gray-500 text-xs font-mono">
+                                                            {{ $transaction->code ?? 'N/A' }}
+                                                        </td>
+                                                        <td class="py-2 text-gray-600">
+                                                            {{ \Carbon\Carbon::parse($transaction->date)->format('d/m/Y') }}
+                                                        </td>
+                                                        <td class="py-2">
+                                                            @if($transaction->vehicle_id)
+                                                                <a href="{{ route('vehicles.show', $transaction->vehicle_id) }}" class="text-blue-600 hover:text-blue-800 text-xs">
+                                                                    🚗 {{ $transaction->vehicle->license_plate ?? 'Xe #'.$transaction->vehicle_id }}
+                                                                </a>
+                                                            @elseif($transaction->incident && $transaction->incident->patient)
+                                                                <span class="text-gray-700 text-xs">🚑 {{ $transaction->incident->patient->name ?? 'N/A' }}</span>
+                                                            @else
+                                                                <span class="text-gray-500 text-xs">N/A</span>
+                                                            @endif
+                                                        </td>
+                                                    @elseif($group['is_dividend'] ?? false)
                                                         <td class="py-2 text-gray-500 text-xs font-mono">
                                                             {{ $transaction->code ?? 'N/A' }}
                                                         </td>
@@ -396,17 +418,78 @@
                                                         @endif
                                                     </td>
                                                     <td class="py-2">{{ $transaction->method_label }}</td>
-                                                    <td class="py-2 text-right space-x-2">
-                                                        @can('edit transactions')
-                                                        <a href="{{ route('transactions.edit', $transaction) }}" class="text-indigo-600 hover:text-indigo-900">Sửa</a>
-                                                        @endcan
-                                                        @can('delete transactions')
-                                                        <form action="{{ route('transactions.destroy', $transaction) }}" method="POST" class="inline" onsubmit="return confirm('Bạn có chắc muốn xóa?')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="text-red-600 hover:text-red-900">Xóa</button>
-                                                        </form>
-                                                        @endcan
+                                                    <td class="py-2 text-right">
+                                                        <div class="flex items-center justify-end gap-2">
+                                                            @can('edit transactions')
+                                                            {{-- Button Đảo ngược --}}
+                                                            @if($transaction->lifecycle_status !== 'reversed' && $transaction->lifecycle_status !== 'cancelled' && !$transaction->is_locked)
+                                                            <button onclick="openReverseModal({{ $transaction->id }}, '{{ $transaction->code }}')" 
+                                                                class="inline-flex items-center px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition">
+                                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                                                </svg>
+                                                                Đảo ngược
+                                                            </button>
+                                                            @endif
+                                                            
+                                                            {{-- Button Thay thế --}}
+                                                            @if($transaction->lifecycle_status !== 'replaced' && $transaction->lifecycle_status !== 'cancelled' && !$transaction->is_locked)
+                                                            <button onclick="openReplaceModal({{ $transaction->id }}, '{{ $transaction->code }}')" 
+                                                                class="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition">
+                                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                                                                </svg>
+                                                                Thay thế
+                                                            </button>
+                                                            @endif
+                                                            
+                                                            {{-- Button Sửa --}}
+                                                            <a href="{{ route('transactions.edit', $transaction) }}" 
+                                                               class="inline-flex items-center px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition">
+                                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                                </svg>
+                                                                Sửa
+                                                            </a>
+                                                            @endcan
+                                                            
+                                                            @can('delete transactions')
+                                                            {{-- Button Xóa mềm --}}
+                                                            @if(!$transaction->is_locked)
+                                                            <form action="{{ route('transactions.destroy', $transaction) }}" method="POST" class="inline" onsubmit="return confirm('⚠️ XÓA MỀM: Giao dịch sẽ bị ẩn nhưng có thể restore.\n\nChỉ dùng khi giao dịch NHẬP NHẦM.\nNếu cần HỦY giao dịch đã xảy ra, hãy dùng [ĐẢO NGƯỢC].\n\nBạn có chắc muốn xóa?')">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="inline-flex items-center px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition">
+                                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                                    </svg>
+                                                                    Xóa
+                                                                </button>
+                                                            </form>
+                                                            @endif
+                                                            @endcan
+                                                            
+                                                            {{-- Status badges --}}
+                                                            @if($transaction->lifecycle_status === 'reversed')
+                                                            <span class="inline-flex items-center px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">
+                                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
+                                                                </svg>
+                                                                Đã đảo
+                                                            </span>
+                                                            @elseif($transaction->lifecycle_status === 'replaced')
+                                                            <span class="inline-flex items-center px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">
+                                                                Đã thay
+                                                            </span>
+                                                            @elseif($transaction->is_locked)
+                                                            <span class="inline-flex items-center px-2 py-1 text-xs bg-yellow-200 text-yellow-800 rounded">
+                                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                                                                </svg>
+                                                                Khóa
+                                                            </span>
+                                                            @endif
+                                                        </div>
                                                     </td>
                                                 </tr>
                                                 @if(in_array($transaction->type, ['vay_cong_ty', 'tra_cong_ty']) && (auth()->user()->hasRole('admin') || auth()->user()->hasRole('accountant')))
@@ -680,6 +763,54 @@
                 }
             }
         }
+        
+        // Đảo ngược giao dịch
+        function openReverseModal(transactionId, transactionCode) {
+            const reason = prompt('🔄 ĐẢO NGƯỢC GIAO DỊCH ' + transactionCode + '\n\nNhập lý do đảo ngược:\n(Ví dụ: "Hủy hóa đơn", "Khách hoàn tiền")');
+            
+            if (!reason || reason.trim() === '') {
+                return;
+            }
+            
+            if (confirm('⚠️ XÁC NHẬN ĐẢO NGƯỢC\n\nGiao dịch: ' + transactionCode + '\nLý do: ' + reason + '\n\nHành động này sẽ:\n- Tạo giao dịch đối nghịch (reversal)\n- Đánh dấu giao dịch gốc là "reversed"\n- GIỮ NGUYÊN cả 2 giao dịch cho audit trail\n\nBạn có chắc chắn?')) {
+                // Call API to reverse transaction
+                fetch('/api/transactions/' + transactionId + '/reverse', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ reason: reason })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ ĐẢO NGƯỢC THÀNH CÔNG!\n\nGiao dịch đảo ngược: ' + data.reversal_code + '\nGiao dịch gốc đã được đánh dấu "reversed"');
+                        window.location.reload();
+                    } else {
+                        alert('❌ LỖI: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('❌ LỖI: ' + error.message);
+                });
+            }
+        }
+        
+        // Thay thế giao dịch
+        function openReplaceModal(transactionId, transactionCode) {
+            const reason = prompt('🔄 THAY THẾ GIAO DỊCH ' + transactionCode + '\n\nNhập lý do thay thế:\n(Ví dụ: "Sửa số tiền theo hóa đơn", "Sửa tài khoản sai")');
+            
+            if (!reason || reason.trim() === '') {
+                return;
+            }
+            
+            alert('ℹ️ TÍNH NĂNG ĐANG PHÁT TRIỂN\n\nChức năng "Thay thế" sẽ:\n1. Cho phép bạn nhập dữ liệu mới (số tiền, tài khoản, etc)\n2. Tạo giao dịch mới với dữ liệu đúng\n3. Đánh dấu giao dịch cũ là "replaced"\n\nHiện tại, vui lòng:\n- Dùng nút [Sửa] để chỉnh sửa trực tiếp\n- Hoặc tạo giao dịch mới thủ công');
+            
+            // TODO: Open a form modal to enter new transaction data
+            // Then call API to replace transaction
+        }
+
     </script>
     @endpush
 </x-app-layout>

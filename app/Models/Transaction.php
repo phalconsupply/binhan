@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 
 class Transaction extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'code',
@@ -26,6 +27,7 @@ class Transaction extends Model
         'method',
         'payment_method',
         'note',
+        'description',
         'recorded_by',
         'date',
         'is_active',
@@ -34,10 +36,25 @@ class Transaction extends Model
         'edited_by',
         'from_account',
         'to_account',
+        'from_account_id',
+        'to_account_id',
+        'status',
         'from_balance_before',
         'from_balance_after',
         'to_balance_before',
         'to_balance_after',
+        // Lifecycle management
+        'lifecycle_status',
+        'reversed_by_transaction_id',
+        'reverses_transaction_id',
+        'modification_reason',
+        'modified_by',
+        'modified_at',
+        'approved_by',
+        'approved_at',
+        'is_locked',
+        'locked_at',
+        'locked_by',
     ];
 
     protected $casts = [
@@ -51,6 +68,10 @@ class Transaction extends Model
         'updated_at' => 'datetime',
         'is_active' => 'boolean',
         'edited_at' => 'datetime',
+        'modified_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'locked_at' => 'datetime',
+        'is_locked' => 'boolean',
     ];
 
     /**
@@ -223,9 +244,52 @@ class Transaction extends Model
         return $this->belongsTo(User::class, 'edited_by');
     }
 
+    // Phase 2: Account relationships
+    public function fromAccount()
+    {
+        return $this->belongsTo(Account::class, 'from_account_id');
+    }
+
+    public function toAccount()
+    {
+        return $this->belongsTo(Account::class, 'to_account_id');
+    }
+
+    // Phase 3: Transaction lines (double-entry)
+    public function lines()
+    {
+        return $this->hasMany(TransactionLine::class);
+    }
+
     public function replacedByTransaction()
     {
         return $this->belongsTo(Transaction::class, 'replaced_by');
+    }
+
+    // Lifecycle Management Relationships
+    public function reversedByTransaction()
+    {
+        return $this->belongsTo(Transaction::class, 'reversed_by_transaction_id');
+    }
+
+    public function reversesTransaction()
+    {
+        return $this->belongsTo(Transaction::class, 'reverses_transaction_id');
+    }
+
+    public function modifiedBy()
+    {
+        return $this->belongsTo(User::class, 'modified_by');
+    }
+
+    public function lockedBy()
+    {
+        return $this->belongsTo(User::class, 'locked_by');
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     // Scopes

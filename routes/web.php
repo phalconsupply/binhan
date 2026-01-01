@@ -114,7 +114,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('my-transactions/{vehicle}/export-others', [App\Http\Controllers\OwnerTransactionController::class, 'exportOthers'])->name('owner.transactions.export-others');
     
     Route::resource('transactions', TransactionController::class);
+    
+    // Transaction Lifecycle Management APIs
+    Route::post('/api/transactions/{transaction}/reverse', [TransactionController::class, 'reverseTransaction'])->name('api.transactions.reverse');
+    Route::post('/api/transactions/{transaction}/replace', [TransactionController::class, 'replaceTransaction'])->name('api.transactions.replace');
 });
+
 
 // Patient routes
 Route::middleware(['auth', 'verified'])->group(function () {

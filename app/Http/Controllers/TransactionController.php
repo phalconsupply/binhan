@@ -6,6 +6,7 @@ use App\Models\Transaction;
 use App\Models\Vehicle;
 use App\Models\Incident;
 use App\Services\AccountBalanceService;
+use App\Services\TransactionLifecycleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -336,7 +337,7 @@ class TransactionController extends Controller
             'incident_id' => 'nullable|exists:incidents,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
             'type' => 'required|in:thu,chi,du_kien_chi,nop_quy,vay_cong_ty,tra_cong_ty',
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|min:0.01',
             'method' => 'required|in:cash,bank,other',
             'date' => 'required|date',
             'note' => 'nullable|string',
@@ -618,4 +619,68 @@ class TransactionController extends Controller
                 ->withInput();
         }
     }
+    
+    /**
+     * Đảo ngược giao dịch (Reversal)
+     */
+    public function reverseTransaction(Request $request, Transaction $transaction)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500'
+        ]);
+        
+        try {
+            $service = new \App\Services\TransactionLifecycleService();
+            $reversal = $service->reverseTransaction($transaction, $validated['reason']);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã tạo giao dịch đảo ngược thành công',
+                'reversal_code' => $reversal->code,
+                'reversal_id' => $reversal->id,
+                'original_status' => $transaction->lifecycle_status
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+    
+    /**
+     * Thay thế giao dịch (Replacement)
+     */
+    public function replaceTransaction(Request $request, Transaction $transaction)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+            'new_data' => 'required|array'
+        ]);
+        
+        try {
+            $service = new \App\Services\TransactionLifecycleService();
+            $newTransaction = $service->replaceTransaction(
+                $transaction, 
+                $validated['new_data'], 
+                $validated['reason']
+            );
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã tạo giao dịch thay thế thành công',
+                'new_code' => $newTransaction->code,
+                'new_id' => $newTransaction->id,
+                'old_status' => $transaction->lifecycle_status
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
 }
+ 

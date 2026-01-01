@@ -42,28 +42,27 @@
                             </label>
                             <select id="category" name="category" 
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">-- Từ tài khoản xe --</option>
-                                <option value="chi_từ_dự_kiến">💰 Từ quỹ dự kiến chi</option>
-                            </select>
-                            <p class="mt-1 text-xs text-gray-500">
-                                💡 Nếu chọn "Từ quỹ dự kiến chi", số tiền sẽ được trừ từ quỹ dự kiến chi của công ty
-                            </p>
-                        </div>
-
-                        {{-- Vehicle --}}
-                        <div>
-                            <label for="vehicle_id" class="block text-sm font-medium text-gray-700">
-                                Xe (tùy chọn)
+                <option value="">🚗 Từ tài khoản xe (chỉ xe có chủ)</option>
+                <option value="chi_từ_công_ty">🏢 Từ số dư công ty (áp dụng cho tất cả xe)</option>
+                <option value="chi_từ_dự_kiến">💰 Từ quỹ dự kiến chi (áp dụng cho tất cả xe)</option>
+            </select>
+            <p class="mt-1 text-xs text-gray-500">
+                💡 <strong>Tài khoản xe:</strong> Chỉ dùng cho xe có chủ sở hữu<br>
+                💡 <strong>Số dư công ty:</strong> Chi trực tiếp từ lợi nhuận công ty<br>
+                💡 <strong>Quỹ dự kiến chi:</strong> Chi từ quỹ đã dự trù trước
                             </label>
                             <select id="vehicle_id" name="vehicle_id" 
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 <option value="">-- Không liên kết --</option>
                                 @foreach($vehicles as $vehicle)
-                                    <option value="{{ $vehicle->id }}" {{ old('vehicle_id', $selectedIncident?->vehicle_id) == $vehicle->id ? 'selected' : '' }}>
-                                        {{ $vehicle->license_plate }} @if($vehicle->driver_name) - {{ $vehicle->driver_name }} @endif
+                                    <option value="{{ $vehicle->id }}" 
+                                            data-has-owner="{{ $vehicle->hasOwner() ? '1' : '0' }}"
+                                            {{ old('vehicle_id', $selectedIncident?->vehicle_id) == $vehicle->id ? 'selected' : '' }}>
+                                        {{ $vehicle->license_plate }} @if($vehicle->driver_name) - {{ $vehicle->driver_name }} @endif{{ $vehicle->hasOwner() ? '' : ' (Không có chủ)' }}
                                     </option>
                                 @endforeach
                             </select>
+                            <p id="vehicle-hint" class="mt-1 text-xs text-gray-500" style="display: none;"></p>
                         </div>
 
                         {{-- Incident (Optional) --}}
@@ -190,18 +189,64 @@
             }
         }
         
+        function handleCategoryChange(category) {
+            const vehicleSelect = document.getElementById('vehicle_id');
+            const vehicleHint = document.getElementById('vehicle-hint');
+            const options = vehicleSelect.querySelectorAll('option');
+            
+            if (category === '') { // Chi từ tài khoản xe
+                // Chỉ hiển thị xe có owner
+                let hasOwnerVehicles = false;
+                options.forEach(option => {
+                    if (option.value === '') {
+                        option.style.display = 'block';
+                        return;
+                    }
+                    const hasOwner = option.getAttribute('data-has-owner') === '1';
+                    option.style.display = hasOwner ? 'block' : 'none';
+                    if (hasOwner) hasOwnerVehicles = true;
+                    
+                    // Bỏ chọn nếu xe hiện tại không có owner
+                    if (!hasOwner && option.selected) {
+                        vehicleSelect.value = '';
+                    }
+                });
+                vehicleHint.textContent = '⚠️ Chỉ hiển thị xe có chủ sở hữu';
+                vehicleHint.style.display = 'block';
+                vehicleHint.className = 'mt-1 text-xs text-orange-600 font-medium';
+            } else {
+                // Hiển thị tất cả xe
+                options.forEach(option => {
+                    option.style.display = 'block';
+                });
+                vehicleHint.style.display = 'none';
+            }
+        }
+        
         function handleTypeChange(type) {
             const incidentContainer = document.getElementById('incident-container');
             const incidentInput = document.getElementById('incident_id');
             const typeHint = document.getElementById('type-hint');
             const vehicleSelect = document.getElementById('vehicle_id');
             const sourceAccountContainer = document.getElementById('source-account-container');
+            const categorySelect = document.getElementById('category');
             
             // Show source account selection only for "chi" type
             if (type === 'chi') {
                 sourceAccountContainer.style.display = 'block';
+                // Trigger filter based on current category
+                if (categorySelect) {
+                    handleCategoryChange(categorySelect.value);
+                }
             } else {
                 sourceAccountContainer.style.display = 'none';
+                // Reset vehicle filter
+                const vehicleOptions = vehicleSelect.querySelectorAll('option');
+                vehicleOptions.forEach(option => {
+                    option.style.display = 'block';
+                });
+                const vehicleHint = document.getElementById('vehicle-hint');
+                if (vehicleHint) vehicleHint.style.display = 'none';
             }
             
             if (type === 'nop_quy') {
@@ -237,8 +282,22 @@
         // Gọi khi load trang nếu đã có giá trị cũ
         document.addEventListener('DOMContentLoaded', function() {
             const typeSelect = document.getElementById('type');
+            const categorySelect = document.getElementById('category');
+            
             if (typeSelect && (typeSelect.value === 'nop_quy' || typeSelect.value === 'vay_cong_ty' || typeSelect.value === 'tra_cong_ty')) {
                 handleTypeChange(typeSelect.value);
+            }
+            
+            // Add category change listener
+            if (categorySelect) {
+                categorySelect.addEventListener('change', function() {
+                    handleCategoryChange(this.value);
+                });
+                
+                // Trigger on load if type is 'chi'
+                if (typeSelect && typeSelect.value === 'chi') {
+                    handleCategoryChange(categorySelect.value);
+                }
             }
         });
     </script>

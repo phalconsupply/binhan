@@ -4,10 +4,38 @@ namespace App\Services;
 
 use App\Models\Transaction;
 use App\Models\Vehicle;
+use App\Exceptions\InsufficientBalanceException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class AccountBalanceService
 {
+    /**
+     * Kiểm tra số dư tài khoản có đủ để thực hiện giao dịch không
+     * 
+     * @throws InsufficientBalanceException
+     */
+    public static function validateSufficientBalance(
+        string $fromAccount,
+        float $amount,
+        bool $allowNegative = false
+    ): void {
+        // Skip validation for revenue accounts (customer, income)
+        if (in_array($fromAccount, ['customer', 'income', 'external'])) {
+            return;
+        }
+
+        $currentBalance = self::getCurrentBalance($fromAccount);
+
+        if (!$allowNegative && $currentBalance < $amount) {
+            throw new InsufficientBalanceException(
+                $fromAccount,
+                $currentBalance,
+                $amount
+            );
+        }
+    }
+
     /**
      * Xác định tài khoản nguồn và đích dựa trên loại giao dịch
      */
@@ -123,32 +151,52 @@ class AccountBalanceService
     }
 
     /**
-     * Cập nhật số dư cho transaction
+     * Cập nhật số dư cho transaction (với locking để tránh race condition)
      */
-    public static function updateTransactionBalances(Transaction $transaction): void
+    public static function updateTransactionBalances(Transaction $transaction, bool $skipValidation = false): void
     {
-        $accounts = self::determineAccounts($transaction);
-        
-        $fromAccount = $accounts['from_account'];
-        $toAccount = $accounts['to_account'];
+        // Use cache lock để prevent race conditions
+        $lockKey = "transaction_balance_update_{$transaction->id}";
+        $lock = Cache::lock($lockKey, 10); // 10 seconds timeout
 
-        // Tính số dư trước giao dịch
-        $fromBalanceBefore = $fromAccount ? self::calculateBalance($fromAccount, $transaction->id) : null;
-        $toBalanceBefore = $toAccount ? self::calculateBalance($toAccount, $transaction->id) : null;
+        if (!$lock->get()) {
+            throw new \RuntimeException("Could not acquire lock for transaction balance update");
+        }
 
-        // Tính số dư sau giao dịch
-        $fromBalanceAfter = $fromBalanceBefore !== null ? $fromBalanceBefore - $transaction->amount : null;
-        $toBalanceAfter = $toBalanceBefore !== null ? $toBalanceBefore + $transaction->amount : null;
+        try {
+            DB::transaction(function () use ($transaction, $skipValidation) {
+                $accounts = self::determineAccounts($transaction);
+                
+                $fromAccount = $accounts['from_account'];
+                $toAccount = $accounts['to_account'];
 
-        // Cập nhật transaction
-        $transaction->updateQuietly([
-            'from_account' => $fromAccount,
-            'to_account' => $toAccount,
-            'from_balance_before' => $fromBalanceBefore,
-            'from_balance_after' => $fromBalanceAfter,
-            'to_balance_before' => $toBalanceBefore,
-            'to_balance_after' => $toBalanceAfter,
-        ]);
+                // Validate sufficient balance before processing (chỉ với giao dịch chi tiền)
+                // Skip validation khi recalculate để cho phép số dư âm trong lịch sử
+                if (!$skipValidation && $fromAccount && !in_array($transaction->type, ['thu', 'nop_quy'])) {
+                    self::validateSufficientBalance($fromAccount, $transaction->amount);
+                }
+
+                // Tính số dư trước giao dịch
+                $fromBalanceBefore = $fromAccount ? self::calculateBalance($fromAccount, $transaction->id) : null;
+                $toBalanceBefore = $toAccount ? self::calculateBalance($toAccount, $transaction->id) : null;
+
+                // Tính số dư sau giao dịch
+                $fromBalanceAfter = $fromBalanceBefore !== null ? $fromBalanceBefore - $transaction->amount : null;
+                $toBalanceAfter = $toBalanceBefore !== null ? $toBalanceBefore + $transaction->amount : null;
+
+                // Cập nhật transaction
+                $transaction->updateQuietly([
+                    'from_account' => $fromAccount,
+                    'to_account' => $toAccount,
+                    'from_balance_before' => $fromBalanceBefore,
+                    'from_balance_after' => $fromBalanceAfter,
+                    'to_balance_before' => $toBalanceBefore,
+                    'to_balance_after' => $toBalanceAfter,
+                ]);
+            });
+        } finally {
+            $lock->release();
+        }
     }
 
     /**
@@ -200,7 +248,8 @@ class AccountBalanceService
             $transactions = Transaction::orderBy('date')->orderBy('id')->get();
 
             foreach ($transactions as $transaction) {
-                self::updateTransactionBalances($transaction);
+                // Skip validation để cho phép số dư âm trong lịch sử
+                self::updateTransactionBalances($transaction, true);
             }
         });
     }

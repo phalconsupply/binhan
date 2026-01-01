@@ -310,7 +310,7 @@
                                 {{ \Carbon\Carbon::parse($transaction->date)->format('d/m/Y') }}
                             </td>
                             <td class="px-4 py-2 whitespace-nowrap text-sm font-mono text-gray-600">
-                                {{ $transaction->transaction_code }}
+                                {{ $transaction->code }}
                             </td>
                             <td class="px-4 py-2 text-sm">
                                 @if($transaction->type == 'vay_cong_ty')
