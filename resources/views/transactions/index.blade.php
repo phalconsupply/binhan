@@ -34,59 +34,395 @@
                 </div>
             @endif
 
-            {{-- Statistics --}}
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                    <p class="text-sm text-gray-500">Tổng thu</p>
-                    <p class="text-2xl font-bold text-green-600">{{ number_format($stats['total_revenue_display'], 0, ',', '.') }}đ</p>
-                    <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['month_revenue_display'], 0, ',', '.') }}đ</p>
-                    <p class="text-xs text-green-600 mt-1">(Thu + Nộp quỹ)</p>
-                </div>
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                    <p class="text-sm text-gray-500">Tổng chi</p>
-                    <p class="text-2xl font-bold text-red-600">{{ number_format($stats['total_expense'], 0, ',', '.') }}đ</p>
-                    <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['month_expense'], 0, ',', '.') }}đ</p>
-                </div>
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                    <p class="text-sm text-gray-500">Dự kiến chi</p>
-                    <p class="text-2xl font-bold text-orange-600">{{ number_format($stats['total_planned_expense'], 0, ',', '.') }}đ</p>
-                    <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['month_planned_expense'], 0, ',', '.') }}đ</p>
-                    <p class="text-xs text-gray-500">Công ty: {{ number_format($stats['company_planned_expense'], 0, ',', '.') }}đ</p>
-                </div>
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                    <p class="text-sm text-gray-500">Lợi nhuận</p>
-                    <p class="text-2xl font-bold {{ $stats['total_net'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                        {{ number_format($stats['total_net'], 0, ',', '.') }}đ
-                    </p>
-                    <p class="text-xs {{ $stats['month_net'] >= 0 ? 'text-green-600' : 'text-red-600' }} mt-1">
-                        Tháng: {{ number_format($stats['month_net'], 0, ',', '.') }}đ
-                    </p>
-                </div>
-            </div>
-
-            {{-- Account Balances Summary --}}
+            {{-- Statistics - 4 Tài khoản chính --}}
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
-                    <h3 class="text-lg font-semibold mb-4">💰 Số dư tài khoản</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="border rounded-lg p-4">
-                            <p class="text-sm text-gray-600">🏢 Quỹ công ty</p>
-                            <p class="text-xl font-bold text-blue-600">{{ number_format($balances['company_fund'], 0, ',', '.') }}đ</p>
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-lg font-semibold">📊 Tài khoản công ty</h3>
+                        
+                        {{-- Filter tháng với Modal --}}
+                        <div x-data="{ open: false }">
+                            <button @click="open = true" type="button" 
+                                    class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                <span>
+                                    @php
+                                        $selectedMonths = request('stat_months', ['all']);
+                                        $filterLabel = 'Tất cả thời gian';
+                                        if (in_array('current', $selectedMonths)) {
+                                            $filterLabel = 'Tháng này';
+                                        } elseif (count($selectedMonths) > 0 && !in_array('all', $selectedMonths)) {
+                                            $filterLabel = count($selectedMonths) . ' tháng được chọn';
+                                        }
+                                    @endphp
+                                    {{ $filterLabel }}
+                                </span>
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            
+                            {{-- Modal Overlay --}}
+                            <div x-show="open" 
+                                 x-transition:enter="transition ease-out duration-300"
+                                 x-transition:enter-start="opacity-0"
+                                 x-transition:enter-end="opacity-100"
+                                 x-transition:leave="transition ease-in duration-200"
+                                 x-transition:leave-start="opacity-100"
+                                 x-transition:leave-end="opacity-0"
+                                 class="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center p-4"
+                                 style="display: none;"
+                                 @click.self="open = false">
+                                
+                                {{-- Modal Content --}}
+                                <div x-show="open"
+                                     x-transition:enter="transition ease-out duration-300"
+                                     x-transition:enter-start="opacity-0 transform scale-95"
+                                     x-transition:enter-end="opacity-100 transform scale-100"
+                                     x-transition:leave="transition ease-in duration-200"
+                                     x-transition:leave-start="opacity-100 transform scale-100"
+                                     x-transition:leave-end="transform opacity-0 scale-95"
+                                     x-data="{ selectedYear: {{ request('stat_year', now()->year) }} }"
+                                     class="bg-white rounded-lg shadow-xl max-w-lg w-full"
+                                     @click.stop>
+                                    
+                                    <form method="GET" action="{{ route('transactions.index') }}">
+                                        {{-- Giữ nguyên các filter khác --}}
+                                        @foreach(request()->except(['stat_months', 'stat_year', 'page', 'quick_filter']) as $key => $value)
+                                            @if(is_array($value))
+                                                @foreach($value as $v)
+                                                    <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+                                                @endforeach
+                                            @else
+                                                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                                            @endif
+                                        @endforeach
+                                        
+                                        <input type="hidden" name="stat_year" x-model="selectedYear">
+                                        
+                                        {{-- Header với navigation --}}
+                                        <div class="bg-indigo-600 text-white rounded-t-lg px-5 py-4">
+                                            <div class="flex items-center justify-between mb-3">
+                                                <h3 class="text-base font-semibold">Chọn khoảng thời gian</h3>
+                                                <button type="button" @click="open = false" class="text-white hover:text-gray-200">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                            
+                                            {{-- Year Navigation --}}
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" 
+                                                        @click="selectedYear = Math.max({{ now()->year - 3 }}, selectedYear - 1); updateMonthOptions(selectedYear);"
+                                                        class="p-2 hover:bg-indigo-700 rounded-md transition-colors">
+                                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                                    </svg>
+                                                </button>
+                                                <div class="text-xl font-bold">
+                                                    <span x-text="'Năm ' + selectedYear"></span>
+                                                </div>
+                                                <button type="button" 
+                                                        @click="selectedYear = Math.min({{ now()->year }}, selectedYear + 1); updateMonthOptions(selectedYear);"
+                                                        class="p-2 hover:bg-indigo-700 rounded-md transition-colors">
+                                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        {{-- Body --}}
+                                        <div class="p-5">
+                                            {{-- Tùy chọn nhanh --}}
+                                            <div class="mb-4">
+                                                <div class="grid grid-cols-2 gap-2">
+                                                    <label class="border-2 border-gray-300 rounded-lg py-2 px-3 cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-100 transition-all">
+                                                        <input type="radio" name="quick_filter" value="all" 
+                                                               {{ (request('quick_filter') == 'all' || (!request('quick_filter') && !request('stat_months'))) ? 'checked' : '' }}
+                                                               onclick="document.querySelectorAll('.month-checkbox').forEach(el => el.checked = false);"
+                                                               class="sr-only">
+                                                        <div class="flex items-center justify-center gap-1">
+                                                            <span class="text-lg">📊</span>
+                                                            <span class="font-medium text-sm">Tất cả</span>
+                                                        </div>
+                                                    </label>
+                                                    <label class="border-2 border-gray-300 rounded-lg py-2 px-3 cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-100 transition-all">
+                                                        <input type="radio" name="quick_filter" value="current"
+                                                               {{ request('quick_filter') == 'current' ? 'checked' : '' }}
+                                                               onclick="document.querySelectorAll('.month-checkbox').forEach(el => el.checked = false);"
+                                                               class="sr-only">
+                                                        <div class="flex items-center justify-center gap-1">
+                                                            <span class="text-lg">📅</span>
+                                                            <span class="font-medium text-sm">Tháng này</span>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
+                                            {{-- Separator --}}
+                                            <div class="relative mb-4">
+                                                <div class="absolute inset-0 flex items-center">
+                                                    <div class="w-full border-t border-gray-300"></div>
+                                                </div>
+                                                <div class="relative flex justify-center">
+                                                    <span class="px-2 bg-white text-xs text-gray-500">hoặc chọn tháng</span>
+                                                </div>
+                                            </div>
+                                            
+                                            {{-- Calendar Grid --}}
+                                            <div class="mb-3 flex justify-between items-center">
+                                                <span class="text-xs font-semibold text-gray-600 uppercase">Chọn tháng</span>
+                                                <button type="button" onclick="toggleAllMonths()" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                                                    Chọn tất cả
+                                                </button>
+                                            </div>
+                                            
+                                            <div class="grid grid-cols-3 gap-2" id="month_checkboxes">
+                                                @php
+                                                    $selectedYear = request('stat_year', now()->year);
+                                                    $currentMonth = now()->month;
+                                                    $currentYear = now()->year;
+                                                    $monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+                                                @endphp
+                                                @for($m = 1; $m <= 12; $m++)
+                                                    @php
+                                                        $monthValue = $selectedYear . '-' . str_pad($m, 2, '0', STR_PAD_LEFT);
+                                                        $isDisabled = ($selectedYear == $currentYear && $m > $currentMonth);
+                                                        $isChecked = in_array($monthValue, request('stat_months', []));
+                                                    @endphp
+                                                    <label class="relative border-2 rounded-lg py-3 cursor-pointer transition-all
+                                                                  {{ $isChecked ? 'border-indigo-600 bg-indigo-100' : 'border-gray-300 bg-white' }}
+                                                                  {{ $isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:border-indigo-500 hover:bg-indigo-50' }}">
+                                                        <input type="checkbox" name="stat_months[]" value="{{ $monthValue }}"
+                                                               {{ $isChecked ? 'checked' : '' }}
+                                                               {{ $isDisabled ? 'disabled' : '' }}
+                                                               onclick="document.querySelectorAll('input[name=quick_filter]').forEach(el => el.checked = false); 
+                                                                        const label = this.closest('label');
+                                                                        if(this.checked) {
+                                                                            label.classList.add('border-indigo-600', 'bg-indigo-100');
+                                                                            label.classList.remove('border-gray-300', 'bg-white');
+                                                                        } else {
+                                                                            label.classList.remove('border-indigo-600', 'bg-indigo-100');
+                                                                            label.classList.add('border-gray-300', 'bg-white');
+                                                                        }"
+                                                               class="sr-only month-checkbox">
+                                                        <div class="text-center">
+                                                            <div class="font-semibold text-sm {{ $isDisabled ? 'text-gray-400' : 'text-gray-700' }}">
+                                                                {{ $monthNames[$m-1] }}
+                                                            </div>
+                                                        </div>
+                                                        @if($isChecked)
+                                                        <div class="absolute top-1 right-1">
+                                                            <svg class="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                            </svg>
+                                                        </div>
+                                                        @endif
+                                                    </label>
+                                                @endfor
+                                            </div>
+                                        </div>
+                                        
+                                        {{-- Footer --}}
+                                        <div class="px-5 py-3 bg-gray-50 border-t rounded-b-lg flex gap-2">
+                                            <button type="button" @click="open = false" class="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                                Hủy
+                                            </button>
+                                            <button type="submit" class="flex-1 px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                                                Áp dụng
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
-                        <div class="border rounded-lg p-4">
-                            <p class="text-sm text-gray-600">📊 Quỹ dự kiến chi</p>
-                            <p class="text-xl font-bold text-orange-600">{{ number_format($balances['company_reserved'], 0, ',', '.') }}đ</p>
+                    </div>
+                    
+                    <script>
+                        function updateMonthOptions(year) {
+                            const currentYear = new Date().getFullYear();
+                            const currentMonth = new Date().getMonth() + 1;
+                            const checkboxes = document.querySelectorAll('#month_checkboxes .month-checkbox');
+                            
+                            checkboxes.forEach((checkbox, index) => {
+                                const month = index + 1;
+                                const isDisabled = (year == currentYear && month > currentMonth);
+                                
+                                checkbox.disabled = isDisabled;
+                                checkbox.value = year + '-' + String(month).padStart(2, '0');
+                                
+                                const label = checkbox.closest('label');
+                                if (isDisabled) {
+                                    label.classList.add('opacity-50', 'cursor-not-allowed');
+                                    label.classList.remove('cursor-pointer', 'border-indigo-500', 'bg-indigo-50');
+                                    checkbox.checked = false;
+                                } else {
+                                    label.classList.remove('opacity-50', 'cursor-not-allowed');
+                                    label.classList.add('cursor-pointer');
+                                }
+                            });
+                            
+                            // Update year button style
+                            document.querySelectorAll('.year-radio').forEach(radio => {
+                                const label = radio.closest('label');
+                                if (radio.value == year) {
+                                    label.classList.add('border-indigo-500', 'bg-indigo-50');
+                                } else {
+                                    label.classList.remove('border-indigo-500', 'bg-indigo-50');
+                                }
+                            });
+                        }
+                        
+                        function toggleAllMonths() {
+                            const checkboxes = document.querySelectorAll('#month_checkboxes .month-checkbox:not([disabled])');
+                            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+                            
+                            checkboxes.forEach(cb => {
+                                cb.checked = !allChecked;
+                                const label = cb.closest('label');
+                                if (!allChecked) {
+                                    label.classList.add('border-indigo-500', 'bg-indigo-50');
+                                } else {
+                                    label.classList.remove('border-indigo-500', 'bg-indigo-50');
+                                }
+                            });
+                            
+                            // Bỏ chọn quick filter
+                            document.querySelectorAll('input[name=quick_filter]').forEach(el => el.checked = false);
+                        }
+                    </script>
+                    
+                    @php
+                        $selectedMonths = request('stat_months', ['all']);
+                        $showTable = count($selectedMonths) > 1 && !in_array('all', $selectedMonths);
+                    @endphp
+                    
+                    @if($showTable)
+                        {{-- Hiển thị dạng bảng khi chọn nhiều tháng --}}
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tháng</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">💰 Tổng thu</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">💸 Tổng chi</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">📊 Dự kiến chi</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">📈 Lợi nhuận</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($stats['monthly_data'] ?? [] as $monthData)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-900">
+                                                {{ $monthData['label'] }}
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-right text-green-600 font-semibold">
+                                                {{ number_format($monthData['revenue'], 0, ',', '.') }}đ
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-right text-red-600 font-semibold">
+                                                {{ number_format($monthData['expense'], 0, ',', '.') }}đ
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-right text-orange-600 font-semibold">
+                                                {{ number_format($monthData['planned'], 0, ',', '.') }}đ
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-right {{ $monthData['profit'] >= 0 ? 'text-blue-600' : 'text-red-600' }} font-semibold">
+                                                {{ number_format($monthData['profit'], 0, ',', '.') }}đ
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                    @if(isset($stats['monthly_data']) && count($stats['monthly_data']) > 1)
+                                        <tr class="bg-gray-100 font-bold">
+                                            <td class="px-4 py-3 text-sm text-gray-900">Tổng cộng</td>
+                                            <td class="px-4 py-3 text-sm text-right text-green-700">
+                                                {{ number_format($stats['total_revenue'], 0, ',', '.') }}đ
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-right text-red-700">
+                                                {{ number_format($stats['total_expense'], 0, ',', '.') }}đ
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-right text-orange-700">
+                                                {{ number_format($stats['total_planned_expense'], 0, ',', '.') }}đ
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-right {{ $stats['total_profit'] >= 0 ? 'text-blue-700' : 'text-red-700' }}">
+                                                {{ number_format($stats['total_profit'], 0, ',', '.') }}đ
+                                            </td>
+                                        </tr>
+                                    @endif
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="border rounded-lg p-4 {{ $balances['company_available'] >= 0 ? 'bg-green-50' : 'bg-red-50' }}">
-                            <p class="text-sm text-gray-600">💵 Khả dụng công ty</p>
-                            <p class="text-xl font-bold {{ $balances['company_available'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                {{ number_format($balances['company_available'], 0, ',', '.') }}đ
-                            </p>
-                            <p class="text-xs text-gray-500 mt-1">(Quỹ - Dự kiến chi)</p>
+                    @else
+                        {{-- Hiển thị dạng card khi chọn 1 tháng hoặc tất cả --}}
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {{-- Tổng thu --}}
+                            <div class="border-l-4 border-green-500 pl-4">
+                                <p class="text-sm text-gray-600 mb-1">💰 Tổng thu</p>
+                                <p class="text-xs text-gray-500 mb-2">(Thu + Nộp quỹ vào công ty)</p>
+                                <p class="text-2xl font-bold text-green-600">{{ number_format($stats['total_revenue'], 0, ',', '.') }}đ</p>
+                                @if(!in_array('all', request('stat_months', ['all'])))
+                                    <p class="text-xs text-gray-500 mt-1">Tháng đã chọn</p>
+                                @else
+                                    <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['month_revenue'], 0, ',', '.') }}đ</p>
+                                @endif
+                            </div>
+                            
+                            {{-- Tổng chi --}}
+                            <div class="border-l-4 border-red-500 pl-4">
+                                <p class="text-sm text-gray-600 mb-1">💸 Tổng chi</p>
+                                <p class="text-xs text-gray-500 mb-2">(Chi từ lợi nhuận hoặc dự kiến)</p>
+                                <p class="text-2xl font-bold text-red-600">{{ number_format($stats['total_expense'], 0, ',', '.') }}đ</p>
+                                @if(!in_array('all', request('stat_months', ['all'])))
+                                    <p class="text-xs text-gray-500 mt-1">Tháng đã chọn</p>
+                                @else
+                                    <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['month_expense'], 0, ',', '.') }}đ</p>
+                                @endif
+                            </div>
+                            
+                            {{-- Lợi nhuận --}}
+                            <div class="border-l-4 {{ $stats['total_profit'] >= 0 ? 'border-blue-500' : 'border-red-500' }} pl-4">
+                                <p class="text-sm text-gray-600 mb-1">📈 Lợi nhuận</p>
+                                <p class="text-xs text-gray-500 mb-2">(Thu - Chi - Dự kiến chi)</p>
+                                <p class="text-2xl font-bold {{ $stats['total_profit'] >= 0 ? 'text-blue-600' : 'text-red-600' }}">
+                                    {{ number_format($stats['total_profit'], 0, ',', '.') }}đ
+                                </p>
+                                @if(!in_array('all', request('stat_months', ['all'])))
+                                    <p class="text-xs {{ $stats['total_profit'] >= 0 ? 'text-blue-600' : 'text-red-600' }} mt-1">Tháng đã chọn</p>
+                                @else
+                                    <p class="text-xs {{ $stats['month_profit'] >= 0 ? 'text-blue-600' : 'text-red-600' }} mt-1">
+                                        Tháng: {{ number_format($stats['month_profit'], 0, ',', '.') }}đ
+                                    </p>
+                                @endif
+                            </div>
+                            
+                            {{-- Dự kiến chi --}}
+                            <div class="border-l-4 border-orange-500 pl-4">
+                                <p class="text-sm text-gray-600 mb-1">📊 Dự kiến chi</p>
+                                <p class="text-xs text-gray-500 mb-2">(Trích từ lợi nhuận để dự chi)</p>
+                                <p class="text-2xl font-bold text-orange-600">{{ number_format($stats['total_planned_expense'], 0, ',', '.') }}đ</p>
+                                @if(!in_array('all', request('stat_months', ['all'])))
+                                    <p class="text-xs text-gray-500 mt-1">Tháng đã chọn</p>
+                                @else
+                                    <p class="text-xs text-gray-500 mt-1">Tháng: {{ number_format($stats['month_planned_expense'], 0, ',', '.') }}đ</p>
+                                @endif
+                            </div>
                         </div>
+                    @endif
+                    
+                    <div class="mt-4 pt-4 border-t">
+                        <p class="text-xs text-gray-500">
+                            💡 <strong>Giải thích:</strong><br>
+                            • <strong>Dự kiến chi</strong> được trích từ <strong>Lợi nhuận</strong> (ví dụ: GD20251122-0036)<br>
+                            • Khi chi từ <strong>Dự kiến chi</strong>, số tiền sẽ trừ từ quỹ dự kiến và vào <strong>Tổng chi</strong><br>
+                            • <strong>Lợi nhuận</strong> = Tổng thu - Tổng chi - Dự kiến chi (còn lại để chia cổ tức)
+                        </p>
                     </div>
                 </div>
             </div>
+
+            {{-- Không còn hiển thị các tài khoản cũ - Đã chuyển sang hệ thống 4 tài khoản --}}
 
             {{-- Search & Filter --}}
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
@@ -193,7 +529,7 @@
                                                     </a>
                                                 @elseif(!$group['incident'])
                                                     <span>•</span>
-                                                    <span class="text-gray-500">🏢 Quỹ công ty</span>
+                                                    <span class="text-gray-500">💰 Công ty</span>
                                                 @endif
                                                 @if($group['incident'] && $group['incident']->patient)
                                                     <span>•</span>
@@ -341,7 +677,7 @@
                                                                     <span class="text-xs text-green-600 ml-1">(Không chủ - vào công ty)</span>
                                                                 @endif
                                                             @else
-                                                                <span class="text-green-600 font-medium">🏢 Quỹ công ty</span>
+                                                                <span class="text-green-600 font-medium">💰 Lợi nhuận công ty</span>
                                                             @endif
                                                         </td>
                                                     @endif
@@ -362,7 +698,7 @@
                                                                     🚗 {{ $transaction->vehicle->license_plate ?? 'Xe #'.$transaction->vehicle_id }}
                                                                 </a>
                                                             @else
-                                                                <span class="text-gray-500 text-xs">🏢 Quỹ công ty</span>
+                                                                <span class="text-gray-500 text-xs">💰 Công ty</span>
                                                             @endif
                                                         </td>
                                                     @endif
@@ -397,7 +733,7 @@
                                                             @endif
                                                         @endif
                                                         @if($transaction->category == 'điều_chỉnh_lương' && !$transaction->incident_id)
-                                                            <span class="text-xs text-orange-600">(từ quỹ công ty)</span>
+                                                            <span class="text-xs text-orange-600">(từ lợi nhuận công ty)</span>
                                                         @endif
                                                     </td>
                                                     <td class="py-2 text-right font-semibold 
@@ -500,10 +836,10 @@
                                                     </td>
                                                     <td class="py-2">
                                                         @if($transaction->type == 'vay_cong_ty')
-                                                            <span class="text-red-600 font-medium">🏢 Quỹ công ty</span>
+                                                            <span class="text-red-600 font-medium">💰 Lợi nhuận công ty</span>
                                                             <span class="text-xs text-gray-500 ml-1">(góc nhìn công ty)</span>
                                                         @else
-                                                            <span class="text-green-600 font-medium">🏢 Quỹ công ty</span>
+                                                            <span class="text-green-600 font-medium">💰 Lợi nhuận công ty</span>
                                                             <span class="text-xs text-gray-500 ml-1">(góc nhìn công ty)</span>
                                                         @endif
                                                     </td>

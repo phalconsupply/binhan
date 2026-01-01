@@ -209,7 +209,7 @@ class AccountBalanceService
         }
 
         if ($accountName === 'company_fund') {
-            return '🏢 Quỹ công ty';
+            return '💰 Lợi nhuận công ty';
         }
 
         if ($accountName === 'company_reserved') {

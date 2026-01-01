@@ -263,43 +263,148 @@ class TransactionController extends Controller
         // Statistics for admin - all transactions
         $statsQuery = Transaction::query();
         
-        // Exclude borrowed funds from revenue (type='thu' with category='vay_từ_công_ty')
-        $totalRevenue = (clone $statsQuery)->revenue()->where(function($q) {
-            $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
-        })->sum('amount');
-        $totalExpense = (clone $statsQuery)->expense()->sum('amount');
-        $totalPlannedExpense = (clone $statsQuery)->plannedExpense()->sum('amount');
-        $monthRevenue = (clone $statsQuery)->revenue()->thisMonth()->where(function($q) {
-            $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
-        })->sum('amount');
-        $monthExpense = (clone $statsQuery)->expense()->thisMonth()->sum('amount');
-        $monthPlannedExpense = (clone $statsQuery)->plannedExpense()->thisMonth()->sum('amount');
+        // Xử lý filter tháng
+        $quickFilter = $request->input('quick_filter');
+        $selectedMonths = $request->input('stat_months', []);
         
-        // Fund deposits
-        $totalFundDeposit = (clone $statsQuery)->fundDeposit()->sum('amount');
-        $monthFundDeposit = (clone $statsQuery)->fundDeposit()->thisMonth()->sum('amount');
+        // Nếu có quick_filter, ưu tiên sử dụng
+        if ($quickFilter === 'all') {
+            $selectedMonths = ['all'];
+        } elseif ($quickFilter === 'current') {
+            $selectedMonths = ['current'];
+        } elseif (empty($selectedMonths)) {
+            $selectedMonths = ['all'];
+        }
         
-        // Company planned expense (for dự kiến chi display only)
-        $companyPlannedExpense = (clone $statsQuery)->plannedExpense()->whereNull('incident_id')->sum('amount');
+        $monthlyData = [];
+        
+        if (in_array('all', $selectedMonths)) {
+            // Tất cả thời gian - giữ nguyên logic cũ
+            $totalRevenue = (clone $statsQuery)->revenue()->where(function($q) {
+                $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
+            })->sum('amount');
+            $totalFundDeposit = (clone $statsQuery)->fundDeposit()->sum('amount');
+            $totalRevenueAll = $totalRevenue + $totalFundDeposit;
+            
+            $monthRevenue = (clone $statsQuery)->revenue()->thisMonth()->where(function($q) {
+                $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
+            })->sum('amount');
+            $monthFundDeposit = (clone $statsQuery)->fundDeposit()->thisMonth()->sum('amount');
+            $monthRevenueAll = $monthRevenue + $monthFundDeposit;
+            
+            $totalExpense = (clone $statsQuery)->expense()->sum('amount');
+            $monthExpense = (clone $statsQuery)->expense()->thisMonth()->sum('amount');
+            
+            $totalPlannedExpense = (clone $statsQuery)->plannedExpense()->sum('amount');
+            $monthPlannedExpense = (clone $statsQuery)->plannedExpense()->thisMonth()->sum('amount');
+            
+            $totalProfit = $totalRevenueAll - $totalExpense - $totalPlannedExpense;
+            $monthProfit = $monthRevenueAll - $monthExpense - $monthPlannedExpense;
+        } elseif (in_array('current', $selectedMonths)) {
+            // Chỉ tháng này
+            $totalRevenueAll = (clone $statsQuery)->revenue()->thisMonth()->where(function($q) {
+                $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
+            })->sum('amount') + (clone $statsQuery)->fundDeposit()->thisMonth()->sum('amount');
+            
+            $totalExpense = (clone $statsQuery)->expense()->thisMonth()->sum('amount');
+            $totalPlannedExpense = (clone $statsQuery)->plannedExpense()->thisMonth()->sum('amount');
+            $totalProfit = $totalRevenueAll - $totalExpense - $totalPlannedExpense;
+            
+            $monthRevenueAll = $totalRevenueAll;
+            $monthExpense = $totalExpense;
+            $monthPlannedExpense = $totalPlannedExpense;
+            $monthProfit = $totalProfit;
+        } else {
+            // Chọn 1 hoặc nhiều tháng cụ thể
+            $totalRevenueAll = 0;
+            $totalExpense = 0;
+            $totalPlannedExpense = 0;
+            
+            foreach ($selectedMonths as $monthStr) {
+                if ($monthStr === 'all' || $monthStr === 'current') continue;
+                
+                list($year, $month) = explode('-', $monthStr);
+                
+                $revenue = (clone $statsQuery)->revenue()
+                    ->whereYear('date', $year)
+                    ->whereMonth('date', $month)
+                    ->where(function($q) {
+                        $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
+                    })->sum('amount');
+                    
+                $fundDeposit = (clone $statsQuery)->fundDeposit()
+                    ->whereYear('date', $year)
+                    ->whereMonth('date', $month)
+                    ->sum('amount');
+                    
+                $monthRevenue = $revenue + $fundDeposit;
+                
+                $monthExpenseVal = (clone $statsQuery)->expense()
+                    ->whereYear('date', $year)
+                    ->whereMonth('date', $month)
+                    ->sum('amount');
+                    
+                $monthPlanned = (clone $statsQuery)->plannedExpense()
+                    ->whereYear('date', $year)
+                    ->whereMonth('date', $month)
+                    ->sum('amount');
+                    
+                $monthProfit = $monthRevenue - $monthExpenseVal - $monthPlanned;
+                
+                $monthlyData[] = [
+                    'month' => $monthStr,
+                    'label' => \Carbon\Carbon::parse($monthStr . '-01')->format('m/Y'),
+                    'revenue' => $monthRevenue,
+                    'expense' => $monthExpenseVal,
+                    'planned' => $monthPlanned,
+                    'profit' => $monthProfit,
+                ];
+                
+                $totalRevenueAll += $monthRevenue;
+                $totalExpense += $monthExpenseVal;
+                $totalPlannedExpense += $monthPlanned;
+            }
+            
+            $totalProfit = $totalRevenueAll - $totalExpense - $totalPlannedExpense;
+            
+            // Nếu chỉ chọn 1 tháng
+            if (count($monthlyData) == 1) {
+                $monthRevenueAll = $totalRevenueAll;
+                $monthExpense = $totalExpense;
+                $monthPlannedExpense = $totalPlannedExpense;
+                $monthProfit = $totalProfit;
+            } else {
+                // Nhiều tháng - không hiển thị "Tháng này"
+                $monthRevenueAll = 0;
+                $monthExpense = 0;
+                $monthPlannedExpense = 0;
+                $monthProfit = 0;
+            }
+        }
         
         $stats = [
-            'total_revenue_display' => $totalRevenue + $totalFundDeposit,
-            'month_revenue_display' => $monthRevenue + $monthFundDeposit,
-            'total_revenue' => $totalRevenue,
-            'month_revenue' => $monthRevenue,
+            // Tổng thu (thu + nộp quỹ)
+            'total_revenue' => $totalRevenueAll,
+            'month_revenue' => $monthRevenueAll,
+            
+            // Tổng chi
             'total_expense' => $totalExpense,
             'month_expense' => $monthExpense,
+            
+            // Dự kiến chi (trích từ lợi nhuận)
             'total_planned_expense' => $totalPlannedExpense,
             'month_planned_expense' => $monthPlannedExpense,
-            'total_fund_deposit' => $totalFundDeposit,
-            'month_fund_deposit' => $monthFundDeposit,
-            'today_revenue' => (clone $statsQuery)->revenue()->whereDate('date', date('Y-m-d'))->where(function($q) {
-                $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
-            })->sum('amount'),
-            'today_expense' => (clone $statsQuery)->expense()->whereDate('date', date('Y-m-d'))->sum('amount'),
-            'company_planned_expense' => $companyPlannedExpense,
-            'total_net' => $totalRevenue - $totalExpense,
-            'month_net' => $monthRevenue - $monthExpense,
+            
+            // Lợi nhuận (thu - chi - dự kiến)
+            'total_profit' => $totalProfit,
+            'month_profit' => $monthProfit,
+            
+            // Dữ liệu theo tháng (nếu chọn nhiều tháng)
+            'monthly_data' => $monthlyData,
+            
+            // For backward compatibility
+            'total_net' => $totalProfit,
+            'month_net' => $monthProfit,
         ];
 
         // Get account balances summary

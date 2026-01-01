@@ -177,7 +177,7 @@
                                     </div>
                                 </div>
                                 <p class="mt-1 text-xs text-gray-500">
-                                    💡 Gõ để tìm kiếm theo: Mã chuyến, tên bệnh nhân, biển số xe, ngày. Nếu chọn chuyến đi: Tiền sẽ trừ từ doanh thu chuyến đi. Nếu chuyến đi không đủ, phần còn lại lấy từ quỹ công ty.
+                                    💡 Gõ để tìm kiếm theo: Mã chuyến, tên bệnh nhân, biển số xe, ngày. Nếu chọn chuyến đi: Tiền sẽ trừ từ doanh thu chuyến đi. Nếu chuyến đi không đủ, phần còn lại lấy từ lợi nhuận công ty.
                                 </p>
                                 @error('incident_id')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -394,7 +394,7 @@
                                                 @endif
                                             @else
                                                 @if($adj->type == 'addition')
-                                                    <span class="text-orange-600">🏢 Quỹ công ty</span>
+                                                    <span class="text-orange-600">💰 Lợi nhuận công ty</span>
                                                 @else
                                                     <span class="text-blue-600">💰 Thu về công ty</span>
                                                 @endif
