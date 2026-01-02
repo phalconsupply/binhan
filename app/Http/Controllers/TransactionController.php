@@ -260,8 +260,8 @@ class TransactionController extends Controller
         // Get all vehicles for filter dropdown (admin view)
         $vehicles = Vehicle::orderBy('license_plate')->get();
 
-        // Statistics for admin - all transactions
-        $statsQuery = Transaction::query();
+        // Statistics for admin - only company transactions (vehicle_id = NULL)
+        $statsQuery = Transaction::whereNull('vehicle_id');
         
         // Xử lý filter tháng
         $quickFilter = $request->input('quick_filter');
