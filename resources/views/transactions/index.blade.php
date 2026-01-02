@@ -734,9 +734,26 @@
                                                             <div class="text-xs text-gray-500 mt-1">
                                                                 <span class="font-medium">Luồng:</span> {{ $transaction->account_flow_display }}
                                                             </div>
-                                                            @if($transaction->to_balance_after !== null)
+                                                            @php
+                                                                // Hiển thị số dư của tài khoản chính (xe/công ty) sau giao dịch
+                                                                // - Giao dịch CHI (from = xe/công ty): hiển thị from_balance_after
+                                                                // - Giao dịch THU (to = xe/công ty): hiển thị to_balance_after
+                                                                $balanceAfter = null;
+                                                                $accountName = null;
+                                                                
+                                                                if (in_array($transaction->type, ['chi', 'tra_cong_ty', 'du_kien_chi'])) {
+                                                                    // Giao dịch chi tiền ra → hiển thị số dư tài khoản nguồn
+                                                                    $balanceAfter = $transaction->from_balance_after;
+                                                                    $accountName = $transaction->from_account_display_name;
+                                                                } elseif (in_array($transaction->type, ['thu', 'nop_quy', 'vay_cong_ty'])) {
+                                                                    // Giao dịch nhận tiền vào → hiển thị số dư tài khoản đích
+                                                                    $balanceAfter = $transaction->to_balance_after;
+                                                                    $accountName = $transaction->to_account_display_name;
+                                                                }
+                                                            @endphp
+                                                            @if($balanceAfter !== null)
                                                                 <div class="text-xs text-blue-600 mt-0.5">
-                                                                    Số dư sau: {{ number_format($transaction->to_balance_after, 0, ',', '.') }}đ
+                                                                    Số dư {{ $accountName }}: {{ number_format($balanceAfter, 0, ',', '.') }}đ
                                                                 </div>
                                                             @endif
                                                         @endif
