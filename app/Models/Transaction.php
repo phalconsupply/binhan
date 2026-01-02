@@ -103,6 +103,16 @@ class Transaction extends Model
                 static::reverseLoanPayment($transaction);
             }
         });
+
+        // Update account balances after deleting
+        static::deleted(function ($transaction) {
+            \App\Services\AccountBalanceService::updateTransactionBalances($transaction);
+        });
+
+        // Update account balances after restoring
+        static::restored(function ($transaction) {
+            \App\Services\AccountBalanceService::updateTransactionBalances($transaction);
+        });
     }
 
     /**

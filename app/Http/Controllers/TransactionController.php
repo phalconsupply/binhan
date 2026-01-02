@@ -618,6 +618,51 @@ class TransactionController extends Controller
     }
 
     /**
+     * Display deleted transactions.
+     */
+    public function trash(Request $request)
+    {
+        $query = Transaction::onlyTrashed()->with(['vehicle', 'incident', 'staff', 'recorder']);
+        
+        // Filter by vehicle
+        if ($request->filled('vehicle_id')) {
+            $query->where('vehicle_id', $request->vehicle_id);
+        }
+        
+        // Filter by type
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+        
+        // Filter by date range
+        if ($request->filled('date_from')) {
+            $query->whereDate('date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('date', '<=', $request->date_to);
+        }
+        
+        $transactions = $query->orderBy('deleted_at', 'desc')->paginate(50);
+        
+        $vehicles = Vehicle::orderBy('license_plate')->get();
+        
+        return view('transactions.trash', compact('transactions', 'vehicles'));
+    }
+
+    /**
+     * Restore a deleted transaction.
+     */
+    public function restore($id)
+    {
+        $transaction = Transaction::onlyTrashed()->findOrFail($id);
+        
+        $transaction->restore();
+        
+        return redirect()->back()
+            ->with('success', "Đã khôi phục giao dịch {$transaction->code} thành công!");
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(Transaction $transaction)
