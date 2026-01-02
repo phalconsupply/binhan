@@ -85,7 +85,7 @@
                                      x-transition:leave-start="opacity-100 transform scale-100"
                                      x-transition:leave-end="transform opacity-0 scale-95"
                                      x-data="{ selectedYear: {{ request('stat_year', now()->year) }} }"
-                                     class="bg-white rounded-lg shadow-xl max-w-lg w-full"
+                                     class="bg-white rounded-lg shadow-xl max-w-xs w-full"
                                      @click.stop>
                                     
                                     <form method="GET" action="{{ route('transactions.index') }}">
