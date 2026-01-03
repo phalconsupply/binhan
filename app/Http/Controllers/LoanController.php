@@ -487,6 +487,7 @@ class LoanController extends Controller
             $insufficientFundsCount = 0;
 
             // Get all schedules due today or overdue that are NOT yet paid
+            // Các kỳ đã thanh toán (status='paid' hoặc có paid_date) sẽ TỰ ĐỘNG bị loại
             $dueSchedules = $loan->schedules()
                 ->where(function($query) {
                     $query->where('status', 'pending')
@@ -494,6 +495,7 @@ class LoanController extends Controller
                 })
                 ->where('due_date', '<=', now()->startOfDay())
                 ->whereNull('paid_date')
+                ->whereNull('transaction_id') // Đảm bảo chưa có GD
                 ->orderBy('due_date')
                 ->get();
 
@@ -501,14 +503,33 @@ class LoanController extends Controller
                 return redirect()->back()->with('info', 'Không có kỳ nào đến hạn cần xử lý.');
             }
 
+            // Tính tổng số tiền cần trả CHO TẤT CẢ các kỳ đến hạn
+            $totalAmountNeeded = $dueSchedules->sum('total');
+            
+            // Tính số dư hiện tại
+            $vehicle = $loan->vehicle;
+            $vehicleProfit = $vehicle->transactions()->where('type', 'thu')->sum('amount');
+            $vehicleExpenses = $vehicle->transactions()->where('type', 'chi')->sum('amount');
+            $currentBalance = $vehicleProfit - $vehicleExpenses;
+
+            // Kiểm tra số dư TRƯỚC khi xử lý
+            if ($currentBalance < $totalAmountNeeded) {
+                $scheduleCount = $dueSchedules->count();
+                $scheduleList = $dueSchedules->map(function($s) {
+                    return number_format($s->total, 0, ',', '.') . 'đ (kỳ ' . $s->period_no . ')';
+                })->join(', ');
+                
+                return redirect()->back()->with('error', 
+                    "Không đủ số dư! Cần " . number_format($totalAmountNeeded, 0, ',', '.') . 
+                    "đ để thanh toán {$scheduleCount} kỳ ({$scheduleList}), " .
+                    "nhưng chỉ có " . number_format($currentBalance, 0, ',', '.') . 
+                    "đ. Thiếu " . number_format($totalAmountNeeded - $currentBalance, 0, ',', '.') . "đ."
+                );
+            }
+
             DB::beginTransaction();
 
             foreach ($dueSchedules as $schedule) {
-                // Skip if already has transaction_id (already processed)
-                if ($schedule->transaction_id) {
-                    continue;
-                }
-
                 $vehicle = $loan->vehicle;
 
                 // Calculate available balance
@@ -550,13 +571,8 @@ class LoanController extends Controller
                 ]);
 
                 // Mark schedule as paid with transaction reference
-                $schedule->markAsPaid($principalTransaction ? $principalTransaction->id : null);
-
-                // Update remaining balance only if principal was paid
-                if ($schedule->principal > 0) {
-                    $loan->remaining_balance -= $schedule->principal;
-                    $loan->save();
-                }
+                // Note: markAsPaid() will update loan->remaining_balance automatically
+                $schedule->markAsPaid($principalTransaction ? $principalTransaction->id : null, $schedule->total);
 
                 $processedCount++;
 
