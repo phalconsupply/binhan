@@ -318,16 +318,19 @@ class VehicleController extends Controller
                       });
                 })->sum('amount');
             
-            // Phí 15% CHỈ tính trên lợi nhuận chuyến đi (thu - chi chuyến đi)
-            $totalProfitForFee = $totalRevenueForFee - $totalIncidentExpense;
-            $monthProfitForFee = $monthRevenueForFee - $monthIncidentExpense;
-                
-            $companyFee = ($totalProfitForFee > 0) ? $totalProfitForFee * 0.15 : 0;
-            $monthCompanyFee = ($monthProfitForFee > 0) ? $monthProfitForFee * 0.15 : 0;
+            // Phí 15% THỰC TẾ từ giao dịch (không tính ảo nữa)
+            $companyFee = (clone $statsQuery)->where('type', 'chi')
+                ->where('category', 'phí_công_ty_15%')
+                ->sum('amount');
+            $monthCompanyFee = $vehicle->transactions()->where('type', 'chi')
+                ->where('category', 'phí_công_ty_15%')
+                ->thisMonth()
+                ->sum('amount');
             
-            // BƯỚC 4: Tổng chi HIỂN THỊ = chi + dự kiến chi + trả nợ + phí 15%
-            $stats['total_expense_display'] = $stats['total_expense'] + $stats['total_planned_expense'] + $totalReturned + $companyFee;
-            $stats['month_expense_display'] = $stats['month_expense'] + $stats['month_planned_expense'] + $monthReturned + $monthCompanyFee;
+            // BƯỚC 4: Tổng chi HIỂN THỊ = chi + dự kiến chi + trả nợ
+            // (Phí 15% ĐÃ bao gồm trong total_expense vì là giao dịch thực tế)
+            $stats['total_expense_display'] = $stats['total_expense'] + $stats['total_planned_expense'] + $totalReturned;
+            $stats['month_expense_display'] = $stats['month_expense'] + $stats['month_planned_expense'] + $monthReturned;
             
             // Track company fee separately
             $stats['total_company_fee'] = $companyFee;
@@ -521,20 +524,23 @@ class VehicleController extends Controller
                       });
                 })->sum('amount');
             
-            // Phí 15% CHỈ tính trên lợi nhuận chuyến đi (thu - chi chuyến đi)
-            $totalProfitForFee = $totalRevenue - $totalIncidentExpense;
-            $monthProfitForFee = $monthRevenue - $monthIncidentExpense;
-                
-            $companyFee = ($totalProfitForFee > 0) ? $totalProfitForFee * 0.15 : 0;
-            $monthCompanyFee = ($monthProfitForFee > 0) ? $monthProfitForFee * 0.15 : 0;
+            // Phí 15% THỰC TẾ từ giao dịch (không tính ảo nữa)
+            $companyFee = $vehicle->transactions()->where('type', 'chi')
+                ->where('category', 'phí_công_ty_15%')
+                ->sum('amount');
+            $monthCompanyFee = $vehicle->transactions()->where('type', 'chi')
+                ->where('category', 'phí_công_ty_15%')
+                ->thisMonth()
+                ->sum('amount');
             
             // Tổng thu hiển thị = thu + vay + nộp quỹ
             $stats['total_revenue_display'] = $totalRevenue + $totalBorrowed + $totalFundDeposit;
             $stats['month_revenue_display'] = $monthRevenue + $monthBorrowed + $monthFundDeposit;
             
-            // Tổng chi hiển thị = chi + dự kiến chi + trả nợ + phí 15%
-            $stats['total_expense_display'] = $totalExpense + $totalPlannedExpense + $totalReturned + $companyFee;
-            $stats['month_expense_display'] = $monthExpense + $monthPlannedExpense + $monthReturned + $monthCompanyFee;
+            // Tổng chi hiển thị = chi + dự kiến chi + trả nợ
+            // (Phí 15% ĐÃ bao gồm trong totalExpense vì là giao dịch thực tế)
+            $stats['total_expense_display'] = $totalExpense + $totalPlannedExpense + $totalReturned;
+            $stats['month_expense_display'] = $monthExpense + $monthPlannedExpense + $monthReturned;
             
             $stats['total_company_fee'] = $companyFee;
             $stats['month_company_fee'] = $monthCompanyFee;

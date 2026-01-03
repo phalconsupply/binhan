@@ -84,7 +84,7 @@ class Transaction extends Model
         // Check period lock before creating
         static::creating(function ($transaction) {
             // Check if period is locked
-            if (\App\Models\AccountingPeriod::isLocked($transaction->date)) {
+            if (\App\Models\AccountingPeriod::checkIsLocked($transaction->date)) {
                 throw new \Exception(
                     'Không thể thêm giao dịch vào kỳ kế toán đã khóa. ' .
                     'Tháng ' . $transaction->date->format('m/Y') . ' đã được khóa sổ.'
@@ -116,13 +116,13 @@ class Transaction extends Model
             if ($transaction->isDirty('date')) {
                 // Check both old and new period
                 $originalDate = $transaction->getOriginal('date');
-                if (\App\Models\AccountingPeriod::isLocked($originalDate)) {
+                if (\App\Models\AccountingPeriod::checkIsLocked($originalDate)) {
                     throw new \Exception('Không thể sửa giao dịch trong kỳ đã khóa (kỳ cũ).');
                 }
-                if (\App\Models\AccountingPeriod::isLocked($transaction->date)) {
+                if (\App\Models\AccountingPeriod::checkIsLocked($transaction->date)) {
                     throw new \Exception('Không thể chuyển giao dịch sang kỳ đã khóa.');
                 }
-            } elseif (\App\Models\AccountingPeriod::isLocked($transaction->date)) {
+            } elseif (\App\Models\AccountingPeriod::checkIsLocked($transaction->date)) {
                 throw new \Exception('Không thể sửa giao dịch trong kỳ đã khóa.');
             }
         });
@@ -141,7 +141,7 @@ class Transaction extends Model
         // When a loan payment transaction is deleted, reverse the loan schedule
         static::deleting(function ($transaction) {
             // Check period lock before deleting
-            if (\App\Models\AccountingPeriod::isLocked($transaction->date)) {
+            if (\App\Models\AccountingPeriod::checkIsLocked($transaction->date)) {
                 throw new \Exception('Không thể xóa giao dịch trong kỳ đã khóa.');
             }
 

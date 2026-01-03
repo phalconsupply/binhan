@@ -77,13 +77,13 @@ class AccountingPeriod extends Model
         );
     }
 
-    public static function isLocked($date)
+    public static function checkIsLocked($date)
     {
         $period = static::forDate($date);
         return $period->status === 'locked';
     }
 
-    public static function isClosed($date)
+    public static function checkIsClosed($date)
     {
         $period = static::forDate($date);
         return in_array($period->status, ['closed', 'locked']);

@@ -484,6 +484,45 @@ class IncidentController extends Controller
                 ]);
             }
 
+            // Auto-create 15% company fee transaction for owner vehicles
+            $vehicle = \App\Models\Vehicle::find($validated['vehicle_id']);
+            if ($vehicle && $vehicle->hasOwner()) {
+                // Calculate incident revenue (excluding borrows)
+                $incidentRevenue = Transaction::where('incident_id', $incident->id)
+                    ->where('type', 'thu')
+                    ->where(function($q) {
+                        $q->where('category', '!=', 'vay_từ_công_ty')->orWhereNull('category');
+                    })
+                    ->sum('amount');
+                
+                // Calculate incident expense (excluding owner maintenance)
+                $incidentExpense = Transaction::where('incident_id', $incident->id)
+                    ->where('type', 'chi')
+                    ->where(function($q) {
+                        $q->whereNull('category')
+                          ->orWhere('category', '!=', 'bảo_trì_xe_chủ_riêng');
+                    })
+                    ->sum('amount');
+                
+                // Calculate profit and 15% fee
+                $incidentProfit = $incidentRevenue - $incidentExpense;
+                if ($incidentProfit > 0) {
+                    $companyFee = $incidentProfit * 0.15;
+                    
+                    Transaction::create([
+                        'incident_id' => $incident->id,
+                        'vehicle_id' => $validated['vehicle_id'],
+                        'type' => 'chi',
+                        'category' => 'phí_công_ty_15%',
+                        'amount' => $companyFee,
+                        'method' => 'bank', // Chuyển khoản về công ty
+                        'recorded_by' => auth()->id(),
+                        'date' => $validated['date'],
+                        'note' => 'Phí công ty 15% - Chuyến đi #' . $incident->id,
+                    ]);
+                }
+            }
+
             DB::commit();
 
             return redirect()->route('incidents.show', $incident)
