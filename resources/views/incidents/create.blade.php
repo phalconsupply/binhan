@@ -143,16 +143,30 @@
 
                         {{-- 4. Thông tin cộng tác viên --}}
                         <details class="border-t pt-3">
-                            <summary class="text-sm font-semibold text-gray-800 cursor-pointer hover:text-gray-900">🤝 Thông tin cộng tác viên (tùy chọn)</summary>
+                            <summary class="text-sm font-semibold text-gray-800 cursor-pointer hover:text-gray-900">🤝 Người giới thiệu & Hoa hồng (tùy chọn)</summary>
                             <div class="mt-2 space-y-2">
-                                <select id="partner_id" name="partner_id" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <select id="referrer_select" name="referrer_select" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                     <option value="">-- Không có --</option>
-                                    @foreach(\App\Models\Partner::collaborators()->active()->orderBy('name')->get() as $partner)
-                                        <option value="{{ $partner->id }}" data-commission="{{ $partner->commission_rate }}" {{ old('partner_id') == $partner->id ? 'selected' : '' }}>
-                                            {{ $partner->name }} @if($partner->commission_rate) ({{ $partner->commission_rate }}%) @endif
-                                        </option>
-                                    @endforeach
+                                    <optgroup label="👥 Nhân viên công ty">
+                                        @foreach(\App\Models\Staff::active()->orderBy('full_name')->get() as $staff)
+                                            <option value="staff_{{ $staff->id }}" data-commission="{{ $staff->commission_rate ?? 0 }}">
+                                                {{ $staff->full_name }} ({{ ucfirst($staff->staff_type) }})
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                    <optgroup label="🤝 Cộng tác viên">
+                                        @foreach(\App\Models\Partner::collaborators()->active()->orderBy('name')->get() as $partner)
+                                            <option value="partner_{{ $partner->id }}" data-commission="{{ $partner->commission_rate }}" {{ old('partner_id') == $partner->id ? 'selected' : '' }}>
+                                                {{ $partner->name }} @if($partner->commission_rate) ({{ $partner->commission_rate }}%) @endif
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
                                 </select>
+                                
+                                <!-- Hidden fields for backend -->
+                                <input type="hidden" id="referrer_type" name="referrer_type" value="{{ old('referrer_type') }}">
+                                <input type="hidden" id="referrer_id" name="referrer_id" value="{{ old('referrer_id') }}">
+                                
                                 <input type="text" id="commission_amount" name="commission_amount" value="{{ old('commission_amount') }}" data-currency placeholder="Số tiền hoa hồng" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                             </div>
                         </details>
@@ -291,35 +305,53 @@
         // Wage types from database
         const wageTypes = @json(\App\Models\WageType::active()->ordered()->pluck('name'));
 
-        // Partner commission auto-calculation
-        const partnerSelect = document.getElementById('partner_id');
+        // Referrer selection handler
+        const referrerSelect = document.getElementById('referrer_select');
+        const referrerTypeInput = document.getElementById('referrer_type');
+        const referrerIdInput = document.getElementById('referrer_id');
         const commissionInput = document.getElementById('commission_amount');
         const revenueInput = document.getElementById('amount_thu');
 
-        if (partnerSelect && commissionInput && revenueInput) {
-            partnerSelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                const commissionRate = selectedOption.dataset.commission;
-                const revenue = parseFloat(revenueInput.value) || 0;
-
-                if (commissionRate && revenue > 0) {
-                    const commissionAmount = (revenue * parseFloat(commissionRate)) / 100;
-                    commissionInput.value = Math.round(commissionAmount);
-                }
-            });
-
-            revenueInput.addEventListener('input', function() {
-                if (partnerSelect.value) {
-                    const selectedOption = partnerSelect.options[partnerSelect.selectedIndex];
+        if (referrerSelect) {
+            referrerSelect.addEventListener('change', function() {
+                const value = this.value;
+                
+                if (value) {
+                    // Split "staff_123" or "partner_456"
+                    const [type, id] = value.split('_');
+                    referrerTypeInput.value = type === 'staff' ? 'App\\Models\\Staff' : 'App\\Models\\Partner';
+                    referrerIdInput.value = id;
+                    
+                    // Auto-calculate commission if revenue exists
+                    const selectedOption = this.options[this.selectedIndex];
                     const commissionRate = selectedOption.dataset.commission;
-                    const revenue = parseFloat(this.value) || 0;
+                    const revenue = parseFloat(revenueInput.value) || 0;
 
                     if (commissionRate && revenue > 0) {
                         const commissionAmount = (revenue * parseFloat(commissionRate)) / 100;
                         commissionInput.value = Math.round(commissionAmount);
                     }
+                } else {
+                    referrerTypeInput.value = '';
+                    referrerIdInput.value = '';
                 }
             });
+
+            // Also recalculate when revenue changes
+            if (revenueInput) {
+                revenueInput.addEventListener('input', function() {
+                    if (referrerSelect.value) {
+                        const selectedOption = referrerSelect.options[referrerSelect.selectedIndex];
+                        const commissionRate = selectedOption.dataset.commission;
+                        const revenue = parseFloat(this.value) || 0;
+
+                        if (commissionRate && revenue > 0) {
+                            const commissionAmount = (revenue * parseFloat(commissionRate)) / 100;
+                            commissionInput.value = Math.round(commissionAmount);
+                        }
+                    }
+                });
+            }
         }
 
         // Additional Services

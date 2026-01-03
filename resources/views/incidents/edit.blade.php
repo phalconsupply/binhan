@@ -233,18 +233,35 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label for="partner_id" class="block text-sm font-medium text-gray-700">
-                                        Đối tác
+                                    <label for="referrer_select" class="block text-sm font-medium text-gray-700">
+                                        Người giới thiệu
                                     </label>
-                                    <select id="partner_id" name="partner_id" 
+                                    <select id="referrer_select" name="referrer_select"
                                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                         <option value="">-- Không có --</option>
-                                        @foreach(\App\Models\Partner::active()->where('type', 'collaborator')->orderBy('name')->get() as $partner)
-                                            <option value="{{ $partner->id }}" data-commission="{{ $partner->commission_rate }}" {{ old('partner_id', $incident->partner_id) == $partner->id ? 'selected' : '' }}>
-                                                {{ $partner->name }} @if($partner->commission_rate)(Hoa hồng: {{ $partner->commission_rate }}%)@endif
-                                            </option>
-                                        @endforeach
+                                        <optgroup label="👥 Nhân viên công ty">
+                                            @foreach(\App\Models\Staff::active()->orderBy('full_name')->get() as $staff)
+                                                <option value="staff_{{ $staff->id }}" 
+                                                    data-commission="{{ $staff->commission_rate ?? 0 }}"
+                                                    {{ (old('referrer_type', $incident->referrer_type) == 'App\Models\Staff' && old('referrer_id', $incident->referrer_id) == $staff->id) ? 'selected' : '' }}>
+                                                    {{ $staff->full_name }} ({{ ucfirst($staff->staff_type) }})
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                        <optgroup label="🤝 Cộng tác viên">
+                                            @foreach(\App\Models\Partner::active()->where('type', 'collaborator')->orderBy('name')->get() as $partner)
+                                                <option value="partner_{{ $partner->id }}" 
+                                                    data-commission="{{ $partner->commission_rate }}"
+                                                    {{ (old('referrer_type', $incident->referrer_type) == 'App\Models\Partner' && old('referrer_id', $incident->referrer_id) == $partner->id) ? 'selected' : '' }}>
+                                                    {{ $partner->name }} @if($partner->commission_rate)({{ $partner->commission_rate }}%)@endif
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
                                     </select>
+                                    
+                                    <!-- Hidden fields for backend -->
+                                    <input type="hidden" id="referrer_type" name="referrer_type" value="{{ old('referrer_type', $incident->referrer_type) }}">
+                                    <input type="hidden" id="referrer_id" name="referrer_id" value="{{ old('referrer_id', $incident->referrer_id) }}">
                                 </div>
 
                                 <div>
@@ -449,5 +466,27 @@
                 markServiceForDeletion(button, serviceId);
             };
         };
+        
+        // Referrer selection handler
+        const referrerSelect = document.getElementById('referrer_select');
+        const referrerTypeInput = document.getElementById('referrer_type');
+        const referrerIdInput = document.getElementById('referrer_id');
+        const commissionInput = document.getElementById('commission_amount');
+        
+        if (referrerSelect) {
+            referrerSelect.addEventListener('change', function() {
+                const value = this.value;
+                
+                if (value) {
+                    // Split "staff_123" or "partner_456"
+                    const [type, id] = value.split('_');
+                    referrerTypeInput.value = type === 'staff' ? 'App\\Models\\Staff' : 'App\\Models\\Partner';
+                    referrerIdInput.value = id;
+                } else {
+                    referrerTypeInput.value = '';
+                    referrerIdInput.value = '';
+                }
+            });
+        }
     </script>
 </x-app-layout>

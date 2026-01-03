@@ -21,6 +21,8 @@ class Incident extends Model
         'to_location_id',
         'partner_id',
         'commission_amount',
+        'referrer_type',
+        'referrer_id',
         'summary',
         'tags',
     ];
@@ -76,6 +78,28 @@ class Incident extends Model
     public function partner()
     {
         return $this->belongsTo(Partner::class);
+    }
+
+    // Polymorphic relationship for referrer (người giới thiệu)
+    public function referrer()
+    {
+        return $this->morphTo();
+    }
+
+    // Helper method to get referrer name
+    public function getReferrerNameAttribute()
+    {
+        if (!$this->referrer) {
+            return null;
+        }
+        
+        if ($this->referrer_type === 'App\\Models\\Partner') {
+            return $this->referrer->name;
+        } elseif ($this->referrer_type === 'App\\Models\\Staff') {
+            return $this->referrer->full_name;
+        }
+        
+        return null;
     }
 
     public function vehicleMaintenances()

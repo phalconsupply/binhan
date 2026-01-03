@@ -127,6 +127,8 @@ class IncidentController extends Controller
             'from_location' => 'nullable|string|max:255',
             'to_location' => 'nullable|string|max:255',
             'partner_id' => 'nullable|exists:partners,id',
+            'referrer_type' => 'nullable|string|in:App\Models\Partner,App\Models\Staff',
+            'referrer_id' => 'nullable|integer',
             'commission_amount' => 'nullable|numeric|min:0',
             'revenue_main_name' => 'nullable|string|max:255',
             'amount_thu' => 'nullable|numeric|min:0',
@@ -240,6 +242,8 @@ class IncidentController extends Controller
                 'from_location_id' => $fromLocationId,
                 'to_location_id' => $toLocationId,
                 'partner_id' => $validated['partner_id'] ?? null,
+                'referrer_type' => $validated['referrer_type'] ?? null,
+                'referrer_id' => $validated['referrer_id'] ?? null,
                 'commission_amount' => $validated['commission_amount'] ?? null,
                 'summary' => $validated['summary'],
                 'tags' => $validated['tags'] ?? null,
@@ -469,18 +473,33 @@ class IncidentController extends Controller
                 ]);
             }
 
-            // Create commission expense transaction if partner exists
-            if (!empty($validated['partner_id']) && !empty($validated['commission_amount']) && $validated['commission_amount'] > 0) {
-                $partner = \App\Models\Partner::find($validated['partner_id']);
+            // Create commission transaction based on referrer type
+            if (!empty($validated['referrer_type']) && !empty($validated['referrer_id']) && !empty($validated['commission_amount']) && $validated['commission_amount'] > 0) {
+                $referrerName = '';
+                $staffId = null;
+                
+                if ($validated['referrer_type'] === 'App\Models\Staff') {
+                    $staff = \App\Models\Staff::find($validated['referrer_id']);
+                    $referrerName = $staff ? $staff->full_name : 'Nhân viên';
+                    $staffId = $validated['referrer_id'];
+                } elseif ($validated['referrer_type'] === 'App\Models\Partner') {
+                    $partner = \App\Models\Partner::find($validated['referrer_id']);
+                    $referrerName = $partner ? $partner->name : 'Đối tác';
+                }
+                
+                // Create commission transaction
+                // If referrer is staff, transaction will have staff_id (counts as staff income)
+                // If referrer is partner, transaction has no staff_id (just expense)
                 Transaction::create([
                     'incident_id' => $incident->id,
                     'vehicle_id' => $validated['vehicle_id'],
+                    'staff_id' => $staffId,  // NULL for partners, set for staff
                     'type' => 'chi',
                     'amount' => $validated['commission_amount'],
                     'method' => $validated['payment_method'],
                     'recorded_by' => auth()->id(),
                     'date' => $validated['date'],
-                    'note' => 'Hoa hồng: ' . ($partner ? $partner->name : 'Đối tác'),
+                    'note' => 'Hoa hồng giới thiệu: ' . $referrerName,
                 ]);
             }
 
@@ -677,6 +696,8 @@ class IncidentController extends Controller
             'from_location' => 'nullable|string|max:255',
             'to_location' => 'nullable|string|max:255',
             'partner_id' => 'nullable|exists:partners,id',
+            'referrer_type' => 'nullable|string|in:App\Models\Partner,App\Models\Staff',
+            'referrer_id' => 'nullable|integer',
             'commission_amount' => 'nullable|numeric|min:0',
             'existing_services' => 'nullable|array',
             'existing_services.*.id' => 'required|exists:incident_additional_services,id',
@@ -744,6 +765,8 @@ class IncidentController extends Controller
                 'from_location_id' => $fromLocationId,
                 'to_location_id' => $toLocationId,
                 'partner_id' => $validated['partner_id'] ?? null,
+                'referrer_type' => $validated['referrer_type'] ?? null,
+                'referrer_id' => $validated['referrer_id'] ?? null,
                 'commission_amount' => $validated['commission_amount'] ?? null,
                 'summary' => $validated['summary'],
                 'tags' => $validated['tags'] ?? null,
@@ -828,21 +851,36 @@ class IncidentController extends Controller
             // Update commission transaction
             // First, delete old commission transaction if exists
             Transaction::where('incident_id', $incident->id)
-                ->where('note', 'LIKE', 'Hoa hồng:%')
+                ->where('note', 'LIKE', 'Hoa hồng%')
                 ->delete();
 
-            // Create new commission transaction if partner exists
-            if (!empty($validated['partner_id']) && !empty($validated['commission_amount']) && $validated['commission_amount'] > 0) {
-                $partner = \App\Models\Partner::find($validated['partner_id']);
+            // Create new commission transaction based on referrer type
+            if (!empty($validated['referrer_type']) && !empty($validated['referrer_id']) && !empty($validated['commission_amount']) && $validated['commission_amount'] > 0) {
+                $referrerName = '';
+                $staffId = null;
+                
+                if ($validated['referrer_type'] === 'App\Models\Staff') {
+                    $staff = \App\Models\Staff::find($validated['referrer_id']);
+                    $referrerName = $staff ? $staff->full_name : 'Nhân viên';
+                    $staffId = $validated['referrer_id'];
+                } elseif ($validated['referrer_type'] === 'App\Models\Partner') {
+                    $partner = \App\Models\Partner::find($validated['referrer_id']);
+                    $referrerName = $partner ? $partner->name : 'Đối tác';
+                }
+                
+                // Create commission transaction
+                // If referrer is staff, transaction will have staff_id (counts as staff income)
+                // If referrer is partner, transaction has no staff_id (just expense)
                 Transaction::create([
                     'incident_id' => $incident->id,
                     'vehicle_id' => $validated['vehicle_id'],
+                    'staff_id' => $staffId,  // NULL for partners, set for staff
                     'type' => 'chi',
                     'amount' => $validated['commission_amount'],
-                    'method' => 'cash', // Default method for commission
+                    'method' => 'cash',
                     'recorded_by' => auth()->id(),
                     'date' => $validated['date'],
-                    'note' => 'Hoa hồng: ' . ($partner ? $partner->name : 'Đối tác'),
+                    'note' => 'Hoa hồng giới thiệu: ' . $referrerName,
                 ]);
             }
 
