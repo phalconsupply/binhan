@@ -21,15 +21,13 @@ class RedirectIfAuthenticated
 
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
-                // Check if user is driver or medical staff
-                $staff = \App\Models\Staff::where('user_id', Auth::id())->first();
-                
-                if ($staff && in_array($staff->staff_type, ['driver', 'medical_staff'])) {
-                    // Redirect to profile page for driver and medical staff
+                // Check if user has permission to access dashboard
+                if (!Auth::user()->can('access dashboard')) {
+                    // Users without dashboard access go to profile page
                     return redirect()->route('profile.edit');
                 }
                 
-                // All other users go to dashboard
+                // Users with dashboard access go to dashboard
                 return redirect(RouteServiceProvider::HOME);
             }
         }

@@ -32,7 +32,8 @@ class StaffRolesPermissionsSeeder extends Seeder
         // Define roles and their permissions
         $rolesPermissions = [
             'admin' => [
-                // Full access to everything
+                // Full access to everything including dashboard
+                'access dashboard',
                 'view vehicles', 'create vehicles', 'edit vehicles', 'delete vehicles',
                 'view patients', 'create patients', 'edit patients', 'delete patients',
                 'view incidents', 'create incidents', 'edit incidents', 'delete incidents',
@@ -43,6 +44,7 @@ class StaffRolesPermissionsSeeder extends Seeder
             ],
             'manager' => [
                 // Same as admin
+                'access dashboard',
                 'view vehicles', 'create vehicles', 'edit vehicles', 'delete vehicles',
                 'view patients', 'create patients', 'edit patients', 'delete patients',
                 'view incidents', 'create incidents', 'edit incidents', 'delete incidents',
@@ -52,23 +54,36 @@ class StaffRolesPermissionsSeeder extends Seeder
                 'view staff', 'create staff', 'edit staff', 'delete staff',
             ],
             'medical_staff' => [
+                // NO dashboard access - go directly to profile
                 // Can only create incidents (quick entry) and view incidents list
                 'create incidents',
                 'view incidents',
             ],
             'driver' => [
+                // NO dashboard access - go directly to profile
                 // Can only create incidents (quick entry) and view incidents list
                 'create incidents',
                 'view incidents',
             ],
             'investor' => [
-                // Can view everything but cannot create/edit/delete
+                // Can view everything including dashboard
+                'access dashboard',
                 'view vehicles',
                 'view patients',
                 'view incidents',
                 'view transactions',
                 'view notes',
                 'view staff',
+            ],
+            'vehicle_owner' => [
+                // Vehicle owners can access dashboard and view their own data
+                'access dashboard',
+                'view vehicles',
+                'view patients',
+                'view incidents',
+                'view transactions',
+                'view notes',
+                'view reports',
             ],
         ];
 
