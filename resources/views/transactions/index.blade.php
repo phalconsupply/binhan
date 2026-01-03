@@ -37,9 +37,31 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             
             @if (session('success'))
-                <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
-                    <span class="block sm:inline">{{ session('success') }}</span>
+                <div id="success-alert" class="mb-4 bg-green-500 border border-green-600 text-white px-4 py-3 rounded-lg shadow-lg relative flex items-center justify-between animate-slide-in">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        <span class="font-medium">{{ session('success') }}</span>
+                    </div>
+                    <button onclick="document.getElementById('success-alert').remove()" class="ml-4 text-white hover:text-green-200">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
                 </div>
+                <script>
+                    // Auto dismiss after 5 seconds
+                    setTimeout(() => {
+                        const alert = document.getElementById('success-alert');
+                        if (alert) {
+                            alert.style.transition = 'all 0.5s ease-out';
+                            alert.style.opacity = '0';
+                            alert.style.transform = 'translateY(-20px)';
+                            setTimeout(() => alert.remove(), 500);
+                        }
+                    }, 5000);
+                </script>
             @endif
 
             {{-- Statistics - 4 Tài khoản chính --}}
@@ -817,16 +839,14 @@
                                                             @can('delete transactions')
                                                             {{-- Button Xóa mềm --}}
                                                             @if(!$transaction->is_locked)
-                                                            <form action="{{ route('transactions.destroy', $transaction) }}" method="POST" class="inline" onsubmit="return confirm('⚠️ XÓA MỀM: Giao dịch sẽ bị ẩn nhưng có thể restore.\n\nChỉ dùng khi giao dịch NHẬP NHẦM.\nNếu cần HỦY giao dịch đã xảy ra, hãy dùng [ĐẢO NGƯỢC].\n\nBạn có chắc muốn xóa?')">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="inline-flex items-center px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition">
-                                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                                    </svg>
-                                                                    Xóa
-                                                                </button>
-                                                            </form>
+                                                            <button type="button" 
+                                                                onclick="deleteTransaction({{ $transaction->id }}, event)"
+                                                                class="inline-flex items-center px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition">
+                                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                                </svg>
+                                                                Xóa
+                                                            </button>
                                                             @endif
                                                             @endcan
                                                             
@@ -1170,6 +1190,70 @@
             
             // TODO: Open a form modal to enter new transaction data
             // Then call API to replace transaction
+        }
+
+        // Function to delete transaction with AJAX and fade out effect
+        async function deleteTransaction(transactionId, event) {
+            event.preventDefault();
+            
+            const confirmed = confirm('⚠️ XÓA MỀM: Giao dịch sẽ bị ẩn nhưng có thể restore.\n\nChỉ dùng khi giao dịch NHẬP NHẦM.\nNếu cần HỦY giao dịch đã xảy ra, hãy dùng [ĐẢO NGƯỢC].\n\nBạn có chắc muốn xóa?');
+            
+            if (!confirmed) {
+                return;
+            }
+
+            const button = event.target.closest('button');
+            const originalHtml = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+            try {
+                const response = await fetch(`{{ url('transactions') }}/${transactionId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Find the transaction row
+                    const row = button.closest('tr');
+                    
+                    // Add fade out animation
+                    row.style.transition = 'all 0.3s ease-out';
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateX(-20px)';
+                    
+                    // Remove row after animation
+                    setTimeout(() => {
+                        row.remove();
+                        
+                        // Show success toast (optional)
+                        const toast = document.createElement('div');
+                        toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded shadow-lg z-50';
+                        toast.textContent = data.message;
+                        document.body.appendChild(toast);
+                        
+                        setTimeout(() => {
+                            toast.style.transition = 'opacity 0.3s';
+                            toast.style.opacity = '0';
+                            setTimeout(() => toast.remove(), 300);
+                        }, 3000);
+                    }, 300);
+                } else {
+                    throw new Error(data.message || 'Có lỗi xảy ra');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Có lỗi khi xóa giao dịch: ' + error.message);
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            }
         }
 
     </script>

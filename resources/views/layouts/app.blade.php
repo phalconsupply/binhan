@@ -26,6 +26,21 @@
         <!-- Alpine.js x-cloak style -->
         <style>
             [x-cloak] { display: none !important; }
+            
+            /* Success alert slide-in animation */
+            @keyframes slide-in {
+                from {
+                    transform: translateY(-100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+            .animate-slide-in {
+                animation: slide-in 0.5s ease-out;
+            }
         </style>
 
         <!-- Scripts -->

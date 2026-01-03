@@ -686,6 +686,14 @@ class TransactionController extends Controller
 
         $transaction->delete();
 
+        // Return JSON for AJAX requests
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã xóa giao dịch thành công!'
+            ]);
+        }
+
         return redirect()->route('transactions.index')
             ->with('success', 'Đã xóa giao dịch thành công!');
     }

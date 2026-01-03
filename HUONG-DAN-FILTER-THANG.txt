@@ -1,0 +1,96 @@
+HƯỚNG DẪN SỬ DỤNG FILTER THÁNG MỚI
+=====================================
+
+✅ UI ĐÃ ĐƯỢC CẢI TIẾN:
+
+1. BUTTON DROPDOWN THÔNG MINH
+   - Click vào button "📅 [Tất cả thời gian / Tháng này / X tháng được chọn]"
+   - Hiển thị panel dropdown với các tùy chọn
+
+2. TÙY CHỌN NHANH
+   ⚡ Tất cả thời gian - Xem toàn bộ dữ liệu
+   ⚡ Tháng này - Chỉ xem tháng hiện tại (01/2026)
+
+3. CHỌN NĂM
+   📅 Dropdown chọn năm từ 2026 xuống 2023
+   - Tự động cập nhật danh sách tháng
+   - Disable các tháng chưa đến
+
+4. CHỌN THÁNG
+   ✅ Grid 3 cột với checkbox cho 12 tháng
+   - Dễ dàng chọn nhiều tháng cùng lúc
+   - Tháng chưa đến sẽ bị disable (màu xám)
+   - Chọn checkbox sẽ tự động bỏ chọn "Tùy chọn nhanh"
+
+5. BUTTONS
+   [Áp dụng] - Submit form và xem kết quả
+   [Đóng] - Đóng dropdown mà không thay đổi
+
+=====================================
+
+📊 CÁC TÌNH HUỐNG SỬ DỤNG:
+
+TÌNH HUỐNG 1: Xem tổng hợp toàn bộ
+→ Click button → Chọn "Tất cả thời gian" → Form tự động submit
+
+TÌNH HUỐNG 2: Xem tháng này
+→ Click button → Chọn "Tháng này" → Form tự động submit
+
+TÌNH HUỐNG 3: Xem 1 tháng cụ thể
+→ Click button → Chọn năm → Check tháng cần xem → Click "Áp dụng"
+→ Kết quả: Hiển thị dạng 4 cards
+
+TÌNH HUỐNG 4: So sánh nhiều tháng
+→ Click button → Chọn năm → Check nhiều tháng → Click "Áp dụng"
+→ Kết quả: Hiển thị dạng bảng với tổng cộng
+
+TÌNH HUỐNG 5: So sánh tháng giữa các năm
+→ Click button → Chọn năm 2025 → Check tháng 12
+→ Click button lại → Chọn năm 2024 → Check thêm tháng 12
+→ Click "Áp dụng"
+→ Kết quả: Bảng so sánh tháng 12/2024 và 12/2025
+
+=====================================
+
+🎨 ƯU ĐIỂM UI MỚI:
+
+✅ Trực quan hơn với dropdown thay vì select multiple
+✅ Checkbox dễ sử dụng hơn Ctrl+Click
+✅ Hiển thị rõ ràng số tháng đã chọn
+✅ Tự động disable tháng chưa đến
+✅ Tùy chọn nhanh cho các trường hợp phổ biến
+✅ Responsive, đẹp hơn với Tailwind CSS
+✅ Có animation mượt mà nhờ Alpine.js
+
+=====================================
+
+🔧 THÀNH PHẦN KỸ THUẬT:
+
+- Alpine.js: Xử lý show/hide dropdown
+- Tailwind CSS: Styling responsive
+- PHP Blade: Render động các option
+- JavaScript: Update month options khi đổi năm
+
+=====================================
+
+📝 VÍ DỤ QUERY STRING:
+
+Tất cả thời gian:
+?quick_filter=all
+
+Tháng này:
+?quick_filter=current
+
+1 tháng cụ thể:
+?stat_year=2025&stat_months[]=2025-12
+
+Nhiều tháng:
+?stat_year=2025&stat_months[]=2025-11&stat_months[]=2025-12
+
+So sánh năm:
+?stat_year=2025&stat_months[]=2024-12&stat_months[]=2025-12
+
+=====================================
+
+Mở trình duyệt và thử ngay tại:
+http://localhost/binhan/public/transactions
