@@ -29,6 +29,15 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Check if user is driver or medical staff
+        $staff = \App\Models\Staff::where('user_id', auth()->id())->first();
+        
+        if ($staff && in_array($staff->staff_type, ['driver', 'medical_staff'])) {
+            // Redirect driver and medical staff to their profile page
+            return redirect()->intended(route('profile.edit'));
+        }
+
+        // All other users go to dashboard
         return redirect()->intended(RouteServiceProvider::HOME);
     }
 
