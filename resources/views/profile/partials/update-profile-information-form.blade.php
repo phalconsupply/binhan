@@ -5,7 +5,11 @@
         </h2>
 
         <p class="mt-1 text-sm text-gray-600">
-            {{ __("Update your account's profile information and email address.") }}
+            @can('edit staff')
+                {{ __("Update your account's profile information and email address.") }}
+            @else
+                Thông tin tài khoản của bạn. Liên hệ quản lý để thay đổi tên hoặc email.
+            @endcan
         </p>
     </header>
 
@@ -19,14 +23,20 @@
 
         <div>
             <x-input-label for="name" :value="__('Name')" />
-            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="name" />
+            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="name" :disabled="!auth()->user()->can('edit staff')" />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
+            @cannot('edit staff')
+                <p class="text-xs text-gray-500 mt-1">🔒 Chỉ quản lý mới có thể thay đổi tên</p>
+            @endcannot
         </div>
 
         <div>
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" required autocomplete="username" />
+            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" required autocomplete="username" :disabled="!auth()->user()->can('edit staff')" />
             <x-input-error class="mt-2" :messages="$errors->get('email')" />
+            @cannot('edit staff')
+                <p class="text-xs text-gray-500 mt-1">🔒 Chỉ quản lý mới có thể thay đổi email</p>
+            @endcannot
 
             @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
                 <div>
@@ -47,6 +57,7 @@
             @endif
         </div>
 
+        @can('edit staff')
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 
@@ -60,5 +71,6 @@
                 >{{ __('Saved.') }}</p>
             @endif
         </div>
+        @endcan
     </form>
 </section>

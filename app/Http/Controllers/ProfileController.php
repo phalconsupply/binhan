@@ -174,6 +174,11 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
+        // Check if user has permission to edit staff information
+        if (!auth()->user()->can('edit staff')) {
+            abort(403, 'Bạn không có quyền thay đổi thông tin cá nhân. Vui lòng liên hệ quản lý.');
+        }
+        
         $request->user()->fill($request->validated());
 
         if ($request->user()->isDirty('email')) {
@@ -190,6 +195,11 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        // Check if user has permission to delete staff
+        if (!auth()->user()->can('delete staff')) {
+            abort(403, 'Bạn không có quyền xóa tài khoản. Vui lòng liên hệ quản lý.');
+        }
+        
         $request->validateWithBag('userDeletion', [
             'password' => ['required', 'current_password'],
         ]);
