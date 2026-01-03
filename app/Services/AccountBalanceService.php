@@ -118,14 +118,34 @@ class AccountBalanceService
 
     /**
      * Tính số dư của một tài khoản tại thời điểm trước transaction
+     * CHÚ Ý: Tính theo DATE, không phải ID để hỗ trợ thêm GD quá khứ
      */
-    public static function calculateBalance(string $accountName, $beforeTransactionId = null): float
+    public static function calculateBalance(string $accountName, $beforeTransactionId = null, $beforeDate = null): float
     {
         $query = Transaction::query();
 
-        // Chỉ tính các giao dịch trước transaction hiện tại
         if ($beforeTransactionId) {
-            $query->where('id', '<', $beforeTransactionId);
+            // Lấy transaction hiện tại để biết date
+            $currentTx = Transaction::find($beforeTransactionId);
+            
+            if ($currentTx) {
+                // Chỉ tính các GD có:
+                // - date < date của GD hiện tại
+                // - HOẶC date = date của GD hiện tại NHƯNG id < id hiện tại
+                $query->where(function($q) use ($currentTx) {
+                    $q->where('date', '<', $currentTx->date)
+                      ->orWhere(function($q2) use ($currentTx) {
+                          $q2->where('date', '=', $currentTx->date)
+                             ->where('id', '<', $currentTx->id);
+                      });
+                });
+            } else {
+                // Fallback: Nếu không tìm thấy transaction, dùng logic cũ
+                $query->where('id', '<', $beforeTransactionId);
+            }
+        } elseif ($beforeDate) {
+            // Tính số dư trước một ngày cụ thể
+            $query->where('date', '<', $beforeDate);
         }
 
         $query->orderBy('date')->orderBy('id');
@@ -237,6 +257,27 @@ class AccountBalanceService
         }
 
         return $accountName;
+    }
+
+    /**
+     * Tái tính toán số dư cho tất cả transactions từ một ngày cụ thể
+     * Dùng khi thêm/sửa/xóa GD quá khứ
+     */
+    public static function recalculateBalancesFromDate($fromDate): void
+    {
+        DB::transaction(function () use ($fromDate) {
+            // Lấy tất cả transactions từ ngày đó trở về sau
+            // SẮP XẾP THEO DATE, ID để đảm bảo đúng thứ tự thời gian
+            $transactions = Transaction::where('date', '>=', $fromDate)
+                ->orderBy('date')
+                ->orderBy('id')
+                ->get();
+
+            foreach ($transactions as $transaction) {
+                // Skip validation để cho phép số dư âm trong lịch sử
+                self::updateTransactionBalances($transaction, true);
+            }
+        });
     }
 
     /**

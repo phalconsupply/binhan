@@ -120,6 +120,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Transaction Lifecycle Management APIs
     Route::post('/api/transactions/{transaction}/reverse', [TransactionController::class, 'reverseTransaction'])->name('api.transactions.reverse');
     Route::post('/api/transactions/{transaction}/replace', [TransactionController::class, 'replaceTransaction'])->name('api.transactions.replace');
+    
+    // Accounting Periods Management
+    Route::middleware('permission:manage settings')->group(function () {
+        Route::get('/accounting-periods', [App\Http\Controllers\AccountingPeriodController::class, 'index'])->name('accounting-periods.index');
+        Route::put('/accounting-periods/{period}/close', [App\Http\Controllers\AccountingPeriodController::class, 'close'])->name('accounting-periods.close');
+        Route::put('/accounting-periods/{period}/lock', [App\Http\Controllers\AccountingPeriodController::class, 'lock'])->name('accounting-periods.lock');
+        Route::put('/accounting-periods/{period}/reopen', [App\Http\Controllers\AccountingPeriodController::class, 'reopen'])->name('accounting-periods.reopen');
+        Route::put('/accounting-periods/{period}/unlock', [App\Http\Controllers\AccountingPeriodController::class, 'unlock'])->name('accounting-periods.unlock');
+    });
 });
 
 

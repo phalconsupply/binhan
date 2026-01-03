@@ -81,8 +81,17 @@ class Transaction extends Model
     {
         parent::boot();
 
-        // Auto-generate transaction code
+        // Check period lock before creating
         static::creating(function ($transaction) {
+            // Check if period is locked
+            if (\App\Models\AccountingPeriod::isLocked($transaction->date)) {
+                throw new \Exception(
+                    'Không thể thêm giao dịch vào kỳ kế toán đã khóa. ' .
+                    'Tháng ' . $transaction->date->format('m/Y') . ' đã được khóa sổ.'
+                );
+            }
+
+            // Auto-generate transaction code
             if (empty($transaction->code)) {
                 // Get the last transaction ID to ensure uniqueness
                 $lastId = static::max('id') ?? 0;
@@ -95,23 +104,61 @@ class Transaction extends Model
         // Auto-update account balances after creating
         static::created(function ($transaction) {
             \App\Services\AccountBalanceService::updateTransactionBalances($transaction);
+            
+            // Nếu thêm GD quá khứ (>1 ngày trước), trigger recalculation
+            if ($transaction->date->lt(now()->subDay())) {
+                \App\Jobs\RecalculateBalancesJob::dispatch($transaction->date);
+            }
+        });
+
+        // Check period lock before updating
+        static::updating(function ($transaction) {
+            if ($transaction->isDirty('date')) {
+                // Check both old and new period
+                $originalDate = $transaction->getOriginal('date');
+                if (\App\Models\AccountingPeriod::isLocked($originalDate)) {
+                    throw new \Exception('Không thể sửa giao dịch trong kỳ đã khóa (kỳ cũ).');
+                }
+                if (\App\Models\AccountingPeriod::isLocked($transaction->date)) {
+                    throw new \Exception('Không thể chuyển giao dịch sang kỳ đã khóa.');
+                }
+            } elseif (\App\Models\AccountingPeriod::isLocked($transaction->date)) {
+                throw new \Exception('Không thể sửa giao dịch trong kỳ đã khóa.');
+            }
+        });
+
+        // Trigger recalculation after updating if date/amount changed
+        static::updated(function ($transaction) {
+            if ($transaction->isDirty(['date', 'amount', 'type', 'vehicle_id'])) {
+                $earliestDate = min(
+                    $transaction->date,
+                    $transaction->getOriginal('date') ?? $transaction->date
+                );
+                \App\Jobs\RecalculateBalancesJob::dispatch($earliestDate);
+            }
         });
 
         // When a loan payment transaction is deleted, reverse the loan schedule
         static::deleting(function ($transaction) {
+            // Check period lock before deleting
+            if (\App\Models\AccountingPeriod::isLocked($transaction->date)) {
+                throw new \Exception('Không thể xóa giao dịch trong kỳ đã khóa.');
+            }
+
             if (in_array($transaction->category, ['trả_nợ_gốc', 'trả_nợ_lãi', 'trả_nợ_sớm'])) {
                 static::reverseLoanPayment($transaction);
             }
         });
 
-        // Update account balances after deleting
+        // Update account balances and trigger recalculation after deleting
         static::deleted(function ($transaction) {
-            \App\Services\AccountBalanceService::updateTransactionBalances($transaction);
+            \App\Jobs\RecalculateBalancesJob::dispatch($transaction->date);
         });
 
-        // Update account balances after restoring
+        // Update account balances and trigger recalculation after restoring
         static::restored(function ($transaction) {
             \App\Services\AccountBalanceService::updateTransactionBalances($transaction);
+            \App\Jobs\RecalculateBalancesJob::dispatch($transaction->date);
         });
     }
 
